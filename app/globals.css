@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: var(--font-poppins), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#FFC107] to-[#FFD54F];
+  }
+
+  /* Glass effect */
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  /* Custom button styles */
+  .btn-primary {
+    @apply bg-[#3A2E5A] text-white hover:bg-[#4F3F7A] transition-all duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-[#FFC107] text-[#3A2E5A] hover:bg-[#D4A106] transition-all duration-200;
+  }
+
+  .btn-outline-primary {
+    @apply border-2 border-[#3A2E5A] text-[#3A2E5A] hover:bg-[#3A2E5A] hover:text-white transition-all duration-200;
+  }
+
+  .btn-outline-secondary {
+    @apply border-2 border-[#FFC107] text-[#D4A106] hover:bg-[#FFC107] hover:text-[#3A2E5A] transition-all duration-200;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite];
+    border-color: #ffc107 transparent #ffc107 transparent;
+  }
+
+  .spinner-sm {
+    @apply h-5 w-5 border-2;
+  }
+
+  .spinner-lg {
+    @apply h-12 w-12 border-[6px];
+  }
+}
+
+@layer base {
+  :root {
+    --background: 257 30% 96%;
+    --foreground: 258 35% 20%;
+    --card: 257 30% 100%;
+    --card-foreground: 258 35% 20%;
+    --popover: 257 30% 100%;
+    --popover-foreground: 258 35% 20%;
+    --primary: 258 35% 30%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 100% 51%;
+    --secondary-foreground: 258 35% 15%;
+    --muted: 257 30% 90%;
+    --muted-foreground: 258 25% 45%;
+    --accent: 257 30% 85%;
+    --accent-foreground: 258 35% 15%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 257 20% 80%;
+    --input: 257 20% 85%;
+    --ring: 258 35% 50%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 258 35% 12%;
+    --foreground: 257 30% 90%;
+    --card: 258 35% 18%;
+    --card-foreground: 257 30% 90%;
+    --popover: 258 35% 10%;
+    --popover-foreground: 257 30% 90%;
+    --primary: 258 40% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 100% 55%;
+    --secondary-foreground: 258 35% 10%;
+    --muted: 258 25% 25%;
+    --muted-foreground: 257 30% 70%;
+    --accent: 258 25% 30%;
+    --accent-foreground: 257 30% 90%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 258 20% 30%;
+    --input: 258 20% 25%;
+    --ring: 45 100% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-image: radial-gradient(circle at 25px 25px, rgba(58, 46, 90, 0.03) 2%, transparent 0%),
+      radial-gradient(circle at 75px 75px, rgba(58, 46, 90, 0.03) 2%, transparent 0%);
+    background-size: 100px 100px;
+  }
+
+  /* Focus styles using standard ring utilities */
+  :focus-visible {
+    @apply outline-none ring-2 ring-offset-2 ring-offset-white transition-shadow;
+    ring-color: #ffc107;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+    background-color: rgba(120, 100, 163, 0.5);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #7864a3;
+  }
+}
