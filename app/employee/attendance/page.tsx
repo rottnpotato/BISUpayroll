@@ -2,58 +2,202 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Clock, Calendar as CalendarIcon, CheckCircle2, XCircle, AlertTriangle, Download, Printer } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { SkeletonCard } from "@/components/ui/skeleton-card"
-import { cn } from "@/lib/utils"
+import { 
+  Clock, CalendarDays, TrendingUp, AlertCircle,
+  CheckCircle, XCircle, Timer, Calendar as CalendarIcon
+} from "lucide-react"
 import { motion } from "framer-motion"
+import { toast } from "sonner"
+import { format, startOfMonth, endOfMonth } from "date-fns"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-// Mock attendance data
-const attendanceData = {
-  thisMonth: [
-    { date: "2023-09-01", dayOfWeek: "Friday", timeIn: "08:02 AM", timeOut: "05:03 PM", status: "On Time", hours: 8.0 },
-    { date: "2023-09-04", dayOfWeek: "Monday", timeIn: "08:15 AM", timeOut: "05:00 PM", status: "Late", hours: 7.75 },
-    { date: "2023-09-05", dayOfWeek: "Tuesday", timeIn: "07:55 AM", timeOut: "05:05 PM", status: "On Time", hours: 8.17 },
-    { date: "2023-09-06", dayOfWeek: "Wednesday", timeIn: "08:00 AM", timeOut: "05:00 PM", status: "On Time", hours: 8.0 },
-    { date: "2023-09-07", dayOfWeek: "Thursday", timeIn: "08:10 AM", timeOut: "05:10 PM", status: "On Time", hours: 8.0 },
-    { date: "2023-09-08", dayOfWeek: "Friday", timeIn: "08:22 AM", timeOut: "05:00 PM", status: "Late", hours: 7.63 },
-    { date: "2023-09-11", dayOfWeek: "Monday", timeIn: "07:58 AM", timeOut: "05:03 PM", status: "On Time", hours: 8.08 },
-    { date: "2023-09-12", dayOfWeek: "Tuesday", timeIn: "08:05 AM", timeOut: "05:00 PM", status: "On Time", hours: 7.92 },
-  ],
-  summary: {
-    totalDays: 22,
-    presentDays: 20,
-    absentDays: 0,
-    lateDays: 2,
-    totalHours: 160.5,
-    averageHoursPerDay: 8.03,
-  }
+interface AttendanceRecord {
+  id: string
+  date: string
+  dayOfWeek: string
+  timeIn: string | null
+  timeOut: string | null
+  status: string
+  hours: number
 }
 
-// Mock leave data
-const leaveData = [
-  { id: 1, type: "Vacation", startDate: "2023-08-15", endDate: "2023-08-17", status: "Approved", approvedBy: "Jane Smith" },
-  { id: 2, type: "Sick", startDate: "2023-07-10", endDate: "2023-07-10", status: "Approved", approvedBy: "Jane Smith" },
-  { id: 3, type: "Personal", startDate: "2023-09-25", endDate: "2023-09-25", status: "Pending", approvedBy: null },
-]
+interface AttendanceSummary {
+  totalDays: number
+  presentDays: number
+  absentDays: number
+  lateDays: number
+  totalHours: number
+  averageHoursPerDay: number
+}
 
-export default function EmployeeAttendance() {
-  const [date, setDate] = useState<Date | undefined>(new Date())
+interface AttendanceData {
+  records: AttendanceRecord[]
+  summary: AttendanceSummary
+}
+
+export default function EmployeeAttendancePage() {
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("attendance")
+  const [attendanceData, setAttendanceData] = useState<AttendanceData | null>(null)
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [isClockingIn, setIsClockingIn] = useState(false)
+  const [isClockingOut, setIsClockingOut] = useState(false)
+  const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null)
 
+  // Update current time every second
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false)
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
     }, 1000)
-    return () => clearTimeout(timer)
+    return () => clearInterval(timer)
   }, [])
 
-  // Animation variants
+  const fetchAttendanceData = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch(`/api/employee/attendance?year=${selectedYear}&month=${selectedMonth}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch attendance data')
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setAttendanceData(result.data)
+        
+        // Find today's record
+        const today = format(new Date(), 'yyyy-MM-dd')
+        const todayRec = result.data.records.find((record: AttendanceRecord) => record.date === today)
+        setTodayRecord(todayRec || null)
+      } else {
+        throw new Error(result.message || 'Failed to fetch attendance data')
+      }
+    } catch (error) {
+      console.error('Error fetching attendance data:', error)
+      toast.error('Failed to fetch attendance data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAttendanceData()
+  }, [selectedMonth, selectedYear])
+
+  const handleTimeIn = async () => {
+    try {
+      setIsClockingIn(true)
+      const response = await fetch('/api/employee/attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'time-in' })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(result.message)
+        if (result.data?.isLate) {
+          toast.warning('You are late for work today')
+        }
+        fetchAttendanceData() // Refresh data
+      } else {
+        toast.error(result.message || 'Failed to record time-in')
+      }
+    } catch (error) {
+      console.error('Error recording time-in:', error)
+      toast.error('Failed to record time-in')
+    } finally {
+      setIsClockingIn(false)
+    }
+  }
+
+  const handleTimeOut = async () => {
+    try {
+      setIsClockingOut(true)
+      const response = await fetch('/api/employee/attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'time-out' })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success(result.message)
+        fetchAttendanceData() // Refresh data
+      } else {
+        toast.error(result.message || 'Failed to record time-out')
+      }
+    } catch (error) {
+      console.error('Error recording time-out:', error)
+      toast.error('Failed to record time-out')
+    } finally {
+      setIsClockingOut(false)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'on time':
+        return <Badge className="bg-green-500 text-white">On Time</Badge>
+      case 'late':
+        return <Badge className="bg-yellow-500 text-white">Late</Badge>
+      case 'absent':
+        return <Badge className="bg-red-500 text-white">Absent</Badge>
+      default:
+        return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
+  const formatHours = (hours: number) => {
+    const h = Math.floor(hours)
+    const m = Math.floor((hours - h) * 60)
+    return `${h}h ${m}m`
+  }
+
+  const getTodayStatus = () => {
+    if (!todayRecord) return 'Not clocked in'
+    if (todayRecord.timeOut) return 'Completed'
+    if (todayRecord.timeIn) return 'Clocked in'
+    return 'Absent'
+  }
+
+  const canClockIn = () => {
+    return !todayRecord || !todayRecord.timeIn
+  }
+
+  const canClockOut = () => {
+    return todayRecord && todayRecord.timeIn && !todayRecord.timeOut
+  }
+
+  // Generate month/year options
+  const months = [
+    { value: 1, label: 'January' },
+    { value: 2, label: 'February' },
+    { value: 3, label: 'March' },
+    { value: 4, label: 'April' },
+    { value: 5, label: 'May' },
+    { value: 6, label: 'June' },
+    { value: 7, label: 'July' },
+    { value: 8, label: 'August' },
+    { value: 9, label: 'September' },
+    { value: 10, label: 'October' },
+    { value: 11, label: 'November' },
+    { value: 12, label: 'December' }
+  ]
+
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i)
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -77,253 +221,229 @@ export default function EmployeeAttendance() {
     },
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "on time":
-        return "text-green-600"
-      case "late":
-        return "text-amber-600"
-      case "absent":
-        return "text-red-600"
-      case "approved":
-        return "text-green-600"
-      case "pending":
-        return "text-amber-600"
-      case "rejected":
-        return "text-red-600"
-      default:
-        return "text-gray-600"
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "on time":
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />
-      case "late":
-        return <AlertTriangle className="h-4 w-4 text-amber-600" />
-      case "absent":
-        return <XCircle className="h-4 w-4 text-red-600" />
-      case "approved":
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />
-      case "pending":
-        return <AlertTriangle className="h-4 w-4 text-amber-600" />
-      case "rejected":
-        return <XCircle className="h-4 w-4 text-red-600" />
-      default:
-        return null
-    }
-  }
-
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-8">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-6 flex justify-between items-center"
       >
-        <div>
-          <h1 className="text-2xl font-bold text-bisu-purple-deep">My Attendance</h1>
-          <p className="text-gray-600">View and manage your attendance records and leave requests</p>
-        </div>
-        <Button
-          onClick={() => window.print()}
-          className="bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
-        >
-          <Printer className="mr-2 h-4 w-4" />
-          Print Page
-        </Button>
+        <h1 className="text-3xl font-bold text-bisu-purple-deep mb-2">My Attendance</h1>
+        <p className="text-gray-600">Track your attendance and working hours</p>
       </motion.div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full md:w-auto grid-cols-2 md:inline-flex mb-6 bg-bisu-purple-extralight">
-          <TabsTrigger value="attendance" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            Attendance Log
-          </TabsTrigger>
-          <TabsTrigger value="leave" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
-            <Clock className="mr-2 h-4 w-4" />
-            Leave Requests
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="attendance" className="space-y-6">
-          {isLoading ? (
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <SkeletonCard hasHeader={true} lines={6} />
-              <div className="lg:col-span-2">
-                <SkeletonCard hasHeader={true} lines={10} />
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-8"
+      >
+        {/* Clock In/Out Section */}
+        <motion.div variants={itemVariants}>
+          <Card className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white">
+            <CardHeader>
+              <CardTitle className="text-bisu-yellow-DEFAULT flex items-center gap-2">
+                <Clock className="h-6 w-6" />
+                Time Clock
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center">
+                <div className="text-3xl font-mono font-bold text-bisu-yellow-DEFAULT">
+                  {format(currentTime, 'HH:mm:ss')}
+                </div>
+                <div className="text-lg text-bisu-yellow-light">
+                  {format(currentTime, 'EEEE, MMMM d, yyyy')}
+                </div>
               </div>
-            </motion.div>
-          ) : (
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Summary Card */}
-              <motion.div variants={itemVariants} className="space-y-6">
-                <Card className="shadow-md">
-                  <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
-                    <CardTitle className="text-bisu-purple-deep flex items-center">
-                      <CalendarIcon className="mr-2 h-5 w-5" />
-                      Attendance Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                        <span className="text-gray-600">Working Days:</span>
-                        <span className="font-semibold text-bisu-purple-deep">{attendanceData.summary.totalDays}</span>
-                      </div>
-                      <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                        <span className="text-gray-600">Present:</span>
-                        <span className="font-semibold text-green-600">{attendanceData.summary.presentDays}</span>
-                      </div>
-                      <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                        <span className="text-gray-600">Absent:</span>
-                        <span className="font-semibold text-red-600">{attendanceData.summary.absentDays}</span>
-                      </div>
-                      <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                        <span className="text-gray-600">Late:</span>
-                        <span className="font-semibold text-amber-600">{attendanceData.summary.lateDays}</span>
-                      </div>
-                      <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                        <span className="text-gray-600">Total Hours:</span>
-                        <span className="font-semibold text-bisu-purple-deep">{attendanceData.summary.totalHours}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Avg. Hours/Day:</span>
-                        <span className="font-semibold text-bisu-purple-deep">{attendanceData.summary.averageHoursPerDay}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                <Card className="shadow-md">
-                  <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
-                    <CardTitle className="text-bisu-purple-deep">Calendar</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex justify-center pt-4">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      className="rounded-md"
-                      modifiersClassNames={{
-                        selected: "bg-bisu-yellow-DEFAULT text-bisu-purple-deep hover:bg-bisu-yellow-dark",
-                        today: "bg-bisu-purple-light text-white",
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <div className="flex justify-center items-center gap-4">
+                <div className="text-center">
+                  <div className="text-sm text-bisu-yellow-light">Today's Status</div>
+                  <div className="text-lg font-semibold text-white">{getTodayStatus()}</div>
+                </div>
+                {todayRecord && (
+                  <>
+                    <div className="text-center">
+                      <div className="text-sm text-bisu-yellow-light">Time In</div>
+                      <div className="text-lg font-semibold text-white">
+                        {todayRecord.timeIn || '-'}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm text-bisu-yellow-light">Time Out</div>
+                      <div className="text-lg font-semibold text-white">
+                        {todayRecord.timeOut || '-'}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
-              {/* Attendance Table */}
-              <motion.div variants={itemVariants} className="lg:col-span-2">
-                <Card className="shadow-md">
-                  <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
-                    <CardTitle className="text-bisu-purple-deep flex items-center">
-                      <Clock className="mr-2 h-5 w-5" />
-                      Attendance Log
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="rounded-md overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-gray-50">
-                          <TableRow>
-                            <TableHead className="text-bisu-purple-deep">Date</TableHead>
-                            <TableHead className="text-bisu-purple-deep">Day</TableHead>
-                            <TableHead className="text-bisu-purple-deep">Time In</TableHead>
-                            <TableHead className="text-bisu-purple-deep">Time Out</TableHead>
-                            <TableHead className="text-bisu-purple-deep">Status</TableHead>
-                            <TableHead className="text-bisu-purple-deep text-right">Hours</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {attendanceData.thisMonth.map((record, index) => (
-                            <TableRow key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                              <TableCell className="font-medium">{record.date}</TableCell>
-                              <TableCell>{record.dayOfWeek}</TableCell>
-                              <TableCell>{record.timeIn}</TableCell>
-                              <TableCell>{record.timeOut}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center">
-                                  {getStatusIcon(record.status)}
-                                  <span className={cn("ml-1", getStatusColor(record.status))}>{record.status}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">{record.hours}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
-          )}
-        </TabsContent>
+              <div className="flex justify-center gap-4">
+                <Button
+                  onClick={handleTimeIn}
+                  disabled={!canClockIn() || isClockingIn}
+                  className="bg-green-600 hover:bg-green-700 text-white px-8"
+                >
+                  {isClockingIn ? 'Clocking In...' : 'Clock In'}
+                </Button>
+                <Button
+                  onClick={handleTimeOut}
+                  disabled={!canClockOut() || isClockingOut}
+                  className="bg-red-600 hover:bg-red-700 text-white px-8"
+                >
+                  {isClockingOut ? 'Clocking Out...' : 'Clock Out'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <TabsContent value="leave" className="space-y-6">
-          {isLoading ? (
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 gap-6">
-              <SkeletonCard hasHeader={true} lines={6} />
-            </motion.div>
-          ) : (
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 gap-6">
-              <motion.div variants={itemVariants}>
-                <Card className="shadow-md">
-                  <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-bisu-purple-deep flex items-center">
-                        <CalendarIcon className="mr-2 h-5 w-5" />
-                        Leave Requests
-                      </CardTitle>
-                      <Button className="bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep">
-                        New Request
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="rounded-md overflow-hidden">
-                      <Table>
-                        <TableHeader className="bg-gray-50">
-                          <TableRow>
-                            <TableHead className="text-bisu-purple-deep">ID</TableHead>
-                            <TableHead className="text-bisu-purple-deep">Type</TableHead>
-                            <TableHead className="text-bisu-purple-deep">Start Date</TableHead>
-                            <TableHead className="text-bisu-purple-deep">End Date</TableHead>
-                            <TableHead className="text-bisu-purple-deep">Status</TableHead>
-                            <TableHead className="text-bisu-purple-deep">Approved By</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {leaveData.map((leave) => (
-                            <TableRow key={leave.id} className="hover:bg-gray-50">
-                              <TableCell className="font-medium">{leave.id}</TableCell>
-                              <TableCell>{leave.type}</TableCell>
-                              <TableCell>{leave.startDate}</TableCell>
-                              <TableCell>{leave.endDate}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center">
-                                  {getStatusIcon(leave.status)}
-                                  <span className={cn("ml-1", getStatusColor(leave.status))}>{leave.status}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>{leave.approvedBy || "—"}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
-          )}
-        </TabsContent>
-      </Tabs>
+        {/* Summary Statistics */}
+        {attendanceData && (
+          <motion.div variants={itemVariants}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="border-l-4 border-l-green-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Present Days</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-bisu-purple-deep">{attendanceData.summary.presentDays}</div>
+                  <p className="text-xs text-green-600 mt-1">
+                    {attendanceData.summary.totalDays > 0 
+                      ? Math.round((attendanceData.summary.presentDays / attendanceData.summary.totalDays) * 100) 
+                      : 0}% attendance rate
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-yellow-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Late Days</CardTitle>
+                  <AlertCircle className="h-4 w-4 text-yellow-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-bisu-purple-deep">{attendanceData.summary.lateDays}</div>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    This month
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-red-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Absent Days</CardTitle>
+                  <XCircle className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-bisu-purple-deep">{attendanceData.summary.absentDays}</div>
+                  <p className="text-xs text-red-500 mt-1">
+                    This month
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-blue-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Total Hours</CardTitle>
+                  <Timer className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-bisu-purple-deep">
+                    {formatHours(attendanceData.summary.totalHours)}
+                  </div>
+                  <p className="text-xs text-blue-500 mt-1">
+                    Avg: {formatHours(attendanceData.summary.averageHoursPerDay)}/day
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Attendance History */}
+        <motion.div variants={itemVariants}>
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <CardTitle className="text-bisu-purple-deep flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5" />
+                  Attendance History
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {months.map((month) => (
+                        <SelectItem key={month.value} value={month.value.toString()}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-bisu-purple-deep mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Loading attendance records...</p>
+                </div>
+              ) : attendanceData?.records && attendanceData.records.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Day</TableHead>
+                      <TableHead>Time In</TableHead>
+                      <TableHead>Time Out</TableHead>
+                      <TableHead>Hours</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attendanceData.records.map((record) => (
+                      <TableRow key={record.id}>
+                        <TableCell className="font-medium">
+                          {format(new Date(record.date), 'MMM dd, yyyy')}
+                        </TableCell>
+                        <TableCell>{record.dayOfWeek}</TableCell>
+                        <TableCell>{record.timeIn || '-'}</TableCell>
+                        <TableCell>{record.timeOut || '-'}</TableCell>
+                        <TableCell>{formatHours(record.hours)}</TableCell>
+                        <TableCell>{getStatusBadge(record.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No attendance records found for this period</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
     </div>
   )
 } 

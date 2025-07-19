@@ -1,6 +1,6 @@
 import type React from "react"
 import "./globals.css"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Poppins } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
@@ -12,6 +12,13 @@ const poppins = Poppins({
   variable: "--font-poppins",
   display: "swap",
 })
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+}
 
 export const metadata: Metadata = {
   title: "BISU Payroll System",
@@ -31,10 +38,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={poppins.variable}>
-      <body className={poppins.className}>
+      <body className={`${poppins.className} min-h-screen flex flex-col text-base antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            {children}
+            <main className="flex-1 w-full mx-auto">
+              {children}
+            </main>
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

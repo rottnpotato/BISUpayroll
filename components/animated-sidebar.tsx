@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronLeft, ChevronRight, LogOut } from "lucide-react"
+import { ChevronLeft, ChevronRight, LogOut, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -36,9 +36,11 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
   // Check if we're on mobile
   useEffect(() => {
     const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
-      if (window.innerWidth < 1024) {
+      const mobileView = window.innerWidth < 1024
+      setIsMobile(mobileView)
+      if (mobileView) {
         setIsCollapsed(true)
+        setIsSidebarOpen(false)
       }
     }
 
@@ -81,7 +83,7 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
       >
         {/* Sidebar header */}
         <div className="flex items-center justify-between h-20 px-4 border-b border-bisu-yellow-DEFAULT/20">
-          <div className={cn("overflow-hidden", isCollapsed ? "scale-100 origin-left" : "animate-fade-in")}>
+          <div className={cn("overflow-hidden", isCollapsed && !isMobile ? "scale-100 origin-left" : "animate-fade-in")}>
             {logo}
           </div>
 
@@ -128,19 +130,23 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
                         >
                           <span className={cn(
                             "flex items-center justify-center", 
-                            isCollapsed ? "mx-auto" : "mr-2",
+                            (isCollapsed && !isMobile) ? "mx-auto" : "mr-2",
                             isActive && "text-bisu-purple-deep"
                           )}>
                             <Icon size={20} />
                           </span>
-                          {!isCollapsed && <span className="transition-opacity duration-200 whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>}
-                          {isActive && isCollapsed && (
+                          {(!isCollapsed || (isMobile && isSidebarOpen)) && (
+                            <span className="transition-opacity duration-200 whitespace-nowrap overflow-hidden text-ellipsis">
+                              {item.label}
+                            </span>
+                          )}
+                          {isActive && isCollapsed && !isMobile && (
                             <span className="absolute inset-y-0 left-0 w-1 bg-bisu-yellow-DEFAULT rounded-r-full"></span>
                           )}
                         </Link>
                       </li>
                     </TooltipTrigger>
-                    {isCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                    {isCollapsed && !isMobile && <TooltipContent side="right">{item.label}</TooltipContent>}
                   </Tooltip>
                 </TooltipProvider>
               )
@@ -150,7 +156,7 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
 
         {/* User info and logout */}
         <div className="p-3 border-t border-bisu-yellow-DEFAULT/20">
-          {!isCollapsed && (
+          {(!isCollapsed || (isMobile && isSidebarOpen)) && (
             <div className="bg-bisu-purple-medium/50 rounded-lg p-2 mb-3 animate-slide-up">
               <p className="text-bisu-yellow-light text-xs">{userInfo.role}</p>
               <p className="text-white font-semibold truncate">{userInfo.name}</p>
@@ -165,28 +171,29 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
                   variant="outline"
                   className={cn(
                     "border-bisu-yellow-DEFAULT/50 text-bisu-yellow-DEFAULT hover:bg-bisu-yellow-DEFAULT hover:text-bisu-purple-deep transition-all duration-200",
-                    isCollapsed ? "w-10 h-10 p-0" : "w-full",
+                    isCollapsed && !isMobile ? "w-10 h-10 p-0" : "w-full",
                   )}
                 >
-                  <LogOut size={isCollapsed ? 20 : 16} className={isCollapsed ? "mx-auto" : "mr-2"} />
-                  {!isCollapsed && <span>Logout</span>}
+                  <LogOut size={isCollapsed && !isMobile ? 20 : 16} className={isCollapsed && !isMobile ? "mx-auto" : "mr-2"} />
+                  {(!isCollapsed || (isMobile && isSidebarOpen)) && <span>Logout</span>}
                 </Button>
               </TooltipTrigger>
-              {isCollapsed && <TooltipContent side="right">Logout</TooltipContent>}
+              {isCollapsed && !isMobile && <TooltipContent side="right">Logout</TooltipContent>}
             </Tooltip>
           </TooltipProvider>
         </div>
       </aside>
 
-      {/* Mobile toggle button */}
+      {/* Mobile toggle button - Always visible on mobile */}
       {isMobile && (
         <Button
           variant="outline"
           size="icon"
           onClick={() => setIsSidebarOpen(true)}
-          className="fixed bottom-4 right-4 z-30 rounded-full shadow-lg bg-bisu-purple-deep text-bisu-yellow-DEFAULT border-bisu-yellow-DEFAULT/50 hover:bg-bisu-purple-medium"
+          className="fixed bottom-4 right-4 z-[60] w-12 h-12 rounded-full shadow-lg bg-bisu-purple-deep text-bisu-yellow-DEFAULT border-bisu-yellow-DEFAULT hover:bg-bisu-purple-medium touch-target"
+          aria-label="Open menu"
         >
-          <ChevronRight size={24} />
+          <Menu size={28} />
         </Button>
       )}
     </>

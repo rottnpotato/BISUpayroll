@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,37 +12,82 @@ import { useToast } from "@/hooks/use-toast"
 import { motion } from "@/components/simple-motion"
 import { Spinner } from "@/components/ui/spinner"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, isLoading: authLoading, isAuthenticated, user } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && user) {
+      if (user.role === "ADMIN") {
+        router.replace("/admin/dashboard")
+      } else if (user.role === "EMPLOYEE") {
+        router.replace("/employee/dashboard")
+      }
+    }
+  }, [isAuthenticated, authLoading, user, router])
+
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setIsLoading(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Mock login logic
-    if (email === "admin@bisu.edu.ph" && password === "adminpass") {
-      login("admin", "Admin User")
-      toast({ title: "Login Successful", description: "Welcome, Admin!" })
-    } else if (email === "employee@bisu.edu.ph" && password === "employeepass") {
-      login("employee", "Juan Dela Cruz")
-      toast({ title: "Login Successful", description: "Welcome, Juan!" })
-    } else {
+    
+    if (!email || !password) {
       toast({
-        title: "Login Failed",
-        description: "Invalid email or password.",
+        title: "Validation Error",
+        description: "Please fill in all fields.",
         variant: "destructive",
       })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Use the auth context login function instead of direct fetch
+      const result = await login({ email, password })
+      
+      if (result.success) {
+        toast({ 
+          title: "Login Successful", 
+          description: result.message || "Welcome back!" 
+        })
+        
+        // The auth context will handle the redirection based on user role
+      } else {
+        toast({
+          title: "Login Failed",
+          description: result.message || "Invalid credentials.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Login error:", error)
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
     }
+  }
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-[#46246C] via-[#623B93] to-[#46246C] text-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -158,6 +203,7 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -182,7 +228,7 @@ export default function LoginPage() {
               <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                   className="w-full bg-[#F6CC1A] hover:bg-[#D4A106] text-[#46246C] font-semibold text-lg py-3 transition-all duration-300 hover:shadow-lg disabled:opacity-50"
                 >
                   {isLoading ? (
@@ -208,13 +254,13 @@ export default function LoginPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-white">Admin:</span>
                     <code className="bg-[#46246C]/70 px-2 py-1 rounded text-white">
-                      admin@bisu.edu.ph / adminpass
+                      admin@bisu.edu.ph / password123
                     </code>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-white">Employee:</span>
                     <code className="bg-[#46246C]/70 px-2 py-1 rounded text-white">
-                      employee@bisu.edu.ph / employeepass
+                      juan.delacruz@bisu.edu.ph / password123
                     </code>
                   </div>
                 </div>

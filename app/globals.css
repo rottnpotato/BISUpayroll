@@ -4,6 +4,8 @@
 
 body {
   font-family: var(--font-poppins), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @layer utilities {
@@ -55,6 +57,36 @@ body {
 
   .spinner-lg {
     @apply h-12 w-12 border-[6px];
+  }
+  
+  /* Responsive utilities */
+  .responsive-container {
+    @apply w-full px-4 sm:px-6 md:px-8 lg:px-10 max-w-7xl mx-auto;
+  }
+
+  .responsive-padding {
+    @apply px-4 sm:px-6 md:px-8;
+  }
+
+  .responsive-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6;
+  }
+
+  .responsive-flex {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  .responsive-text {
+    @apply text-sm sm:text-base md:text-lg;
+  }
+
+  .responsive-heading {
+    @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold;
+  }
+
+  /* Mobile-friendly touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
   }
 }
 
@@ -110,11 +142,32 @@ body {
     @apply border-border;
   }
 
+  html {
+    @apply overflow-x-hidden;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
     background-image: radial-gradient(circle at 25px 25px, rgba(58, 46, 90, 0.03) 2%, transparent 0%),
       radial-gradient(circle at 75px 75px, rgba(58, 46, 90, 0.03) 2%, transparent 0%);
     background-size: 100px 100px;
+  }
+
+  /* Responsive font sizing */
+  h1 {
+    @apply text-2xl sm:text-3xl md:text-4xl font-bold;
+  }
+
+  h2 {
+    @apply text-xl sm:text-2xl md:text-3xl font-semibold;
+  }
+
+  h3 {
+    @apply text-lg sm:text-xl md:text-2xl font-semibold;
+  }
+
+  h4 {
+    @apply text-base sm:text-lg md:text-xl font-medium;
   }
 
   /* Focus styles using standard ring utilities */
@@ -140,5 +193,16 @@ body {
 
   ::-webkit-scrollbar-thumb:hover {
     background-color: #7864a3;
+  }
+  
+  /* Mobile-specific styles */
+  @media (max-width: 640px) {
+    input, select, textarea, button {
+      @apply text-base; /* Ensure form elements are readable on mobile */
+    }
+    
+    .table-responsive {
+      @apply overflow-x-auto -mx-4 px-4; /* Handle table overflow on small screens */
+    }
   }
 }

@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { motion } from "@/components/simple-motion"
 import { PageLoading } from "@/components/ui/page-loading"
+import { NotificationProvider } from "@/components/ui/notification"
 
 const employeeNavItems = [
   { href: "/employee/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -23,6 +24,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     // Simulate loading for demo purposes
@@ -35,7 +37,9 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   // Handle sidebar state based on screen size
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) {
+      const mobileView = window.innerWidth < 1024
+      setIsMobile(mobileView)
+      if (mobileView) {
         setSidebarCollapsed(true)
       }
     }
@@ -77,30 +81,32 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <AnimatedSidebar
-        items={employeeNavItems}
-        logo={<BisuLogo size="sm" variant="light" showText={!sidebarCollapsed} />}
-        userInfo={{
-          name: userName || "Employee",
-          role: "Staff Member",
-        }}
-        onLogout={logout}
-        onCollapsedChange={handleSidebarToggle}
-      />
+    <NotificationProvider>
+      <div className="flex h-screen bg-gray-50">
+        <AnimatedSidebar
+          items={employeeNavItems}
+          logo={<BisuLogo size="sm" variant="light" showText={!sidebarCollapsed || !isMobile} />}
+          userInfo={{
+            name: userName || "Employee",
+            role: "Staff Member",
+          }}
+          onLogout={logout}
+          onCollapsedChange={handleSidebarToggle}
+        />
 
-      {/* Main content */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className={`flex-1 flex flex-col overflow-hidden ${sidebarCollapsed ? 'ml-20' : 'ml-20 lg:ml-64'}`}
-      >
-        {/* Page content */}
-        <main className="flex-1 overflow-auto bg-gray-50 pt-4">
-          {isLoading ? <PageLoading message="Loading your dashboard..." /> : children}
-        </main>
-      </motion.div>
-    </div>
+        {/* Main content */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (sidebarCollapsed ? 'ml-20' : 'ml-64')}`}
+        >
+          {/* Page content */}
+          <main className="flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-[1200px]">
+            {isLoading ? <PageLoading message="Loading your dashboard..." /> : children}
+          </main>
+        </motion.div>
+      </div>
+    </NotificationProvider>
   )
 }

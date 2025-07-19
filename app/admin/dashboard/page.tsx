@@ -8,33 +8,105 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { SkeletonCard } from "@/components/ui/skeleton-card"
 
-// Mock data
-const dashboardStats = {
-  totalEmployees: 156,
-  activeEmployees: 142,
-  totalPayroll: "₱2,450,000",
-  pendingApprovals: 8,
-  lateToday: 12,
-  absentToday: 3,
+interface DashboardData {
+  overview: {
+    totalEmployees: number
+    activeEmployees: number
+    todayAttendance: number
+    thisWeekAttendance: number
+    thisMonthPayroll: {
+      total: number
+      netTotal: number
+      count: number
+    }
+    unpaidPayroll: number
+  }
+  departmentStats: Array<{
+    department: string
+    _count: { id: number }
+  }>
+  attendanceTrends: Array<{
+    date: string
+    count: number
+  }>
+  payrollTrends: Array<{
+    month: string
+    total: number
+  }>
+  recentActivity: {
+    attendance: Array<{
+      id: string
+      date: Date
+      timeIn: Date | null
+      timeOut: Date | null
+      isLate: boolean
+      isAbsent: boolean
+      user: {
+        firstName: string
+        lastName: string
+        employeeId: string | null
+        department: string | null
+      }
+    }>
+    payroll: Array<{
+      id: string
+      grossPay: number
+      netPay: number
+      isPaid: boolean
+      createdAt: Date
+      user: {
+        firstName: string
+        lastName: string
+        employeeId: string | null
+        department: string | null
+      }
+    }>
+  }
 }
-
-const recentActivity = [
-  { id: 1, action: "New employee registered", user: "Maria Santos", time: "2 hours ago" },
-  { id: 2, action: "Payroll processed", user: "System", time: "4 hours ago" },
-  { id: 3, action: "Attendance rule updated", user: "Admin", time: "1 day ago" },
-  { id: 4, action: "Report generated", user: "HR Manager", time: "2 days ago" },
-]
 
 export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1500)
-    return () => clearTimeout(timer)
+    fetchDashboardData()
   }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/admin/dashboard')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data')
+      }
+      
+      const data = await response.json()
+      setDashboardData(data)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+      setError('Failed to load dashboard data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP'
+    }).format(amount)
+  }
+
+  const formatDate = (date: string | Date) => {
+    return new Date(date).toLocaleDateString('en-PH', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
 
   // Animation variants
   const containerVariants = {
@@ -58,6 +130,17 @@ export default function AdminDashboard() {
         damping: 12,
       },
     },
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={fetchDashboardData}>Retry</Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -97,8 +180,12 @@ export default function AdminDashboard() {
                   <Users className="h-4 w-4 text-bisu-purple-deep" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-bisu-purple-deep">{dashboardStats.totalEmployees}</div>
-                  <p className="text-xs text-green-600 mt-1">{dashboardStats.activeEmployees} active</p>
+                  <div className="text-2xl font-bold text-bisu-purple-deep">
+                    {dashboardData?.overview.totalEmployees || 0}
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">
+                    {dashboardData?.overview.activeEmployees || 0} active
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -110,21 +197,12 @@ export default function AdminDashboard() {
                   <DollarSign className="h-4 w-4 text-bisu-yellow-dark" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-bisu-purple-deep">{dashboardStats.totalPayroll}</div>
-                  <p className="text-xs text-gray-500 mt-1">Current month</p>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <Card className="border-l-4 border-l-red-500 card-hover">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Late Today</CardTitle>
-                  <Clock className="h-4 w-4 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-bisu-purple-deep">{dashboardStats.lateToday}</div>
-                  <p className="text-xs text-red-500 mt-1">{dashboardStats.absentToday} absent</p>
+                  <div className="text-2xl font-bold text-bisu-purple-deep">
+                    {formatCurrency(dashboardData?.overview.thisMonthPayroll.total || 0)}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {dashboardData?.overview.thisMonthPayroll.count || 0} records
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -132,12 +210,31 @@ export default function AdminDashboard() {
             <motion.div variants={itemVariants}>
               <Card className="border-l-4 border-l-blue-500 card-hover">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Pending Approvals</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <CardTitle className="text-sm font-medium text-gray-600">Today's Attendance</CardTitle>
+                  <Clock className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-bisu-purple-deep">{dashboardStats.pendingApprovals}</div>
-                  <p className="text-xs text-blue-500 mt-1">Requires attention</p>
+                  <div className="text-2xl font-bold text-bisu-purple-deep">
+                    {dashboardData?.overview.todayAttendance || 0}
+                  </div>
+                  <p className="text-xs text-blue-500 mt-1">
+                    {dashboardData?.overview.thisWeekAttendance || 0} this week
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <Card className="border-l-4 border-l-red-500 card-hover">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600">Unpaid Payroll</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-bisu-purple-deep">
+                    {dashboardData?.overview.unpaidPayroll || 0}
+                  </div>
+                  <p className="text-xs text-red-500 mt-1">Requires attention</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -214,7 +311,7 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-gray-100">
-                  {recentActivity.map((activity, index) => (
+                  {dashboardData?.recentActivity.attendance.slice(0, 3).map((activity, index) => (
                     <motion.div
                       key={activity.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -222,11 +319,35 @@ export default function AdminDashboard() {
                       transition={{ delay: index * 0.1 + 0.2 }}
                       className="flex items-start space-x-3 p-4 hover:bg-gray-50 transition-colors"
                     >
-                      <div className="w-2 h-2 bg-bisu-yellow-DEFAULT rounded-full mt-2 animate-pulse-subtle"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-bisu-purple-deep">{activity.action}</p>
-                        <p className="text-xs text-gray-500">by {activity.user}</p>
-                        <p className="text-xs text-gray-400">{activity.time}</p>
+                        <p className="text-sm font-medium text-bisu-purple-deep">
+                          Attendance recorded
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          by {activity.user.firstName} {activity.user.lastName}
+                        </p>
+                        <p className="text-xs text-gray-400">{formatDate(activity.date)}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {dashboardData?.recentActivity.payroll.slice(0, 2).map((activity, index) => (
+                    <motion.div
+                      key={activity.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: (index + 3) * 0.1 + 0.2 }}
+                      className="flex items-start space-x-3 p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-bisu-purple-deep">
+                          Payroll {activity.isPaid ? 'paid' : 'processed'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          for {activity.user.firstName} {activity.user.lastName} - {formatCurrency(activity.netPay)}
+                        </p>
+                        <p className="text-xs text-gray-400">{formatDate(activity.createdAt)}</p>
                       </div>
                     </motion.div>
                   ))}

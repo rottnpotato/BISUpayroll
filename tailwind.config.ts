@@ -93,6 +93,9 @@ const config: Config = {
         "white": {
           DEFAULT: "#FFFFFF",
         },
+        "bisu-black": {
+          DEFAULT: "#000000",
+        },
         // Legacy color names for backward compatibility
         "bisu-green": {
           100: "#E9E5F3",

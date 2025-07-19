@@ -24,6 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     // Simulate loading for demo purposes
@@ -36,7 +37,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Handle sidebar state based on screen size
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) {
+      const mobileView = window.innerWidth < 1024
+      setIsMobile(mobileView)
+      if (mobileView) {
         setSidebarCollapsed(true)
       }
     }
@@ -81,7 +84,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex h-screen bg-gray-50">
       <AnimatedSidebar
         items={adminNavItems}
-        logo={<BisuLogo size="sm" variant="light" showText={!sidebarCollapsed} />}
+        logo={<BisuLogo size="sm" variant="light" showText={!sidebarCollapsed || !isMobile} />}
         userInfo={{
           name: userName || "Admin User",
           role: "Administrator",
@@ -95,10 +98,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className={`flex-1 flex flex-col overflow-hidden ${sidebarCollapsed ? 'ml-20' : 'ml-20 lg:ml-64'}`}
+        className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (sidebarCollapsed ? 'ml-20' : 'ml-64')}`}
       >
         {/* Page content */}
-        <main className="flex-1 overflow-auto bg-gray-50 pt-4">
+        <main className="flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-[1200px]">
           {isLoading ? <PageLoading message="Loading admin dashboard..." /> : children}
         </main>
       </motion.div>
