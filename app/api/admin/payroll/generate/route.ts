@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { payPeriodStart, payPeriodEnd, userIds } = body
+    const { payPeriodStart, payPeriodEnd, userIds, department, role } = body
 
     if (!payPeriodStart || !payPeriodEnd) {
       return NextResponse.json(
@@ -24,9 +24,23 @@ export async function POST(request: NextRequest) {
       salary: { not: null }
     }
 
+    // Filter by role (default to EMPLOYEE for payroll)
+    if (role) {
+      whereClause.role = role
+    } else {
+      whereClause.role = "EMPLOYEE"
+    }
+
+    // Filter by department if specified
+    if (department && department !== "all") {
+      whereClause.department = department
+    }
+
     if (userIds && userIds.length > 0) {
       whereClause.id = { in: userIds }
     }
+
+    console.log("Payroll generation whereClause:", whereClause)
 
     const users = await prisma.user.findMany({
       where: whereClause,
@@ -42,9 +56,17 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log(`Found ${users.length} users for payroll generation`)
+
     if (users.length === 0) {
       return NextResponse.json(
-        { error: "No eligible users found for payroll generation" },
+        { 
+          error: "No eligible users found for payroll generation",
+          debug: {
+            whereClause,
+            message: "Check if users have role 'EMPLOYEE', status 'ACTIVE', and salary not null"
+          }
+        },
         { status: 400 }
       )
     }
@@ -113,10 +135,13 @@ export async function POST(request: NextRequest) {
           include: {
             user: {
               select: {
+                id: true,
                 firstName: true,
                 lastName: true,
                 employeeId: true,
-                department: true
+                department: true,
+                position: true,
+                salary: true
               }
             }
           }
