@@ -24,12 +24,12 @@ import {
   LeaveBenefitsCard,
   HolidayConfigCard,
   TaxConfigSummaryCard
-} from './components'
+} from '../components'
 
-import { usePayrollData } from './hooks/usePayrollData'
-import { usePayrollRules } from './hooks/usePayrollRules'
-import { usePayrollConfig } from './hooks/usePayrollConfig'
-import type { PayrollRule, PayrollSchedule } from './types'
+import { usePayrollData } from '../hooks/usePayrollData'
+import { usePayrollRules } from '../hooks/usePayrollRules'
+import { usePayrollConfig } from '../hooks/usePayrollConfig'
+import type { PayrollRule, PayrollSchedule } from '../types'
 
 const containerVariants = {
   hidden: { opacity: 0 },

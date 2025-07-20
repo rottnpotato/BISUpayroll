@@ -1,17 +1,20 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SkeletonCard } from "@/components/ui/skeleton-card"
+import { Button } from "@/components/ui/button"
 import { 
   Calculator, 
   Clock, 
-  CalendarDays, 
-  DollarSign,
-  Percent,
-  FileText
+  CalendarDays,
+  FileText,
+  BarChart3,
+  Settings,
+  Save,
+  AlertCircle
 } from "lucide-react"
 
 // Import our modular components and hooks
@@ -23,13 +26,15 @@ import {
   RatesConfigCard,
   LeaveBenefitsCard,
   HolidayConfigCard,
-  TaxConfigSummaryCard
+  TaxConfigSummaryCard,
+  PayrollOverview
 } from './components'
 
+import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
 import { usePayrollData } from './hooks/usePayrollData'
 import { usePayrollRules } from './hooks/usePayrollRules'
 import { usePayrollConfig } from './hooks/usePayrollConfig'
-import type { PayrollRule, PayrollSchedule } from './types'
+import type { PayrollRule } from './types'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -60,14 +65,11 @@ export default function PayrollPage() {
   
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
   const [editingRule, setEditingRule] = useState<PayrollRule | null>(null)
-  const [editingSchedule, setEditingSchedule] = useState<PayrollSchedule | null>(null)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
 
   const {
     formData,
-    setFormData,
-    selectedRule,
     handleFormChange,
     handleUserSelection,
     handleSelectAllUsers,
@@ -85,7 +87,12 @@ export default function PayrollPage() {
     leaveBenefitsConfig,
     setWorkingHoursConfig,
     setRatesConfig,
-    setLeaveBenefitsConfig
+    setLeaveBenefitsConfig,
+    loadConfigurations,
+    saveAllConfigurations,
+    unsavedChanges,
+    hasUnsavedChanges,
+    isAutoSaving
   } = usePayrollConfig()
 
   // Handle opening edit dialog
@@ -117,6 +124,43 @@ export default function PayrollPage() {
     handleSelectAllUsers(checked, users)
   }
 
+  // Handle refresh for schedules
+  const handleScheduleRefresh = () => {
+    loadData()
+  }
+
+  // Handle tab change with unsaved changes check
+  const handleTabChange = (value: string) => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true)
+    }
+  }
+
+  // Handle manual save all configurations
+  const handleSaveAll = async () => {
+    await saveAllConfigurations()
+  }
+
+  // Test beforeunload dialog (for debugging)
+  const testBeforeUnload = () => {
+    if (hasUnsavedChanges) {
+      const confirmLeave = window.confirm('You have unsaved changes. Are you sure you want to leave? This simulates page refresh behavior.')
+      if (confirmLeave) {
+        // User confirmed, they would lose changes
+        console.log('User confirmed leaving with unsaved changes')
+      }
+    }
+  }
+
+  // Get list of changed sections for dialog
+  const getChangedSections = () => {
+    const sections = []
+    if (unsavedChanges.workingHours) sections.push('workingHours')
+    if (unsavedChanges.rates) sections.push('rates')
+    if (unsavedChanges.leaveBenefits) sections.push('leaveBenefits')
+    return sections
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -144,44 +188,106 @@ export default function PayrollPage() {
       initial="hidden"
       animate="visible"
     >
+      {/* Normal header - not sticky */}
       <motion.div 
         className="flex items-center justify-between"
         variants={itemVariants}
       >
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payroll Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">
+            Payroll Management System
+          </h1>
           <p className="text-muted-foreground">
-            Configure payroll rules, schedules, and processing parameters
+            Configure payroll rules, schedules, and processing parameters for BISU
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {isAutoSaving && (
+            <div className="flex items-center gap-2 text-sm text-bisu-purple-medium">
+              <div className="animate-spin h-4 w-4 border-2 border-bisu-purple-medium border-t-transparent rounded-full" />
+              Auto-saving...
+            </div>
+          )}
+          {hasUnsavedChanges && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-sm text-orange-600">
+                <AlertCircle className="h-4 w-4" />
+                Unsaved changes ({getChangedSections().length} section{getChangedSections().length !== 1 ? 's' : ''})
+              </div>
+              <Button 
+                onClick={handleSaveAll}
+                size="sm"
+                className="bg-bisu-purple-deep text-white hover:bg-bisu-purple-medium shadow-lg"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save All
+              </Button>
+            </div>
+          )}
+          {/* Debug info - remove in production */}
+          <div className="text-xs text-gray-500 ml-2">
+            {hasUnsavedChanges ? '🔴 Protected' : '🟢 Clean'}
+          </div>
+          {/* Test button for beforeunload - remove in production */}
+          {hasUnsavedChanges && (
+            <Button 
+              onClick={() => window.location.reload()}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              Test Reload Protection
+            </Button>
+          )}
         </div>
       </motion.div>
 
-      <Tabs defaultValue="rules" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="rules" className="flex items-center gap-2">
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 bg-bisu-purple-extralight">
+          <TabsTrigger value="overview" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
+            <BarChart3 className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="rules" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
             <Calculator className="h-4 w-4" />
             Payroll Rules
           </TabsTrigger>
-          <TabsTrigger value="schedules" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
+          <TabsTrigger value="schedules" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
+            <CalendarDays className="h-4 w-4" />
             Schedules
           </TabsTrigger>
-          <TabsTrigger value="configuration" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
+          <TabsTrigger 
+            value="configuration" 
+            className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white relative"
+          >
+            <Settings className="h-4 w-4" />
             Configuration
+            {hasUnsavedChanges && (
+              <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse" />
+            )}
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <PayrollOverview
+            rules={rules}
+            schedules={schedules}
+            workingHoursConfig={workingHoursConfig}
+            ratesConfig={ratesConfig}
+            leaveBenefitsConfig={leaveBenefitsConfig}
+          />
+        </TabsContent>
 
         <TabsContent value="rules" className="space-y-6">
           <motion.div variants={itemVariants}>
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="bg-bisu-purple-extralight">
+                <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                   <Calculator className="h-5 w-5" />
                   Payroll Rules Management
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <PayrollRulesTable
                   rules={rules}
                   onEdit={handleEditRuleClick}
@@ -196,58 +302,44 @@ export default function PayrollPage() {
 
         <TabsContent value="schedules" className="space-y-6">
           <motion.div variants={itemVariants}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Payroll Schedules
-                </CardTitle>
-                <CardDescription>
-                  Manage payroll processing schedules and timing
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Schedule management functionality coming soon...</p>
-                  <p className="text-sm mt-2">Currently {schedules.length} schedules configured</p>
-                </div>
-              </CardContent>
-            </Card>
+            <PayrollScheduleCard
+              schedules={schedules}
+              onRefresh={handleScheduleRefresh}
+            />
           </motion.div>
         </TabsContent>
 
-        <TabsContent value="configuration" className="space-y-6">
+        <TabsContent value="configuration" className="space-y-6 mb-10">
           <motion.div 
-            className="grid gap-6 md:grid-cols-2"
+            className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
             variants={containerVariants}
           >
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="min-h-[600px]">
               <WorkingHoursCard
                 config={workingHoursConfig}
                 onConfigChange={setWorkingHoursConfig}
               />
             </motion.div>
 
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="min-h-[600px]">
               <RatesConfigCard
                 config={ratesConfig}
                 onConfigChange={setRatesConfig}
               />
             </motion.div>
 
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="min-h-[600px]">
               <LeaveBenefitsCard
                 config={leaveBenefitsConfig}
                 onConfigChange={setLeaveBenefitsConfig}
               />
             </motion.div>
 
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="min-h-[600px]">
               <HolidayConfigCard />
             </motion.div>
 
-            <motion.div className="md:col-span-2" variants={itemVariants}>
+            <motion.div className="lg:col-span-2" variants={itemVariants}>
               <TaxConfigSummaryCard
                 ratesConfig={ratesConfig}
                 leaveBenefitsConfig={leaveBenefitsConfig}
@@ -268,7 +360,7 @@ export default function PayrollPage() {
         formData={formData}
         onFormChange={handleFormChange}
         onSelectChange={(field: string, value: string) => {
-          setFormData(prev => ({ ...prev, [field]: value }))
+          handleFormChange({ target: { name: field, value } } as any)
         }}
         onUserSelection={handleUserSelection}
         onSelectAllUsers={handleSelectAllUsersWrapper}
@@ -277,6 +369,43 @@ export default function PayrollPage() {
         isEdit={!!editingRule}
         title={editingRule ? "Edit Payroll Rule" : "Add New Payroll Rule"}
       />
+
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        isOpen={showUnsavedDialog}
+        onClose={() => setShowUnsavedDialog(false)}
+        onSave={saveAllConfigurations}
+        onDiscard={() => {
+          // Reload configurations to discard changes
+          loadConfigurations()
+        }}
+        changedSections={getChangedSections()}
+      />
+
+      {/* Fixed Save Button - Always visible when there are unsaved changes */}
+      <AnimatePresence>
+        {hasUnsavedChanges && (
+          <motion.div
+            initial={{ y: 100, opacity: 0, scale: 0.8 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 100, opacity: 0, scale: 0.8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed bottom-6 right-6 z-50"
+          >
+            <Button 
+              onClick={handleSaveAll}
+              size="lg"
+              className="bg-bisu-purple-deep text-white hover:bg-bisu-purple-medium shadow-2xl border-2 border-white rounded-full px-6 py-4 min-w-[200px]"
+            >
+              <Save className="h-5 w-5 mr-2" />
+              Save All Changes
+              <span className="ml-2 bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                {getChangedSections().length}
+              </span>
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

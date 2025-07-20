@@ -45,6 +45,9 @@ export interface PayrollSchedule {
   processMinute: number
   cutoffDays?: number[]
   paymentMethod?: string
+  payrollReleaseDay?: number
+  cutoffType?: 'bi-monthly' | 'monthly' | 'weekly'
+  description?: string
 }
 
 export interface HolidayType {
@@ -69,28 +72,38 @@ export interface LateDeductionRule {
 }
 
 export interface WorkingHoursConfig {
+  id?: string
   dailyHours: number
   weeklyHours: number
   overtimeThreshold: number
   nightShiftStart: number
   nightShiftEnd: number
+  nightShiftEnabled: boolean
   lateGraceMinutes: number
   lateDeductionBasis: 'per_minute' | 'per_hour' | 'fixed_amount'
   lateDeductionAmount: number
+  isActive?: boolean
 }
 
 export interface RatesConfig {
+  id?: string
   overtimeRate1: number
   overtimeRate2: number
   nightDifferential: number
   regularHolidayRate: number
   specialHolidayRate: number
+  currency: 'PHP'
+  isActive?: boolean
 }
 
 export interface LeaveBenefitsConfig {
+  id?: string
   vacationLeave: number
   sickLeave: number
   serviceIncentiveLeave: number
+  maternityLeave?: number
+  paternityLeave?: number
+  isActive?: boolean
 }
 
 export interface TaxBracket {
@@ -117,11 +130,14 @@ export interface PayrollFormData {
 export interface ScheduleFormData {
   name: string
   days: number[]
+  cutoffDays: number[]
+  payrollReleaseDay: number
+  cutoffType: 'bi-monthly' | 'monthly' | 'weekly'
   isActive: boolean
   processHour: number
   processMinute: number
-  cutoffDays: number[]
   paymentMethod: string
+  description: string
 }
 
 export interface HolidayFormData {

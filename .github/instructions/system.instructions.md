@@ -43,6 +43,7 @@ Provide project context and coding guidelines that AI should follow when generat
 - **Ensure all dependencies and imports are visible in code examples.**
 - **Display complete function/class definitions when modifications affect their behavior.**
 - **Never skip or abbreviate code sections as it may lead to misunderstandings.**
-- **Maintain full visibility of the codebase structure in all examples.*
+- **Maintain full visibility of the codebase structure in all examples.**
+- **Always write maintainable and refactored code. Always check for errors afer making changes.**
 
 - When creating/implementing features, only use relevant files for context.

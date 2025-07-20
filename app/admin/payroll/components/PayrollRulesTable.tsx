@@ -151,7 +151,7 @@ export function PayrollRulesTable({
                       </TableCell>
                       <TableCell className="font-mono">
                         <div className="flex items-center gap-1">
-                          {rule.isPercentage ? <Percent size={14} /> : <DollarSign size={14} />}
+                          {rule.isPercentage ? <Percent size={14} /> : ""}
                           {formatAmount(rule.amount, rule.isPercentage)}
                         </div>
                       </TableCell>

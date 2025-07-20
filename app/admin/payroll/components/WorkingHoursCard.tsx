@@ -1,21 +1,20 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Timer, Moon, AlertTriangle, Save } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Timer, Moon, AlertTriangle } from "lucide-react"
 import { motion } from "framer-motion"
 import { WorkingHoursConfig } from "../types"
 
 interface WorkingHoursCardProps {
   config: WorkingHoursConfig
   onConfigChange: (config: WorkingHoursConfig) => void
-  onSave?: () => Promise<void>
 }
 
-export function WorkingHoursCard({ config, onConfigChange, onSave }: WorkingHoursCardProps) {
+export function WorkingHoursCard({ config, onConfigChange }: WorkingHoursCardProps) {
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     visible: {
@@ -29,23 +28,17 @@ export function WorkingHoursCard({ config, onConfigChange, onSave }: WorkingHour
     },
   }
 
-  const handleInputChange = (field: keyof WorkingHoursConfig, value: number) => {
-    onConfigChange({
+  const handleInputChange = (field: keyof WorkingHoursConfig, value: number | boolean | string) => {
+    const newConfig = {
       ...config,
       [field]: value
-    })
-  }
-
-  const handleSelectChange = (field: keyof WorkingHoursConfig, value: string) => {
-    onConfigChange({
-      ...config,
-      [field]: value
-    })
+    }
+    onConfigChange(newConfig)
   }
 
   return (
-    <motion.div variants={itemVariants}>
-      <Card className="shadow-lg border-2 h-full">
+    <motion.div variants={itemVariants} className="h-full">
+      <Card className="shadow-lg border-2 h-full flex flex-col">
         <CardHeader className="bg-gradient-to-r from-bisu-purple-light to-bisu-purple-medium text-white rounded-t-lg">
           <CardTitle className="text-bisu-yellow-DEFAULT flex items-center gap-2">
             <Timer size={20} />
@@ -55,7 +48,7 @@ export function WorkingHoursCard({ config, onConfigChange, onSave }: WorkingHour
             Configure work schedules and attendance policies
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6 space-y-6">
+        <CardContent className="pt-6 space-y-6 flex-1">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Daily Hours</Label>
@@ -78,34 +71,46 @@ export function WorkingHoursCard({ config, onConfigChange, onSave }: WorkingHour
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-medium text-bisu-purple-deep flex items-center gap-2">
-              <Moon size={16} />
-              Night Shift Settings
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm">Start Time (24h)</Label>
-                <Input 
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={config.nightShiftStart.toString()}
-                  onChange={(e) => handleInputChange('nightShiftStart', Math.min(23, Math.max(0, parseInt(e.target.value) || 22)))}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">End Time (24h)</Label>
-                <Input 
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={config.nightShiftEnd.toString()}
-                  onChange={(e) => handleInputChange('nightShiftEnd', Math.min(23, Math.max(0, parseInt(e.target.value) || 6)))}
-                  className="mt-1"
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-bisu-purple-deep flex items-center gap-2">
+                <Moon size={16} />
+                Night Shift Settings
+              </h4>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Enable Night Shift</Label>
+                <Switch
+                  checked={config.nightShiftEnabled}
+                  onCheckedChange={(checked) => handleInputChange('nightShiftEnabled', checked)}
                 />
               </div>
             </div>
+            
+            {config.nightShiftEnabled && (
+              <div className="grid grid-cols-2 gap-4 pl-6 border-l-2 border-bisu-purple-light">
+                <div>
+                  <Label className="text-sm">Start Time (24h)</Label>
+                  <Input 
+                    type="number"
+                    min="0"
+                    max="23"
+                    value={config.nightShiftStart.toString()}
+                    onChange={(e) => handleInputChange('nightShiftStart', Math.min(23, Math.max(0, parseInt(e.target.value) || 22)))}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">End Time (24h)</Label>
+                  <Input 
+                    type="number"
+                    min="0"
+                    max="23"
+                    value={config.nightShiftEnd.toString()}
+                    onChange={(e) => handleInputChange('nightShiftEnd', Math.min(23, Math.max(0, parseInt(e.target.value) || 6)))}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -126,7 +131,7 @@ export function WorkingHoursCard({ config, onConfigChange, onSave }: WorkingHour
               <Label className="text-sm">Deduction Basis</Label>
               <Select 
                 value={config.lateDeductionBasis} 
-                onValueChange={(value: any) => handleSelectChange('lateDeductionBasis', value)}
+                onValueChange={(value: any) => handleInputChange('lateDeductionBasis', value)}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -150,15 +155,12 @@ export function WorkingHoursCard({ config, onConfigChange, onSave }: WorkingHour
             </div>
           </div>
 
-          {onSave && (
-            <Button 
-              className="w-full bg-bisu-purple-deep text-white hover:bg-bisu-purple-medium"
-              onClick={onSave}
-            >
-              <Save size={16} className="mr-2" />
-              Save Configuration
-            </Button>
-          )}
+          <div className="bg-bisu-yellow-extralight p-4 rounded-lg">
+            <h5 className="font-medium text-bisu-purple-deep mb-2">Auto-Save Information</h5>
+            <p className="text-sm text-bisu-purple-medium">
+              All changes are automatically saved to the database. Configuration changes are applied system-wide.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
