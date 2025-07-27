@@ -1,0 +1,17 @@
+export { default as DashboardDataProvider } from './dashboard-data-provider'
+export { default as DashboardHeader } from './dashboard-header'
+export { default as MetricsGrid } from './metrics-grid'
+export { default as DashboardTabs } from './dashboard-tabs'
+export { default as DepartmentPerformance } from './department-performance'
+export { default as QuickStats } from './quick-stats'
+export { default as RecentActivity } from './recent-activity'
+export { default as QuickActions } from './quick-actions'
+export { default as EnhancedMetrics } from './enhanced-metrics'
+export { default as FocusAnalytics } from './focus-analytics'
+export { default as DevelopedAreas } from './developed-areas'
+export { default as ScheduleCard } from './schedule-card'
+export { default as QuickStatsCard } from './quick-stats-card'
+
+// Re-export types and utils from their new locations
+export * from '../types'
+export * from '../utils'

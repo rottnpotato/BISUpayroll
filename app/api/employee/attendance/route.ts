@@ -78,7 +78,10 @@ export async function GET(request: NextRequest) {
         timeIn,
         timeOut,
         status,
-        hours: record.hoursWorked ? parseFloat(record.hoursWorked.toString()) : 0
+        hours: record.hoursWorked ? parseFloat(record.hoursWorked.toString()) : 0,
+        approvalStatus: (record as any).status || 'PENDING',
+        rejectionReason: (record as any).rejectionReason || null,
+        approvedAt: (record as any).approvedAt ? new Date((record as any).approvedAt).toISOString() : null
       }
     })
 
@@ -139,29 +142,85 @@ export async function POST(request: NextRequest) {
     const endOfDay = new Date(now)
     endOfDay.setHours(23, 59, 59, 999)
 
-    // Find today's attendance record
-    let attendanceRecord = await prisma.attendanceRecord.findFirst({
-      where: {
-        userId: user.id,
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
+    // Get system configurations for working hours
+    let systemConfigs: Array<{key: string, value: string}> = []
+    try {
+      systemConfigs = await prisma.systemSettings.findMany({
+        where: {
+          key: {
+            in: [
+              'working_hours_dailyHours',
+              'working_hours_lateGraceMinutes'
+            ]
+          }
         }
-      }
-    })
+      })
+    } catch (configError) {
+      console.error('Error fetching system configurations:', configError)
+      // Use default values if system settings table doesn't exist or has issues
+      systemConfigs = []
+    }
+
+    const configs = systemConfigs.reduce((acc, config) => {
+      acc[config.key] = config.value
+      return acc
+    }, {} as Record<string, string>)
+
+    const dailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
+    const lateGraceMinutes = parseInt(configs['working_hours_lateGraceMinutes'] || '15')
+
+    // Define standard work hours (8:00 AM)
+    const workStartHour = 8
+    const workStartMinute = 0
+
+    // Find today's attendance record
+    let attendanceRecord
+    try {
+      attendanceRecord = await prisma.attendanceRecord.findFirst({
+        where: {
+          userId: user.id,
+          date: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        }
+      })
+    } catch (attendanceError) {
+      console.error('Error fetching attendance record:', attendanceError)
+      throw new Error('Failed to fetch attendance record from database')
+    }
 
     // Handle time-in action
     if (action === 'time-in') {
+      const currentHour = now.getHours()
+      const currentMinute = now.getMinutes()
+      const currentTime = currentHour * 60 + currentMinute // Convert to minutes for easier comparison
+      
+      // Time restrictions: Allow time-in only between 6:00 AM and 12:59 PM (PHT)
+      const morningStartTime = 6 * 60 // 6:00 AM in minutes
+      const morningEndTime = 12 * 60 + 59 // 12:59 PM in minutes
+      
+      if (currentTime < morningStartTime || currentTime > morningEndTime) {
+        return NextResponse.json({
+          success: false,
+          message: 'Time-in is only allowed between 6:00 AM and 12:59 PM (PHT)'
+        }, { status: 400 })
+      }
+
       // If no record exists for today, create one
       if (!attendanceRecord) {
+        // Check if the employee is late
+        const isLate = now.getHours() > workStartHour || 
+          (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes))
+
         attendanceRecord = await prisma.attendanceRecord.create({
           data: {
             userId: user.id,
             date: now,
             timeIn: now,
-            // Check if the employee is late (assuming work starts at 8:00 AM)
-            isLate: now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() > 0)
-          }
+            isLate: isLate,
+            status: 'PENDING'
+          } as any
         })
 
         return NextResponse.json({
@@ -169,7 +228,8 @@ export async function POST(request: NextRequest) {
           message: 'Time-in recorded successfully',
           data: {
             time: formatTime(now),
-            isLate: attendanceRecord.isLate
+            isLate: attendanceRecord.isLate,
+            expectedWorkHours: dailyHours
           }
         })
       } 
@@ -185,12 +245,16 @@ export async function POST(request: NextRequest) {
       } 
       // If record exists but no time-in (unlikely scenario but handled for completeness)
       else {
+        const isLate = now.getHours() > workStartHour || 
+          (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes))
+
         attendanceRecord = await prisma.attendanceRecord.update({
           where: { id: attendanceRecord.id },
           data: {
             timeIn: now,
-            isLate: now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() > 0)
-          }
+            isLate: isLate,
+            status: 'PENDING'
+          } as any
         })
 
         return NextResponse.json({
@@ -198,7 +262,8 @@ export async function POST(request: NextRequest) {
           message: 'Time-in recorded successfully',
           data: {
             time: formatTime(now),
-            isLate: attendanceRecord.isLate
+            isLate: attendanceRecord.isLate,
+            expectedWorkHours: dailyHours
           }
         })
       }
@@ -228,6 +293,40 @@ export async function POST(request: NextRequest) {
         const timeOut = now.getTime()
         const hoursWorked = parseFloat(((timeOut - timeIn) / (1000 * 60 * 60)).toFixed(2))
 
+        // Check if it's a holiday (simplified - you can enhance this with a holidays table)
+        const today = new Date(now)
+        today.setHours(0, 0, 0, 0)
+        const endOfToday = new Date(now)
+        endOfToday.setHours(23, 59, 59, 999)
+        
+        let todayHoliday = null
+        try {
+          todayHoliday = await prisma.holiday.findFirst({
+            where: {
+              date: {
+                gte: today,
+                lte: endOfToday
+              }
+            }
+          })
+        } catch (holidayError) {
+          console.error('Error fetching holiday data:', holidayError)
+          // Continue without holiday data if table doesn't exist
+          todayHoliday = null
+        }
+        
+        const isHoliday = !!todayHoliday
+        const holidayType = todayHoliday?.type || null
+        const isWeekend = now.getDay() === 0 || now.getDay() === 6
+
+        // Get overtime rate for calculation
+        const overtimeRate = parseFloat(configs['rates_overtimeRate1'] || '1.25')
+        const holidayRate = todayHoliday?.type === 'REGULAR' 
+          ? parseFloat(configs['rates_regularHolidayRate'] || '2.0')
+          : todayHoliday?.type === 'SPECIAL'
+          ? parseFloat(configs['rates_specialHolidayRate'] || '1.3')
+          : 1.0
+
         attendanceRecord = await prisma.attendanceRecord.update({
           where: { id: attendanceRecord.id },
           data: {
@@ -236,12 +335,96 @@ export async function POST(request: NextRequest) {
           }
         })
 
+        // Calculate earnings for the day
+        const regularHours = Math.min(hoursWorked, dailyHours)
+        const overtimeHours = Math.max(0, hoursWorked - dailyHours)
+        
+        // Get employee salary to calculate rates
+        const employeeData = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { salary: true }
+        })
+        
+        const monthlySalary = Number(employeeData?.salary || 0)
+        const dailyRate = monthlySalary / 22 // Standard working days per month
+        const hourlyRate = dailyRate / dailyHours
+        
+        // Calculate base pay for regular hours
+        let regularPay = regularHours * hourlyRate
+        
+        // Calculate overtime pay (first 2 hours at rate1, beyond at rate2)
+        let overtimePay = 0
+        if (overtimeHours > 0) {
+          const overtimeRate2 = parseFloat(configs['rates_overtimeRate2'] || '1.5')
+          const firstOvertimeHours = Math.min(overtimeHours, 2)
+          const secondOvertimeHours = Math.max(0, overtimeHours - 2)
+          
+          overtimePay = (firstOvertimeHours * hourlyRate * overtimeRate) + 
+                       (secondOvertimeHours * hourlyRate * overtimeRate2)
+        }
+        
+        // Calculate holiday pay if applicable
+        let holidayPay = 0
+        if (isHoliday) {
+          if (todayHoliday?.type === 'REGULAR') {
+            // Regular holiday: 200% of regular rate (100% additional)
+            holidayPay = hoursWorked * hourlyRate * (holidayRate - 1)
+          } else if (todayHoliday?.type === 'SPECIAL') {
+            // Special holiday: 130% of regular rate (30% additional)
+            holidayPay = hoursWorked * hourlyRate * (holidayRate - 1)
+          }
+        }
+        
+        // Calculate weekend differential if applicable
+        let weekendPay = 0
+        if (isWeekend && !isHoliday) {
+          // Weekend work gets 130% rate (30% additional)
+          weekendPay = hoursWorked * hourlyRate * 0.3
+        }
+        
+        // Calculate night differential (assuming 10PM-6AM shift detection would be needed)
+        const nightDifferentialRate = parseFloat(configs['rates_nightDifferential'] || '0.10')
+        let nightDifferentialPay = 0
+        // For simplicity, we'll calculate this if time-out is after 10PM or time-in is before 6AM
+        const timeInHour = attendanceRecord.timeIn?.getHours() || 0
+        const timeOutHour = now.getHours()
+        if (timeInHour < 6 || timeOutHour >= 22) {
+          nightDifferentialPay = hoursWorked * hourlyRate * nightDifferentialRate
+        }
+        
+        const totalEarnings = regularPay + overtimePay + holidayPay + weekendPay + nightDifferentialPay
+
         return NextResponse.json({
           success: true,
           message: 'Time-out recorded successfully',
           data: {
             time: formatTime(now),
-            hoursWorked
+            hoursWorked,
+            regularHours,
+            overtimeHours,
+            isHoliday,
+            holidayType,
+            holidayName: todayHoliday?.name || null,
+            holidayMultiplier: isHoliday ? holidayRate : 1.0,
+            isWeekend,
+            expectedDailyHours: dailyHours,
+            earnings: {
+              dailyRate,
+              hourlyRate,
+              regularPay,
+              overtimePay,
+              holidayPay,
+              weekendPay,
+              nightDifferentialPay,
+              totalEarnings,
+              breakdown: {
+                regularHours: { hours: regularHours, rate: hourlyRate, amount: regularPay },
+                overtime: { hours: overtimeHours, rate: hourlyRate * overtimeRate, amount: overtimePay },
+                holiday: isHoliday ? { multiplier: holidayRate, amount: holidayPay, type: todayHoliday?.type } : null,
+                weekend: isWeekend && !isHoliday ? { multiplier: 1.3, amount: weekendPay } : null,
+                nightDifferential: nightDifferentialPay > 0 ? { rate: nightDifferentialRate, amount: nightDifferentialPay } : null
+              }
+            }
           }
         })
       }
@@ -249,6 +432,11 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error processing attendance action:', error)
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    })
     return NextResponse.json({
       success: false,
       message: 'An error occurred while processing your request'

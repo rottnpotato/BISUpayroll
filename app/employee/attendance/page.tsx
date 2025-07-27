@@ -7,12 +7,22 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { 
   Clock, CalendarDays, TrendingUp, AlertCircle,
-  CheckCircle, XCircle, Timer, Calendar as CalendarIcon
+  CheckCircle, XCircle, Timer, Calendar as CalendarIcon, Check, X
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { format, startOfMonth, endOfMonth } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog"
 
 interface AttendanceRecord {
   id: string
@@ -22,6 +32,9 @@ interface AttendanceRecord {
   timeOut: string | null
   status: string
   hours: number
+  approvalStatus: string
+  rejectionReason: string | null
+  approvedAt: string | null
 }
 
 interface AttendanceSummary {
@@ -47,6 +60,10 @@ export default function EmployeeAttendancePage() {
   const [isClockingIn, setIsClockingIn] = useState(false)
   const [isClockingOut, setIsClockingOut] = useState(false)
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null)
+  
+  // Confirmation dialog states
+  const [isTimeActionDialogOpen, setIsTimeActionDialogOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'time-in' | 'time-out' | null>(null)
 
   // Update current time every second
   useEffect(() => {
@@ -90,59 +107,89 @@ export default function EmployeeAttendancePage() {
   }, [selectedMonth, selectedYear])
 
   const handleTimeIn = async () => {
+    // Check time restrictions
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentTime = currentHour * 60 + currentMinute
+    
+    const morningStartTime = 6 * 60 // 6:00 AM
+    const morningEndTime = 12 * 60 + 59 // 12:59 PM
+    
+    if (currentTime < morningStartTime || currentTime > morningEndTime) {
+      toast.error('Time-in is only allowed between 6:00 AM and 12:59 PM (PHT)')
+      return
+    }
+
+    // Check if already timed in
+    if (todayRecord?.timeIn) {
+      toast.error('You have already timed in today')
+      return
+    }
+
+    setPendingAction('time-in')
+    setIsTimeActionDialogOpen(true)
+  }
+
+  const handleTimeOut = async () => {
+    // Check if timed in first
+    if (!todayRecord?.timeIn) {
+      toast.error('You must time in first before you can time out')
+      return
+    }
+
+    // Check if already timed out
+    if (todayRecord?.timeOut) {
+      toast.error('You have already timed out today')
+      return
+    }
+
+    setPendingAction('time-out')
+    setIsTimeActionDialogOpen(true)
+  }
+
+  const confirmTimeAction = async () => {
+    if (!pendingAction) return
+    
+    const isTimeIn = pendingAction === 'time-in'
+    
     try {
-      setIsClockingIn(true)
+      if (isTimeIn) {
+        setIsClockingIn(true)
+      } else {
+        setIsClockingOut(true)
+      }
+      
       const response = await fetch('/api/employee/attendance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ action: 'time-in' })
+        body: JSON.stringify({ action: pendingAction })
       })
 
       const result = await response.json()
 
       if (result.success) {
         toast.success(result.message)
-        if (result.data?.isLate) {
+        if (isTimeIn && result.data?.isLate) {
           toast.warning('You are late for work today')
         }
         fetchAttendanceData() // Refresh data
       } else {
-        toast.error(result.message || 'Failed to record time-in')
+        toast.error(result.message || `Failed to record ${pendingAction}`)
       }
     } catch (error) {
-      console.error('Error recording time-in:', error)
-      toast.error('Failed to record time-in')
+      console.error(`Error recording ${pendingAction}:`, error)
+      toast.error(`Failed to record ${pendingAction}`)
     } finally {
-      setIsClockingIn(false)
-    }
-  }
-
-  const handleTimeOut = async () => {
-    try {
-      setIsClockingOut(true)
-      const response = await fetch('/api/employee/attendance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'time-out' })
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        toast.success(result.message)
-        fetchAttendanceData() // Refresh data
+      if (isTimeIn) {
+        setIsClockingIn(false)
       } else {
-        toast.error(result.message || 'Failed to record time-out')
+        setIsClockingOut(false)
       }
-    } catch (error) {
-      console.error('Error recording time-out:', error)
-      toast.error('Failed to record time-out')
-    } finally {
-      setIsClockingOut(false)
+      setIsTimeActionDialogOpen(false)
+      setPendingAction(null)
     }
   }
 
@@ -156,6 +203,46 @@ export default function EmployeeAttendancePage() {
         return <Badge className="bg-red-500 text-white">Absent</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
+  const getApprovalStatusBadge = (approvalStatus: string, rejectionReason?: string | null) => {
+    switch (approvalStatus) {
+      case 'PENDING':
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 flex items-center gap-1 w-fit">
+              <Clock className="h-3 w-3" />
+              Pending Review
+            </Badge>
+          </div>
+        )
+      case 'APPROVED':
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 flex items-center gap-1 w-fit">
+              <Check className="h-3 w-3" />
+              Approved
+            </Badge>
+          </div>
+        )
+      case 'REJECTED':
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20 flex items-center gap-1 w-fit">
+              <X className="h-3 w-3" />
+              Rejected
+            </Badge>
+            {rejectionReason && (
+              <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200 max-w-xs">
+                <AlertCircle className="h-3 w-3 inline mr-1" />
+                <span className="font-medium">Reason:</span> {rejectionReason}
+              </div>
+            )}
+          </div>
+        )
+      default:
+        return <Badge variant="outline">{approvalStatus}</Badge>
     }
   }
 
@@ -173,7 +260,16 @@ export default function EmployeeAttendancePage() {
   }
 
   const canClockIn = () => {
-    return !todayRecord || !todayRecord.timeIn
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentTime = currentHour * 60 + currentMinute
+    
+    const morningStartTime = 6 * 60 // 6:00 AM
+    const morningEndTime = 12 * 60 + 59 // 12:59 PM
+    
+    // Check time window and if not already timed in
+    return (currentTime >= morningStartTime && currentTime <= morningEndTime) && (!todayRecord || !todayRecord.timeIn)
   }
 
   const canClockOut = () => {
@@ -223,6 +319,62 @@ export default function EmployeeAttendancePage() {
 
   return (
     <div className="p-6 space-y-8">
+      {/* Time Action Confirmation Dialog */}
+      <AlertDialog open={isTimeActionDialogOpen} onOpenChange={setIsTimeActionDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-bisu-purple-deep">
+              <Clock className="mr-2 h-5 w-5" />
+              Confirm {pendingAction === 'time-in' ? 'Time In' : 'Time Out'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to record your{' '}
+              <span className="font-semibold text-bisu-purple-deep">
+                {pendingAction === 'time-in' ? 'TIME IN' : 'TIME OUT'}
+              </span>{' '}
+              at this time?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-4 px-6">
+            <div className="text-center py-4">
+              <div className="text-2xl font-mono font-bold text-bisu-purple-deep mb-2">
+                {format(currentTime, 'HH:mm:ss')}
+              </div>
+              <div className="text-sm text-gray-600">
+                {format(currentTime, 'EEEE, MMMM d, yyyy')}
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              {pendingAction === 'time-in' && (
+                <span className="text-xs text-amber-600 block">
+                  ⚠️ Note: Late arrivals after 8:00 AM will be marked as late.
+                </span>
+              )}
+              
+              {pendingAction === 'time-out' && (
+                <span className="text-xs text-blue-600 block">
+                  ✓ Your work hours will be calculated automatically.
+                </span>
+              )}
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClockingIn || isClockingOut}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmTimeAction}
+              disabled={isClockingIn || isClockingOut}
+              className="bg-bisu-purple-deep hover:bg-bisu-purple-medium"
+            >
+              {isClockingIn || isClockingOut ? 'Recording...' : `Confirm ${pendingAction === 'time-in' ? 'Time In' : 'Time Out'}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -256,6 +408,9 @@ export default function EmployeeAttendancePage() {
                 <div className="text-lg text-bisu-yellow-light">
                   {format(currentTime, 'EEEE, MMMM d, yyyy')}
                 </div>
+                <div className="text-sm text-bisu-yellow-light mt-2">
+                  Time-in allowed: 6:00 AM - 12:59 PM (PHT)
+                </div>
               </div>
 
               <div className="flex justify-center items-center gap-4">
@@ -286,6 +441,7 @@ export default function EmployeeAttendancePage() {
                   onClick={handleTimeIn}
                   disabled={!canClockIn() || isClockingIn}
                   className="bg-green-600 hover:bg-green-700 text-white px-8"
+                  title={!canClockIn() && !todayRecord?.timeIn ? 'Time-in only allowed between 6:00 AM - 12:59 PM' : ''}
                 >
                   {isClockingIn ? 'Clocking In...' : 'Clock In'}
                 </Button>
@@ -417,6 +573,7 @@ export default function EmployeeAttendancePage() {
                       <TableHead>Time Out</TableHead>
                       <TableHead>Hours</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Approval Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -430,6 +587,7 @@ export default function EmployeeAttendancePage() {
                         <TableCell>{record.timeOut || '-'}</TableCell>
                         <TableCell>{formatHours(record.hours)}</TableCell>
                         <TableCell>{getStatusBadge(record.status)}</TableCell>
+                        <TableCell>{getApprovalStatusBadge(record.approvalStatus, record.rejectionReason)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

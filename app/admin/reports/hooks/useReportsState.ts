@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Report } from '../types'
-import { recentReports } from '../constants'
 import { DateRange } from "react-day-picker"
 
 export const useReportsState = () => {
@@ -19,11 +18,26 @@ export const useReportsState = () => {
   const [selectedDepartment, setSelectedDepartment] = useState("all")
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-      setReports(recentReports)
-    }, 1500)
-    return () => clearTimeout(timer)
+    const fetchReports = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch('/api/admin/reports')
+        if (response.ok) {
+          const data = await response.json()
+          setReports(data.reports || [])
+        } else {
+          console.error('Failed to fetch reports')
+          setReports([])
+        }
+      } catch (error) {
+        console.error('Error fetching reports:', error)
+        setReports([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchReports()
   }, [])
 
   const updateTemplateDateRange = useCallback((templateId: string, range: DateRange | undefined) => {

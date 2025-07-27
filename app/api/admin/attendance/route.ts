@@ -49,6 +49,14 @@ export async function GET(request: NextRequest) {
               department: true,
               position: true
             }
+          },
+          approvedBy: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              employeeId: true
+            }
           }
         },
         orderBy: { date: "desc" }

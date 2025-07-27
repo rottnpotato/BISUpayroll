@@ -28,459 +28,337 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/components/ui/use-toast"
 
 interface User {
-  id: number
-  name: string
+  id: string
+  firstName: string
+  lastName: string
   email: string
   role: string
-  department: string
+  department?: string
   status: string
-  dateCreated: string
-  avatar?: string
+  createdAt: string
   position?: string
   phone?: string
-  lastLogin?: string
-  notes?: string
   employeeId?: string
+  salary?: number
+  hireDate?: string
 }
 
 interface FormErrors {
-  name?: string
+  firstName?: string
+  lastName?: string
   email?: string
   role?: string
   department?: string
   position?: string
   phone?: string
   employeeId?: string
+  password?: string
 }
 
-// Mock user data
-const mockUsers: User[] = [
-  { 
-    id: 1, 
-    name: "Juan Dela Cruz", 
-    email: "juan.delacruz@bisu.edu.ph", 
-    role: "admin", 
-    department: "IT Department", 
-    status: "active",
-    dateCreated: "2023-10-15",
-    position: "IT Administrator",
-    phone: "09123456789",
-    lastLogin: "2024-06-14 09:45 AM",
-    employeeId: "BISU-2023-001"
-  },
-  { 
-    id: 2, 
-    name: "Maria Santos", 
-    email: "maria.santos@bisu.edu.ph", 
-    role: "employee", 
-    department: "Accounting", 
-    status: "active",
-    dateCreated: "2023-11-01",
-    position: "Senior Accountant",
-    phone: "09234567890",
-    lastLogin: "2024-06-13 02:30 PM",
-    employeeId: "BISU-2023-002"
-  },
-  { 
-    id: 3, 
-    name: "Pedro Reyes", 
-    email: "pedro.reyes@bisu.edu.ph", 
-    role: "employee", 
-    department: "HR", 
-    status: "active",
-    dateCreated: "2023-11-05",
-    position: "HR Specialist",
-    phone: "09345678901",
-    lastLogin: "2024-06-14 08:15 AM",
-    employeeId: "BISU-2023-003"
-  },
-  { 
-    id: 4, 
-    name: "Ana Gonzales", 
-    email: "ana.gonzales@bisu.edu.ph", 
-    role: "employee", 
-    department: "Faculty", 
-    status: "inactive",
-    dateCreated: "2023-11-10",
-    position: "Professor",
-    phone: "09456789012",
-    lastLogin: "2024-06-10 10:20 AM",
-    employeeId: "BISU-2023-004"
-  },
-  { 
-    id: 5, 
-    name: "Roberto Carlos", 
-    email: "roberto.carlos@bisu.edu.ph", 
-    role: "employee", 
-    department: "Maintenance", 
-    status: "pending",
-    dateCreated: "2023-12-01",
-    position: "Facilities Manager",
-    phone: "09567890123",
-    lastLogin: "Not logged in yet",
-    employeeId: "BISU-2023-005"
-  },
-  { 
-    id: 6, 
-    name: "Sofia Luna", 
-    email: "sofia.luna@bisu.edu.ph", 
-    role: "manager", 
-    department: "Admin Office", 
-    status: "active",
-    dateCreated: "2023-12-05",
-    position: "Office Manager",
-    phone: "09678901234",
-    lastLogin: "2024-06-14 11:05 AM",
-    employeeId: "BISU-2023-006"
-  },
-]
+interface ApiResponse {
+  users: User[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    pages: number
+  }
+}
 
 // Department options
 const departments = [
-  "All Departments",
-  "IT Department",
-  "HR",
+  "Information Technology",
+  "Human Resources", 
   "Accounting",
   "Faculty",
   "Maintenance",
-  "Admin Office"
+  "Administration"
 ]
 
 // Role options
 const roles = [
-  "admin",
-  "manager",
-  "employee"
+  "ADMIN",
+  "EMPLOYEE"
 ]
 
-// Positions options by department
+// Positions by department
 const positionsByDepartment = {
-  "IT Department": ["IT Administrator", "System Analyst", "Network Specialist", "Software Developer", "Database Administrator"],
-  "HR": ["HR Manager", "HR Specialist", "Recruitment Officer", "Training Coordinator", "Employee Relations Specialist"],
-  "Accounting": ["Chief Accountant", "Senior Accountant", "Bookkeeper", "Payroll Specialist", "Financial Analyst"],
+  "Information Technology": ["System Administrator", "Network Specialist", "Software Developer", "Database Administrator", "IT Support"],
+  "Human Resources": ["HR Manager", "HR Specialist", "Recruitment Officer", "Training Coordinator", "Employee Relations"],
+  "Accounting": ["Accountant", "Senior Accountant", "Bookkeeper", "Payroll Specialist", "Financial Analyst"],
   "Faculty": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Research Associate"],
   "Maintenance": ["Facilities Manager", "Maintenance Technician", "Custodian", "Groundskeeper", "Electrician"],
-  "Admin Office": ["Office Manager", "Administrative Assistant", "Records Officer", "Executive Secretary", "Office Coordinator"]
+  "Administration": ["Office Manager", "Administrative Assistant", "Records Officer", "Executive Secretary", "Office Coordinator"]
 }
 
-export default function UsersManagementPage() {
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(true)
+export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("All Departments")
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false)
-  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false)
-  const [isDeleteUserDialogOpen, setIsDeleteUserDialogOpen] = useState(false)
-  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false)
-  const [isUserDetailsDialogOpen, setIsUserDetailsDialogOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedStatus, setSelectedStatus] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(5)
-  const [formErrors, setFormErrors] = useState<FormErrors>({})
-  const [newUser, setNewUser] = useState<Partial<User>>({
-    name: "",
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [itemsPerPage] = useState(10)
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<FormErrors>({})
+  
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     email: "",
-    role: "",
+    password: "",
+    role: "EMPLOYEE",
     department: "",
-    status: "pending",
     position: "",
     phone: "",
     employeeId: "",
+    hireDate: "",
+    salary: "",
+    address: "",
+    emergencyContactName: "",
+    emergencyContactRelationship: "",
+    emergencyContactPhone: "",
+    status: "ACTIVE",
     notes: ""
   })
-  const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Load users data
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-      setUsers(mockUsers)
-    }, 1500)
-    return () => clearTimeout(timer)
-  }, [])
+  const { toast } = useToast()
 
-  // Focus search input on mount
-  useEffect(() => {
-    if (!isLoading && searchInputRef.current) {
-      searchInputRef.current.focus()
+  // Fetch users from API
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        ...(searchTerm && { search: searchTerm }),
+        ...(selectedDepartment !== "All Departments" && { department: selectedDepartment }),
+        ...(selectedStatus && { status: selectedStatus })
+      })
+
+      const response = await fetch(`/api/admin/users?${params}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch users')
+      }
+
+      const data: ApiResponse = await response.json()
+      setUsers(data.users)
+      setTotalPages(data.pagination.pages)
+      setTotalUsers(data.pagination.total)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load users. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
-  }, [isLoading])
-
-  // Filter users based on search term, department, and status
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.employeeId && user.employeeId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (user.position && user.position.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    const matchesDepartment = 
-      selectedDepartment === "All Departments" || 
-      user.department === selectedDepartment
-    
-    const matchesStatus = 
-      selectedStatus === "all" || 
-      user.status === selectedStatus
-    
-    return matchesSearch && matchesDepartment && matchesStatus
-  })
-
-  // Pagination
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
-
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
   }
 
-  // Reset form errors
-  const resetFormErrors = () => {
-    setFormErrors({})
+  // Load users on component mount and when filters change
+  useEffect(() => {
+    fetchUsers()
+  }, [currentPage, searchTerm, selectedDepartment, selectedStatus])
+
+  // Reset form data
+  const resetForm = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      role: "EMPLOYEE",
+      department: "",
+      position: "",
+      phone: "",
+      employeeId: "",
+      hireDate: "",
+      salary: "",
+      address: "",
+      emergencyContactName: "",
+      emergencyContactRelationship: "",
+      emergencyContactPhone: "",
+      status: "ACTIVE",
+      notes: ""
+    })
+    setErrors({})
   }
 
   // Validate form
-  const validateForm = (data: Partial<User>): boolean => {
-    const errors: FormErrors = {}
+  const validateForm = () => {
+    const newErrors: FormErrors = {}
 
-    if (!data.name?.trim()) {
-      errors.name = "Name is required"
-    }
+    if (!formData.firstName.trim()) newErrors.firstName = "First name is required"
+    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required"
+    if (!formData.email.trim()) newErrors.email = "Email is required"
+    if (!formData.email.includes('@')) newErrors.email = "Invalid email format"
+    if (!showEditDialog && !formData.password) newErrors.password = "Password is required"
+    if (!formData.role) newErrors.role = "Role is required"
 
-    if (!data.email?.trim()) {
-      errors.email = "Email is required"
-    } else if (!data.email.includes('@') || !data.email.includes('.') || !data.email.endsWith('bisu.edu.ph')) {
-      errors.email = "Must be a valid BISU email address"
-    }
-
-    if (!data.role) {
-      errors.role = "Role is required"
-    }
-
-    if (!data.department) {
-      errors.department = "Department is required"
-    }
-
-    if (!data.position) {
-      errors.position = "Position is required"
-    }
-
-    if (data.phone && !/^09\d{9}$/.test(data.phone)) {
-      errors.phone = "Phone must be in format: 09XXXXXXXXX"
-    }
-
-    if (!data.employeeId) {
-      errors.employeeId = "Employee ID is required"
-    } else if (!/^BISU-\d{4}-\d{3}$/.test(data.employeeId)) {
-      errors.employeeId = "Format must be BISU-YYYY-XXX"
-    }
-
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  // Handle new user form change
-  const handleNewUserChange = (field: string, value: string) => {
-    setNewUser(prev => ({ ...prev, [field]: value }))
-    
-    // Auto-fill position options when department changes
-    if (field === "department" && value) {
-      setNewUser(prev => ({ ...prev, position: "" }))
-    }
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
   // Handle add user
-  const handleAddUser = () => {
-    if (validateForm(newUser)) {
-      const timestamp = new Date().toISOString().split('T')[0]
-      const newUserData: User = {
-        id: users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1,
-        name: newUser.name!,
-        email: newUser.email!,
-        role: newUser.role!,
-        department: newUser.department!,
-        position: newUser.position!,
-        phone: newUser.phone || "",
-        status: "pending",
-        dateCreated: timestamp,
-        employeeId: newUser.employeeId!,
-        notes: newUser.notes || "",
-        lastLogin: "Not logged in yet"
+  const handleAddUser = async () => {
+    if (!validateForm()) return
+
+    try {
+      setIsSubmitting(true)
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create user')
       }
 
-      setUsers(prev => [...prev, newUserData])
-      setIsAddUserDialogOpen(false)
-      resetForm()
-      
       toast({
-        title: "User Added",
-        description: `${newUserData.name} has been added successfully.`,
-        variant: "default",
+        title: "Success",
+        description: "User created successfully.",
       })
-      
-      // Update the updates.md file
-      updateChangelog(`Added new user: ${newUserData.name} (${newUserData.employeeId})`)
+
+      setShowAddDialog(false)
+      resetForm()
+      fetchUsers()
+    } catch (error) {
+      console.error('Error creating user:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create user.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   // Handle edit user
-  const handleEditUser = () => {
-    if (selectedUser && validateForm(selectedUser)) {
-      setUsers(prev => 
-        prev.map(user => 
-          user.id === selectedUser.id ? selectedUser : user
-        )
-      )
-      setIsEditUserDialogOpen(false)
-      
-      toast({
-        title: "User Updated",
-        description: `${selectedUser.name} has been updated successfully.`,
-        variant: "default",
+  const handleEditUser = async () => {
+    if (!validateForm() || !selectedUser) return
+
+    try {
+      setIsSubmitting(true)
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       })
-      
-      // Update the updates.md file
-      updateChangelog(`Updated user: ${selectedUser.name} (${selectedUser.employeeId})`)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update user')
+      }
+
+      toast({
+        title: "Success",
+        description: "User updated successfully.",
+      })
+
+      setShowEditDialog(false)
+      resetForm()
+      setSelectedUser(null)
+      fetchUsers()
+    } catch (error) {
+      console.error('Error updating user:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update user.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   // Handle delete user
-  const handleDeleteUser = () => {
-    if (selectedUser) {
-      setUsers(prev => prev.filter(user => user.id !== selectedUser.id))
-      setIsDeleteUserDialogOpen(false)
-      
-      toast({
-        title: "User Deleted",
-        description: `${selectedUser.name} has been deleted from the system.`,
-        variant: "destructive",
-      })
-      
-      // Update the updates.md file
-      updateChangelog(`Deleted user: ${selectedUser.name} (${selectedUser.employeeId})`)
-    }
-  }
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return
 
-  // Handle reset password
-  const handleResetPassword = () => {
-    if (selectedUser) {
-      setIsResetPasswordDialogOpen(false)
-      
-      toast({
-        title: "Password Reset",
-        description: `Password reset link has been sent to ${selectedUser.email}.`,
-        variant: "default",
-      })
-      
-      // Update the updates.md file
-      updateChangelog(`Reset password for: ${selectedUser.name} (${selectedUser.employeeId})`)
-    }
-  }
-
-  // Handle status change
-  const handleStatusChange = (user: User, newStatus: string) => {
-    const updatedUser = { ...user, status: newStatus }
-    setUsers(prev => 
-      prev.map(u => 
-        u.id === user.id ? updatedUser : u
-      )
-    )
-    
-    toast({
-      title: "Status Updated",
-      description: `${user.name}'s status changed to ${newStatus}.`,
-      variant: "default",
-    })
-    
-    // Update the updates.md file
-    updateChangelog(`Changed status for ${user.name} (${user.employeeId}) to ${newStatus}`)
-  }
-
-  // Export users data
-  const handleExportUsers = () => {
     try {
-      const exportData = filteredUsers.map(({ id, name, email, role, department, status, dateCreated, position, employeeId }) => ({
-        "Employee ID": employeeId,
-        "Name": name,
-        "Email": email,
-        "Role": role,
-        "Department": department,
-        "Position": position,
-        "Status": status,
-        "Date Added": dateCreated
-      }))
-      
-      const csvContent = "data:text/csv;charset=utf-8," + 
-        Object.keys(exportData[0]).join(",") + "\n" +
-        exportData.map(row => 
-          Object.values(row).map(val => `"${val}"`).join(",")
-        ).join("\n")
-      
-      const encodedUri = encodeURI(csvContent)
-      const link = document.createElement("a")
-      link.setAttribute("href", encodedUri)
-      link.setAttribute("download", `bisu_users_${new Date().toISOString().split('T')[0]}.csv`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
-      toast({
-        title: "Export Successful",
-        description: `${filteredUsers.length} users exported to CSV file.`,
-        variant: "default",
+      setIsSubmitting(true)
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'DELETE',
       })
-      
-      // Update the updates.md file
-      updateChangelog(`Exported ${filteredUsers.length} users to CSV`)
-    } catch (error) {
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete user')
+      }
+
       toast({
-        title: "Export Failed",
-        description: "An error occurred while exporting users data.",
+        title: "Success",
+        description: "User deleted successfully.",
+      })
+
+      setShowDeleteDialog(false)
+      setSelectedUser(null)
+      fetchUsers()
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete user.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  // Refresh users data
-  const handleRefreshUsers = () => {
-    setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      toast({
-        title: "Data Refreshed",
-        description: "User data has been refreshed.",
-        variant: "default",
-      })
-    }, 1000)
-  }
-
-  // Reset form
-  const resetForm = () => {
-    setNewUser({
-      name: "",
-      email: "",
-      role: "",
-      department: "",
-      status: "pending",
-      position: "",
-      phone: "",
-      employeeId: "",
+  // Open edit dialog with user data
+  const openEditDialog = (user: User) => {
+    setSelectedUser(user)
+    setFormData({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: "",
+      role: user.role,
+      department: user.department || "",
+      position: user.position || "",
+      phone: user.phone || "",
+      employeeId: user.employeeId || "",
+      hireDate: user.hireDate ? new Date(user.hireDate).toISOString().split('T')[0] : "",
+      salary: user.salary?.toString() || "",
+      address: "",
+      emergencyContactName: "",
+      emergencyContactRelationship: "",
+      emergencyContactPhone: "",
+      status: user.status,
       notes: ""
     })
-    resetFormErrors()
+    setShowEditDialog(true)
   }
 
-  // Update the changelog
-  const updateChangelog = async (message: string) => {
-    const timestamp = new Date().toISOString().split('T')[0]
-    const changelogEntry = `- ${message}`
-    
-    // This would typically be an API call to update the changelog file
-    console.log(`[${timestamp}] ${changelogEntry}`)
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString()
+  }
+
+  // Get status badge variant
+  const getStatusVariant = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active': return 'default'
+      case 'inactive': return 'secondary'
+      case 'terminated': return 'destructive'
+      default: return 'outline'
+    }
   }
 
   // Animation variants
@@ -548,13 +426,13 @@ export default function UsersManagementPage() {
         transition={{ duration: 0.5 }}
         className="mb-6"
       >
-        <h1 className="text-3xl font-bold text-bisu-purple-deep mb-2">User Management</h1>
-        <p className="text-gray-600">Manage users and permissions in the system</p>
+        <h1 className="text-3xl font-bold text-bisu-purple-deep mb-2">Employee Management</h1>
+        <p className="text-gray-600">Manage employees and permissions in the system</p>
       </motion.div>
 
       <Toaster />
 
-      {isLoading ? (
+      {loading ? (
         <SkeletonCard lines={10} />
       ) : (
         <motion.div
@@ -567,7 +445,7 @@ export default function UsersManagementPage() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <CardTitle className="text-bisu-yellow-DEFAULT flex items-center">
                   <UserPlus size={20} className="mr-2" />
-                  Users
+                  Employee Management
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
                   <TooltipProvider>
@@ -576,7 +454,7 @@ export default function UsersManagementPage() {
                         <Button 
                           variant="outline" 
                           className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-yellow-light/10"
-                          onClick={handleRefreshUsers}
+                          onClick={fetchUsers}
                         >
                     <RefreshCcw size={16} className="mr-2" />
                     Refresh
@@ -594,201 +472,35 @@ export default function UsersManagementPage() {
                         <Button 
                           variant="outline" 
                           className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-yellow-light/10"
-                          onClick={handleExportUsers}
+                          onClick={() => setShowAddDialog(true)}
                         >
-                    <DownloadCloud size={16} className="mr-2" />
-                    Export
+                    <Plus size={16} className="mr-2" />
+                    Add User
                   </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Export users to CSV</p>
+                        <p>Add new user</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                   
-                  <Dialog open={isAddUserDialogOpen} onOpenChange={(open) => {
-                    setIsAddUserDialogOpen(open)
-                    if (!open) resetForm()
-                  }}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-bisu-yellow-DEFAULT text-bisu-purple-deep hover:bg-bisu-yellow-light font-medium">
-                        <UserPlus size={16} className="mr-2" />
-                        Add User
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Add New User</DialogTitle>
-                        <DialogDescription>
-                          Enter the details of the new user to add to the system.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-                        <div className="grid grid-cols-1 items-center gap-2">
-                          <Label htmlFor="employeeId" className="text-left font-medium">
-                            Employee ID <span className="text-red-500">*</span>
-                          </Label>
-                          <Input 
-                            id="employeeId" 
-                            placeholder="BISU-YYYY-XXX" 
-                            value={newUser.employeeId || ''}
-                            onChange={(e) => handleNewUserChange('employeeId', e.target.value)}
-                            className={formErrors.employeeId ? "border-red-500" : ""}
-                          />
-                          {formErrors.employeeId && (
-                            <p className="text-red-500 text-xs">{formErrors.employeeId}</p>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 items-center gap-2">
-                          <Label htmlFor="name" className="text-left font-medium">
-                            Full Name <span className="text-red-500">*</span>
-                          </Label>
-                          <Input 
-                            id="name" 
-                            placeholder="Full Name" 
-                            value={newUser.name || ''}
-                            onChange={(e) => handleNewUserChange('name', e.target.value)}
-                            className={formErrors.name ? "border-red-500" : ""}
-                          />
-                          {formErrors.name && (
-                            <p className="text-red-500 text-xs">{formErrors.name}</p>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 items-center gap-2">
-                          <Label htmlFor="email" className="text-left font-medium">
-                            Email <span className="text-red-500">*</span>
-                          </Label>
-                          <Input 
-                            id="email" 
-                            placeholder="email@bisu.edu.ph" 
-                            value={newUser.email || ''}
-                            onChange={(e) => handleNewUserChange('email', e.target.value)}
-                            className={formErrors.email ? "border-red-500" : ""}
-                          />
-                          {formErrors.email && (
-                            <p className="text-red-500 text-xs">{formErrors.email}</p>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="grid grid-cols-1 items-center gap-2">
-                            <Label htmlFor="role" className="text-left font-medium">
-                              Role <span className="text-red-500">*</span>
-                            </Label>
-                            <Select 
-                              value={newUser.role} 
-                              onValueChange={(value) => handleNewUserChange('role', value)}
-                            >
-                              <SelectTrigger className={formErrors.role ? "border-red-500" : ""}>
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {roles.map((role) => (
-                                  <SelectItem key={role} value={role} className="capitalize">
-                                    {role}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                            {formErrors.role && (
-                              <p className="text-red-500 text-xs">{formErrors.role}</p>
-                            )}
-                        </div>
-                          
-                          <div className="grid grid-cols-1 items-center gap-2">
-                            <Label htmlFor="department" className="text-left font-medium">
-                              Department <span className="text-red-500">*</span>
-                            </Label>
-                            <Select 
-                              value={newUser.department} 
-                              onValueChange={(value) => handleNewUserChange('department', value)}
-                            >
-                              <SelectTrigger className={formErrors.department ? "border-red-500" : ""}>
-                              <SelectValue placeholder="Select department" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {departments.slice(1).map((dept) => (
-                                  <SelectItem key={dept} value={dept}>
-                                  {dept}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                            {formErrors.department && (
-                              <p className="text-red-500 text-xs">{formErrors.department}</p>
-                            )}
-                        </div>
-                      </div>
-                        
-                        <div className="grid grid-cols-1 items-center gap-2">
-                          <Label htmlFor="position" className="text-left font-medium">
-                            Position <span className="text-red-500">*</span>
-                          </Label>
-                          <Select 
-                            value={newUser.position} 
-                            onValueChange={(value) => handleNewUserChange('position', value)}
-                            disabled={!newUser.department}
-                          >
-                            <SelectTrigger className={formErrors.position ? "border-red-500" : ""}>
-                              <SelectValue placeholder={newUser.department ? "Select position" : "Select department first"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {newUser.department && positionsByDepartment[newUser.department as keyof typeof positionsByDepartment]?.map((position) => (
-                                <SelectItem key={position} value={position}>
-                                  {position}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {formErrors.position && (
-                            <p className="text-red-500 text-xs">{formErrors.position}</p>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 items-center gap-2">
-                          <Label htmlFor="phone" className="text-left font-medium">
-                            Phone Number
-                          </Label>
-                          <Input 
-                            id="phone" 
-                            placeholder="09XXXXXXXXX" 
-                            value={newUser.phone || ''}
-                            onChange={(e) => handleNewUserChange('phone', e.target.value)}
-                            className={formErrors.phone ? "border-red-500" : ""}
-                          />
-                          {formErrors.phone && (
-                            <p className="text-red-500 text-xs">{formErrors.phone}</p>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 items-center gap-2">
-                          <Label htmlFor="notes" className="text-left font-medium">
-                            Notes
-                          </Label>
-                          <Textarea 
-                            id="notes" 
-                            placeholder="Additional notes about this user..." 
-                            value={newUser.notes || ''}
-                            onChange={(e) => handleNewUserChange('notes', e.target.value)}
-                            className="resize-none"
-                            rows={3}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter className="flex justify-between">
-                        <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>
-                          <X className="mr-2 h-4 w-4" />
-                          Cancel
-                        </Button>
-                        <Button onClick={handleAddUser} className="bg-bisu-yellow-DEFAULT text-bisu-purple-deep hover:bg-bisu-yellow-light">
-                          <CheckSquare className="mr-2 h-4 w-4" />
-                          Add User
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-yellow-light/10"
+                          onClick={() => setShowAddDialog(true)}
+                        >
+                    <UserPlus size={16} className="mr-2" />
+                    Add User
+                  </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Add new user</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
               
@@ -796,7 +508,6 @@ export default function UsersManagementPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow-DEFAULT" />
                   <Input
-                    ref={searchInputRef}
                     placeholder="Search by name, email, ID, or position..."
                     className="pl-10 bg-bisu-purple-light text-white placeholder:text-bisu-yellow-DEFAULT/70 border-bisu-yellow-DEFAULT/30 focus:border-bisu-yellow-DEFAULT"
                     value={searchTerm}
@@ -852,7 +563,7 @@ export default function UsersManagementPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {currentItems.length === 0 ? (
+                    {users.length === 0 ? (
                     <TableRow>
                         <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                           <div className="flex flex-col items-center justify-center">
@@ -863,23 +574,23 @@ export default function UsersManagementPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                      currentItems.map((user, index) => (
+                      users.map((user, index) => (
                         <TableRow 
                           key={user.id} 
                           className={`transition-all hover:bg-bisu-purple-light/5 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
                           onClick={() => {
                             setSelectedUser(user)
-                            setIsUserDetailsDialogOpen(true)
+                            // setIsUserDetailsDialogOpen(true) // This dialog is no longer used
                           }}
                         >
                           <TableCell className="font-medium border-b border-gray-100 py-3">
                             <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9 bg-gradient-to-br from-bisu-purple-deep to-bisu-purple-medium text-white ring-2 ring-bisu-yellow-DEFAULT/20 ring-offset-1">
-                                <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
+                                <AvatarFallback>{user.firstName.charAt(0)}{user.lastName.charAt(0)}</AvatarFallback>
+                                {/* {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />} */}
                               </Avatar>
                               <div>
-                                <span className="font-semibold text-bisu-purple-deep">{user.name}</span>
+                                <span className="font-semibold text-bisu-purple-deep">{user.firstName} {user.lastName}</span>
                                 {user.employeeId && (
                                   <p className="text-xs text-gray-500">{user.employeeId}</p>
                                 )}
@@ -895,15 +606,14 @@ export default function UsersManagementPage() {
                           <TableCell className="border-b border-gray-100 font-medium">{user.position}</TableCell>
                           <TableCell className="border-b border-gray-100">{user.department}</TableCell>
                           <TableCell className="border-b border-gray-100">{getStatusBadge(user.status)}</TableCell>
-                          <TableCell className="border-b border-gray-100 text-sm text-gray-600">{user.dateCreated}</TableCell>
+                          <TableCell className="border-b border-gray-100 text-sm text-gray-600">{formatDate(user.createdAt)}</TableCell>
                           <TableCell className="text-right border-b border-gray-100">
                             <div className="flex justify-end gap-1">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild onClick={(e) => {
                                     e.stopPropagation()
-                                    setSelectedUser(user)
-                                    setIsEditUserDialogOpen(true)
+                                    openEditDialog(user)
                                   }}>
                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-full">
                                       <Edit size={16} />
@@ -919,8 +629,8 @@ export default function UsersManagementPage() {
                                 <Tooltip>
                                   <TooltipTrigger asChild onClick={(e) => {
                                     e.stopPropagation()
-                                    setSelectedUser(user)
-                                    setIsResetPasswordDialogOpen(true)
+                                    // setSelectedUser(user) // This dialog is no longer used
+                                    // setIsResetPasswordDialogOpen(true) // This dialog is no longer used
                                   }}>
                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50 rounded-full">
                                       <Lock size={16} />
@@ -937,7 +647,7 @@ export default function UsersManagementPage() {
                                   <Tooltip>
                                     <TooltipTrigger asChild onClick={(e) => {
                                       e.stopPropagation()
-                                      handleStatusChange(user, "inactive")
+                                      // handleStatusChange(user, "inactive") // This function is no longer used
                                     }}>
                                       <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full">
                                 <XCircle size={16} />
@@ -953,7 +663,7 @@ export default function UsersManagementPage() {
                                   <Tooltip>
                                     <TooltipTrigger asChild onClick={(e) => {
                                       e.stopPropagation()
-                                      handleStatusChange(user, "active")
+                                      // handleStatusChange(user, "active") // This function is no longer used
                                     }}>
                                       <Button size="icon" variant="ghost" className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-50 rounded-full">
                                 <CheckCircle size={16} />
@@ -971,7 +681,7 @@ export default function UsersManagementPage() {
                                   <TooltipTrigger asChild onClick={(e) => {
                                     e.stopPropagation()
                                     setSelectedUser(user)
-                                    setIsDeleteUserDialogOpen(true)
+                                    setShowDeleteDialog(true)
                                   }}>
                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full">
                               <Trash2 size={16} />
@@ -993,13 +703,13 @@ export default function UsersManagementPage() {
             </CardContent>
             <CardFooter className="flex items-center justify-between border-t border-gray-100 p-4 bg-gray-50/50">
               <div className="text-sm text-gray-500 font-medium">
-                Showing <span className="text-bisu-purple-deep">{currentItems.length > 0 ? indexOfFirstItem + 1 : 0}</span> to <span className="text-bisu-purple-deep">{Math.min(indexOfLastItem, filteredUsers.length)}</span> of <span className="text-bisu-purple-deep">{filteredUsers.length}</span> users
+                Showing <span className="text-bisu-purple-deep">{currentPage * itemsPerPage - itemsPerPage + 1}</span> to <span className="text-bisu-purple-deep">{Math.min(currentPage * itemsPerPage, totalUsers)}</span> of <span className="text-bisu-purple-deep">{totalUsers}</span> users
               </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                   className="h-8 w-8 p-0 rounded-full border-bisu-purple-light/30 text-bisu-purple-deep disabled:opacity-50"
                 >
@@ -1012,7 +722,7 @@ export default function UsersManagementPage() {
                       key={page}
                       variant={page === currentPage ? "default" : "outline"}
                       size="sm"
-                      onClick={() => handlePageChange(page)}
+                      onClick={() => setCurrentPage(page)}
                       className={`h-8 w-8 p-0 rounded-full ${
                         page === currentPage 
                           ? 'bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white border-0' 
@@ -1026,7 +736,7 @@ export default function UsersManagementPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages || totalPages === 0}
                   className="h-8 w-8 p-0 rounded-full border-bisu-purple-light/30 text-bisu-purple-deep disabled:opacity-50"
                 >
@@ -1035,152 +745,275 @@ export default function UsersManagementPage() {
                 </Button>
               </div>
               <div className="flex items-center gap-2">
-                <Label htmlFor="itemsPerPage" className="text-sm text-gray-500 font-medium">Items per page:</Label>
-                <Select value={String(itemsPerPage)} onValueChange={(value) => {
-                  setItemsPerPage(Number(value))
-                  setCurrentPage(1)
-                }}>
-                  <SelectTrigger className="h-8 w-[70px] border-bisu-purple-light/30 focus:ring-bisu-purple-light">
-                    <SelectValue placeholder={itemsPerPage} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-sm text-gray-500 font-medium">Items per page: {itemsPerPage}</Label>
               </div>
             </CardFooter>
           </Card>
         </motion.div>
       )}
 
-      {/* User Details Dialog */}
-      <Dialog open={isUserDetailsDialogOpen} onOpenChange={setIsUserDetailsDialogOpen}>
+      {/* Add User Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white p-6 rounded-t-lg -mt-6 -mx-6 mb-6">
-            <DialogTitle className="text-bisu-yellow-DEFAULT text-xl flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              User Details
-            </DialogTitle>
-            <DialogDescription className="text-white/80">
-              Detailed information about the selected user.
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+            <DialogDescription>
+              Enter the details of the new user to add to the system.
             </DialogDescription>
           </DialogHeader>
-          {selectedUser && (
-            <div className="grid gap-6 py-2">
-              <div className="flex flex-col items-center justify-center gap-2 mb-2 relative">
-                <div className="absolute inset-0 bg-gradient-to-b from-bisu-purple-light/10 to-transparent rounded-xl -z-10"></div>
-                <Avatar className="h-24 w-24 text-xl bg-gradient-to-br from-bisu-purple-deep to-bisu-purple-medium text-white ring-4 ring-bisu-yellow-DEFAULT/20 ring-offset-2 mt-3">
-                  <AvatarFallback>{selectedUser.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                  {selectedUser.avatar && <AvatarImage src={selectedUser.avatar} alt={selectedUser.name} />}
-                </Avatar>
-                <h3 className="text-xl font-bold text-bisu-purple-deep mt-2">{selectedUser.name}</h3>
-                <div className="flex items-center gap-2 mb-3">
-                  {getStatusBadge(selectedUser.status)}
-                  <Badge variant="outline" className="capitalize bg-bisu-purple-light/10 text-bisu-purple-medium border-bisu-purple-light/20 font-medium px-3 py-1 rounded-full">
-                    {selectedUser.role}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-x-4 gap-y-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                <div>
-                  <Label className="text-xs text-gray-500 block mb-1">Employee ID</Label>
-                  <p className="font-semibold text-bisu-purple-deep">{selectedUser.employeeId}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500 block mb-1">Department</Label>
-                  <p className="font-semibold text-bisu-purple-deep">{selectedUser.department}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500 block mb-1">Position</Label>
-                  <p className="font-semibold text-bisu-purple-deep">{selectedUser.position}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500 block mb-1">Date Added</Label>
-                  <p className="font-semibold text-bisu-purple-deep">{selectedUser.dateCreated}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <Mail className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500 block">Email Address</Label>
-                    <span className="text-sm font-medium">{selectedUser.email}</span>
-                  </div>
-                </div>
-                
-                {selectedUser.phone && (
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <Phone className="h-5 w-5 text-green-500" />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-gray-500 block">Phone Number</Label>
-                      <span className="text-sm font-medium">{selectedUser.phone}</span>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-amber-500/10 flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-amber-500" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500 block">Last Login</Label>
-                    <span className="text-sm font-medium">{selectedUser.lastLogin}</span>
-                  </div>
-                </div>
-              </div>
-              
-              {selectedUser.notes && (
-                <div className="space-y-2">
-                  <Label className="text-xs text-gray-500">Notes</Label>
-                  <div className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 text-sm">
-                    {selectedUser.notes}
-                  </div>
-                </div>
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-firstName" className="text-left font-medium">
+                First Name <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="add-firstName" 
+                placeholder="First Name" 
+                value={formData.firstName}
+                onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                className={errors.firstName ? "border-red-500" : ""}
+              />
+              {errors.firstName && (
+                <p className="text-red-500 text-xs">{errors.firstName}</p>
               )}
             </div>
-          )}
-          <DialogFooter className="flex justify-between mt-6 pt-4 border-t border-gray-100">
-            <Button variant="outline" onClick={() => setIsUserDetailsDialogOpen(false)} className="rounded-full">
-              Close
-            </Button>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20 rounded-full"
-                onClick={() => {
-                  setIsUserDetailsDialogOpen(false)
-                  setIsResetPasswordDialogOpen(true)
-                }}
-              >
-                <Lock className="mr-2 h-4 w-4" />
-                Reset Password
-              </Button>
-              <Button
-                className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white hover:bg-bisu-purple-deep rounded-full"
-                onClick={() => {
-                  setIsUserDetailsDialogOpen(false)
-                  setIsEditUserDialogOpen(true)
-                }}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-lastName" className="text-left font-medium">
+                Last Name <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="add-lastName" 
+                placeholder="Last Name" 
+                value={formData.lastName}
+                onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                className={errors.lastName ? "border-red-500" : ""}
+              />
+              {errors.lastName && (
+                <p className="text-red-500 text-xs">{errors.lastName}</p>
+              )}
             </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-email" className="text-left font-medium">
+                Email <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="add-email" 
+                placeholder="email@bisu.edu.ph" 
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className={errors.email ? "border-red-500" : ""}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-xs">{errors.email}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-password" className="text-left font-medium">
+                Password <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="add-password" 
+                type="password" 
+                placeholder="Password" 
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                className={errors.password ? "border-red-500" : ""}
+              />
+              {errors.password && (
+                <p className="text-red-500 text-xs">{errors.password}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 items-center gap-2">
+                <Label htmlFor="add-role" className="text-left font-medium">
+                  Role <span className="text-red-500">*</span>
+                </Label>
+                <Select 
+                  value={formData.role} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
+                >
+                  <SelectTrigger className={errors.role ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role} value={role} className="capitalize">
+                        {role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.role && (
+                  <p className="text-red-500 text-xs">{errors.role}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-1 items-center gap-2">
+                <Label htmlFor="add-department" className="text-left font-medium">
+                  Department <span className="text-red-500">*</span>
+                </Label>
+                <Select 
+                  value={formData.department} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, department: value, position: "" }))}
+                >
+                  <SelectTrigger className={errors.department ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.department && (
+                  <p className="text-red-500 text-xs">{errors.department}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-position" className="text-left font-medium">
+                Position <span className="text-red-500">*</span>
+              </Label>
+              <Select 
+                value={formData.position} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, position: value }))}
+                disabled={!formData.department}
+              >
+                <SelectTrigger className={errors.position ? "border-red-500" : ""}>
+                  <SelectValue placeholder={formData.department ? "Select position" : "Select department first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.department && positionsByDepartment[formData.department as keyof typeof positionsByDepartment]?.map((position) => (
+                    <SelectItem key={position} value={position}>
+                      {position}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.position && (
+                <p className="text-red-500 text-xs">{errors.position}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-phone" className="text-left font-medium">
+                Phone Number
+              </Label>
+              <Input 
+                id="add-phone" 
+                placeholder="09XXXXXXXXX" 
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                className={errors.phone ? "border-red-500" : ""}
+              />
+              {errors.phone && (
+                <p className="text-red-500 text-xs">{errors.phone}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-employeeId" className="text-left font-medium">
+                Employee ID <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="add-employeeId" 
+                placeholder="BISU-YYYY-XXX" 
+                value={formData.employeeId}
+                onChange={(e) => setFormData(prev => ({ ...prev, employeeId: e.target.value }))}
+                className={errors.employeeId ? "border-red-500" : ""}
+              />
+              {errors.employeeId && (
+                <p className="text-red-500 text-xs">{errors.employeeId}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-hireDate" className="text-left font-medium">
+                Hire Date
+              </Label>
+              <Input 
+                id="add-hireDate" 
+                type="date" 
+                value={formData.hireDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, hireDate: e.target.value }))}
+                className="border-bisu-purple-light/30"
+              />
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-salary" className="text-left font-medium">
+                Salary (optional)
+              </Label>
+              <Input 
+                id="add-salary" 
+                type="number" 
+                placeholder="Enter salary" 
+                value={formData.salary}
+                onChange={(e) => setFormData(prev => ({ ...prev, salary: e.target.value }))}
+                className="border-bisu-purple-light/30"
+              />
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-address" className="text-left font-medium">
+                Address (optional)
+              </Label>
+              <Textarea 
+                id="add-address" 
+                placeholder="Enter address" 
+                value={formData.address}
+                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                className="resize-none"
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-emergencyContactName" className="text-left font-medium">
+                Emergency Contact Name (optional)
+              </Label>
+              <Input 
+                id="add-emergencyContactName" 
+                placeholder="Enter emergency contact name" 
+                value={formData.emergencyContactName}
+                onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactName: e.target.value }))}
+                className="border-bisu-purple-light/30"
+              />
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-emergencyContactRelationship" className="text-left font-medium">
+                Emergency Contact Relationship (optional)
+              </Label>
+              <Input 
+                id="add-emergencyContactRelationship" 
+                placeholder="Enter relationship" 
+                value={formData.emergencyContactRelationship}
+                onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactRelationship: e.target.value }))}
+                className="border-bisu-purple-light/30"
+              />
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-emergencyContactPhone" className="text-left font-medium">
+                Emergency Contact Phone (optional)
+              </Label>
+              <Input 
+                id="add-emergencyContactPhone" 
+                placeholder="Enter phone number" 
+                value={formData.emergencyContactPhone}
+                onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactPhone: e.target.value }))}
+                className="border-bisu-purple-light/30"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex justify-between">
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button onClick={handleAddUser} disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add User"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit User Dialog */}
-      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
@@ -1188,198 +1021,215 @@ export default function UsersManagementPage() {
               Update user information.
             </DialogDescription>
           </DialogHeader>
-          {selectedUser && (
-            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-employeeId" className="text-left font-medium">
+                Employee ID <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="edit-employeeId" 
+                placeholder="BISU-YYYY-XXX" 
+                value={formData.employeeId}
+                onChange={(e) => setFormData(prev => ({ ...prev, employeeId: e.target.value }))}
+                className={errors.employeeId ? "border-red-500" : ""}
+              />
+              {errors.employeeId && (
+                <p className="text-red-500 text-xs">{errors.employeeId}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-firstName" className="text-left font-medium">
+                First Name <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="edit-firstName" 
+                placeholder="First Name" 
+                value={formData.firstName}
+                onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                className={errors.firstName ? "border-red-500" : ""}
+              />
+              {errors.firstName && (
+                <p className="text-red-500 text-xs">{errors.firstName}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-lastName" className="text-left font-medium">
+                Last Name <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="edit-lastName" 
+                placeholder="Last Name" 
+                value={formData.lastName}
+                onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                className={errors.lastName ? "border-red-500" : ""}
+              />
+              {errors.lastName && (
+                <p className="text-red-500 text-xs">{errors.lastName}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-email" className="text-left font-medium">
+                Email <span className="text-red-500">*</span>
+              </Label>
+              <Input 
+                id="edit-email" 
+                placeholder="email@bisu.edu.ph" 
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                className={errors.email ? "border-red-500" : ""}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-xs">{errors.email}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-password" className="text-left font-medium">
+                Password (leave empty to keep current)
+              </Label>
+              <Input 
+                id="edit-password" 
+                type="password" 
+                placeholder="Password" 
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                className={errors.password ? "border-red-500" : ""}
+              />
+              {errors.password && (
+                <p className="text-red-500 text-xs">{errors.password}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid grid-cols-1 items-center gap-2">
-                <Label htmlFor="edit-employeeId" className="text-left font-medium">
-                  Employee ID <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  id="edit-employeeId" 
-                  placeholder="BISU-YYYY-XXX" 
-                  value={selectedUser.employeeId || ''}
-                  onChange={(e) => setSelectedUser({...selectedUser, employeeId: e.target.value})}
-                  className={formErrors.employeeId ? "border-red-500" : ""}
-                />
-                {formErrors.employeeId && (
-                  <p className="text-red-500 text-xs">{formErrors.employeeId}</p>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 items-center gap-2">
-                <Label htmlFor="edit-name" className="text-left font-medium">
-                  Full Name <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  id="edit-name" 
-                  placeholder="Full Name" 
-                  value={selectedUser.name}
-                  onChange={(e) => setSelectedUser({...selectedUser, name: e.target.value})}
-                  className={formErrors.name ? "border-red-500" : ""}
-                />
-                {formErrors.name && (
-                  <p className="text-red-500 text-xs">{formErrors.name}</p>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 items-center gap-2">
-                <Label htmlFor="edit-email" className="text-left font-medium">
-                  Email <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  id="edit-email" 
-                  placeholder="email@bisu.edu.ph" 
-                  value={selectedUser.email}
-                  onChange={(e) => setSelectedUser({...selectedUser, email: e.target.value})}
-                  className={formErrors.email ? "border-red-500" : ""}
-                />
-                {formErrors.email && (
-                  <p className="text-red-500 text-xs">{formErrors.email}</p>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid grid-cols-1 items-center gap-2">
-                  <Label htmlFor="edit-role" className="text-left font-medium">
-                    Role <span className="text-red-500">*</span>
-                  </Label>
-                  <Select 
-                    value={selectedUser.role} 
-                    onValueChange={(value) => setSelectedUser({...selectedUser, role: value})}
-                  >
-                    <SelectTrigger className={formErrors.role ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role} value={role} className="capitalize">
-                          {role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.role && (
-                    <p className="text-red-500 text-xs">{formErrors.role}</p>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 items-center gap-2">
-                  <Label htmlFor="edit-department" className="text-left font-medium">
-                    Department <span className="text-red-500">*</span>
-                  </Label>
-                  <Select 
-                    value={selectedUser.department} 
-                    onValueChange={(value) => setSelectedUser({...selectedUser, department: value, position: ""})}
-                  >
-                    <SelectTrigger className={formErrors.department ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.slice(1).map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.department && (
-                    <p className="text-red-500 text-xs">{formErrors.department}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 items-center gap-2">
-                <Label htmlFor="edit-position" className="text-left font-medium">
-                  Position <span className="text-red-500">*</span>
+                <Label htmlFor="edit-role" className="text-left font-medium">
+                  Role <span className="text-red-500">*</span>
                 </Label>
                 <Select 
-                  value={selectedUser.position} 
-                  onValueChange={(value) => setSelectedUser({...selectedUser, position: value})}
+                  value={formData.role} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
                 >
-                  <SelectTrigger className={formErrors.position ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select position" />
+                  <SelectTrigger className={errors.role ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {positionsByDepartment[selectedUser.department as keyof typeof positionsByDepartment]?.map((position) => (
-                      <SelectItem key={position} value={position}>
-                        {position}
+                    {roles.map((role) => (
+                      <SelectItem key={role} value={role} className="capitalize">
+                        {role}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {formErrors.position && (
-                  <p className="text-red-500 text-xs">{formErrors.position}</p>
+                {errors.role && (
+                  <p className="text-red-500 text-xs">{errors.role}</p>
                 )}
               </div>
-              
               <div className="grid grid-cols-1 items-center gap-2">
-                <Label htmlFor="edit-phone" className="text-left font-medium">
-                  Phone Number
-                </Label>
-                <Input 
-                  id="edit-phone" 
-                  placeholder="09XXXXXXXXX" 
-                  value={selectedUser.phone || ''}
-                  onChange={(e) => setSelectedUser({...selectedUser, phone: e.target.value})}
-                  className={formErrors.phone ? "border-red-500" : ""}
-                />
-                {formErrors.phone && (
-                  <p className="text-red-500 text-xs">{formErrors.phone}</p>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 items-center gap-2">
-                <Label htmlFor="edit-status" className="text-left font-medium">
-                  Status
+                <Label htmlFor="edit-department" className="text-left font-medium">
+                  Department <span className="text-red-500">*</span>
                 </Label>
                 <Select 
-                  value={selectedUser.status} 
-                  onValueChange={(value) => setSelectedUser({...selectedUser, status: value})}
+                  value={formData.department} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, department: value, position: "" }))}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
+                  <SelectTrigger className={errors.department ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-              </div>
-              
-              <div className="grid grid-cols-1 items-center gap-2">
-                <Label htmlFor="edit-notes" className="text-left font-medium">
-                  Notes
-                </Label>
-                <Textarea 
-                  id="edit-notes" 
-                  placeholder="Additional notes about this user..." 
-                  value={selectedUser.notes || ''}
-                  onChange={(e) => setSelectedUser({...selectedUser, notes: e.target.value})}
-                  className="resize-none"
-                  rows={3}
-                />
+                {errors.department && (
+                  <p className="text-red-500 text-xs">{errors.department}</p>
+                )}
               </div>
             </div>
-          )}
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-position" className="text-left font-medium">
+                Position <span className="text-red-500">*</span>
+              </Label>
+              <Select 
+                value={formData.position} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, position: value }))}
+              >
+                <SelectTrigger className={errors.position ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select position" />
+                </SelectTrigger>
+                <SelectContent>
+                  {positionsByDepartment[formData.department as keyof typeof positionsByDepartment]?.map((position) => (
+                    <SelectItem key={position} value={position}>
+                      {position}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.position && (
+                <p className="text-red-500 text-xs">{errors.position}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-phone" className="text-left font-medium">
+                Phone Number
+              </Label>
+              <Input 
+                id="edit-phone" 
+                placeholder="09XXXXXXXXX" 
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                className={errors.phone ? "border-red-500" : ""}
+              />
+              {errors.phone && (
+                <p className="text-red-500 text-xs">{errors.phone}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-status" className="text-left font-medium">
+                Status
+              </Label>
+              <Select 
+                value={formData.status} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-notes" className="text-left font-medium">
+                Notes (optional)
+              </Label>
+              <Textarea 
+                id="edit-notes" 
+                placeholder="Additional notes about this user..." 
+                value={formData.notes || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                className="resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
           <DialogFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setIsEditUserDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button 
-              onClick={handleEditUser} 
-              className="bg-blue-500 text-white hover:bg-blue-600"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Save Changes
+            <Button onClick={handleEditUser} disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete User Dialog */}
-      <Dialog open={isDeleteUserDialogOpen} onOpenChange={setIsDeleteUserDialogOpen}>
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-red-500 flex items-center gap-2">
@@ -1395,7 +1245,7 @@ export default function UsersManagementPage() {
             <div className="py-4">
               <div className="p-4 border border-red-200 bg-red-50 rounded-md mb-4">
                 <p className="text-sm text-red-700">
-                  Are you sure you want to delete <span className="font-bold">{selectedUser.name}</span>?
+                  Are you sure you want to delete <span className="font-bold">{selectedUser.firstName} {selectedUser.lastName}</span>?
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1419,59 +1269,16 @@ export default function UsersManagementPage() {
             </div>
           )}
           <DialogFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setIsDeleteUserDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
             <Button 
               variant="destructive" 
               onClick={handleDeleteUser}
+              disabled={isSubmitting}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete User
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Password Dialog */}
-      <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5" />
-              Reset Password
-            </DialogTitle>
-            <DialogDescription>
-              This will send a password reset link to the user's email address.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <div className="py-4">
-              <div className="p-4 border border-amber-200 bg-amber-50 rounded-md mb-4">
-                <p className="text-sm text-amber-700">
-                  Are you sure you want to reset the password for <span className="font-bold">{selectedUser.name}</span>?
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-2">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-500" />
-                  <span>Reset link will be sent to: <span className="font-medium">{selectedUser.email}</span></span>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setIsResetPasswordDialogOpen(false)}>
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-            <Button 
-              className="bg-amber-500 text-white hover:bg-amber-600"
-              onClick={handleResetPassword}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Send Reset Link
+              {isSubmitting ? "Deleting..." : "Delete User"}
             </Button>
           </DialogFooter>
         </DialogContent>

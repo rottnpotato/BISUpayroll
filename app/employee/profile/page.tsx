@@ -29,39 +29,31 @@ import { motion } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-// Mock employee data
-const employeeData = {
-  id: "EMP-2023-001",
-  fullName: "Juan Dela Cruz",
-  position: "Administrative Assistant III",
-  department: "Human Resources",
-  email: "juan.delacruz@bisu.edu.ph",
-  phone: "+63 939 123 4567",
-  dateHired: "January 15, 2020",
-  employmentStatus: "Regular",
-  employeeType: "Full-time",
-  address: "123 Tagbilaran City, Bohol",
-  birthDate: "March 12, 1990",
-  gender: "Male",
-  civilStatus: "Married",
+interface EmployeeData {
+  id: string
+  fullName: string
+  position: string
+  department: string
+  email: string
+  phone: string
+  dateHired: string
+  employmentStatus: string
+  employeeType: string
+  address: string
+  birthDate?: string
+  gender?: string
+  civilStatus?: string
   emergencyContact: {
-    name: "Maria Dela Cruz",
-    relationship: "Spouse",
-    phone: "+63 917 888 9999"
-  },
-  education: [
-    {
-      degree: "Bachelor of Science in Business Administration",
-      institution: "Bohol Island State University",
-      yearCompleted: "2012"
-    },
-    {
-      degree: "Master of Business Administration",
-      institution: "University of Bohol",
-      yearCompleted: "2018"
-    }
-  ],
-  skills: ["Administrative Support", "MS Office", "Data Management", "Records Management", "Office Equipment", "Customer Service"]
+    name: string
+    relationship: string
+    phone: string
+  }
+  education?: Array<{
+    degree: string
+    institution: string
+    yearCompleted: string
+  }>
+  skills?: string[]
 }
 
 export default function EmployeeProfile() {
@@ -71,26 +63,51 @@ export default function EmployeeProfile() {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
-    phone: employeeData.phone,
-    address: employeeData.address,
-    emergencyContactName: employeeData.emergencyContact.name,
-    emergencyContactRelationship: employeeData.emergencyContact.relationship,
-    emergencyContactPhone: employeeData.emergencyContact.phone,
+    phone: "",
+    address: "",
+    emergencyContactName: "",
+    emergencyContactRelationship: "",
+    emergencyContactPhone: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
-    return () => clearTimeout(timer)
+    fetchEmployeeProfile()
   }, [])
+
+  const fetchEmployeeProfile = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/employee/profile')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setEmployeeData(result.data)
+          // Initialize form data with fetched data
+          setFormData({
+            phone: result.data.phone || "",
+            address: result.data.address || "",
+            emergencyContactName: result.data.emergencyContact?.name || "",
+            emergencyContactRelationship: result.data.emergencyContact?.relationship || "",
+            emergencyContactPhone: result.data.emergencyContact?.phone || "",
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching employee profile:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -180,6 +197,14 @@ export default function EmployeeProfile() {
             <SkeletonCard hasHeader={true} lines={10} />
           </div>
         </motion.div>
+      ) : !employeeData ? (
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Profile data not available</h2>
+          <p className="text-gray-600">Unable to load your profile information. Please try again later.</p>
+          <Button onClick={fetchEmployeeProfile} className="mt-4">
+            Retry
+          </Button>
+        </div>
       ) : (
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Profile Summary */}
@@ -486,7 +511,7 @@ export default function EmployeeProfile() {
                           <div>
                             <label className="text-sm text-gray-500 mb-2 block">Educational Background</label>
                             
-                            {employeeData.education.map((edu, index) => (
+                            {employeeData?.education?.map((edu, index) => (
                               <div key={index} className="mb-4 p-3 bg-bisu-purple-extralight/50 rounded-md">
                                 <div className="flex items-start">
                                   <GraduationCap className="h-5 w-5 mr-2 text-bisu-purple-medium mt-0.5" />
@@ -503,7 +528,7 @@ export default function EmployeeProfile() {
                           <div>
                             <label className="text-sm text-gray-500 mb-2 block">Skills & Competencies</label>
                             <div className="flex flex-wrap gap-2">
-                              {employeeData.skills.map((skill, index) => (
+                              {employeeData?.skills?.map((skill, index) => (
                                 <span 
                                   key={index} 
                                   className="px-3 py-1 bg-bisu-purple-extralight text-bisu-purple-deep text-sm rounded-full"

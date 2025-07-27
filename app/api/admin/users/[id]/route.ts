@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import { AuditLogger } from "@/lib/audit-logger"
 
 const prisma = new PrismaClient()
 
@@ -55,14 +56,14 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = params
     const body = await request.json()
     const {
-      email,
-      password,
       firstName,
       lastName,
+      email,
+      password,
       role,
-      status,
       employeeId,
       department,
       position,
@@ -72,12 +73,13 @@ export async function PUT(
       address,
       emergencyContactName,
       emergencyContactRelationship,
-      emergencyContactPhone
+      emergencyContactPhone,
+      status
     } = body
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingUser) {
@@ -87,8 +89,8 @@ export async function PUT(
       )
     }
 
-    // Check if email is unique (if being changed)
-    if (email && email !== existingUser.email) {
+    // Check if email is taken by another user
+    if (email !== existingUser.email) {
       const emailExists = await prisma.user.findUnique({
         where: { email }
       })
@@ -101,7 +103,7 @@ export async function PUT(
       }
     }
 
-    // Check if employeeId is unique (if being changed)
+    // Check if employeeId is taken by another user
     if (employeeId && employeeId !== existingUser.employeeId) {
       const employeeIdExists = await prisma.user.findUnique({
         where: { employeeId }
@@ -117,21 +119,21 @@ export async function PUT(
 
     // Prepare update data
     const updateData: any = {
-      email,
       firstName,
       lastName,
-      role,
-      status,
-      employeeId,
-      department,
-      position,
-      hireDate: hireDate ? new Date(hireDate) : null,
-      salary: salary ? parseFloat(salary) : null,
-      phone,
-      address,
-      emergencyContactName,
-      emergencyContactRelationship,
-      emergencyContactPhone
+      email,
+      role: role || existingUser.role,
+      employeeId: employeeId || existingUser.employeeId,
+      department: department || existingUser.department,
+      position: position || existingUser.position,
+      hireDate: hireDate ? new Date(hireDate) : existingUser.hireDate,
+      salary: salary ? parseFloat(salary) : existingUser.salary,
+      phone: phone || existingUser.phone,
+      address: address || existingUser.address,
+      emergencyContactName: emergencyContactName || existingUser.emergencyContactName,
+      emergencyContactRelationship: emergencyContactRelationship || existingUser.emergencyContactRelationship,
+      emergencyContactPhone: emergencyContactPhone || existingUser.emergencyContactPhone,
+      status: status || existingUser.status
     }
 
     // Hash password if provided
@@ -139,15 +141,9 @@ export async function PUT(
       updateData.password = await bcrypt.hash(password, 12)
     }
 
-    // Remove undefined values
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] === undefined) {
-        delete updateData[key]
-      }
-    })
-
-    const user = await prisma.user.update({
-      where: { id: params.id },
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id },
       data: updateData,
       select: {
         id: true,
@@ -162,16 +158,20 @@ export async function PUT(
         hireDate: true,
         salary: true,
         phone: true,
-        address: true,
-        emergencyContactName: true,
-        emergencyContactRelationship: true,
-        emergencyContactPhone: true,
-        createdAt: true,
         updatedAt: true
       }
     })
 
-    return NextResponse.json({ user })
+    // Log the user update
+    await AuditLogger.logUser(
+      updatedUser.id, // For now using the updated user as the actor, should be replaced with the actual admin user ID
+      'update',
+      updatedUser.id,
+      request,
+      `User updated: ${updatedUser.firstName} ${updatedUser.lastName} (${updatedUser.email})`
+    )
+
+    return NextResponse.json({ user: updatedUser })
   } catch (error) {
     console.error("Error updating user:", error)
     return NextResponse.json(
@@ -186,9 +186,18 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = params
+
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true
+      }
     })
 
     if (!existingUser) {
@@ -198,12 +207,32 @@ export async function DELETE(
       )
     }
 
-    // Delete user (cascade will handle related records)
+    // Prevent deleting admin users (optional safety check)
+    if (existingUser.role === 'ADMIN') {
+      return NextResponse.json(
+        { error: "Cannot delete admin users" },
+        { status: 403 }
+      )
+    }
+
+    // Delete user
     await prisma.user.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
-    return NextResponse.json({ message: "User deleted successfully" })
+    // Log the user deletion
+    await AuditLogger.logUser(
+      existingUser.id, // For now using the deleted user as the actor, should be replaced with the actual admin user ID
+      'delete',
+      existingUser.id,
+      request,
+      `User deleted: ${existingUser.firstName} ${existingUser.lastName} (${existingUser.email})`
+    )
+
+    return NextResponse.json({ 
+      message: "User deleted successfully",
+      user: existingUser
+    })
   } catch (error) {
     console.error("Error deleting user:", error)
     return NextResponse.json(

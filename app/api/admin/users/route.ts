@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import { AuditLogger } from "@/lib/audit-logger"
 
 const prisma = new PrismaClient()
 
@@ -171,6 +172,15 @@ export async function POST(request: NextRequest) {
         createdAt: true
       }
     })
+
+    // Log the user creation
+    await AuditLogger.logUser(
+      user.id, // For now using the created user as the actor, should be replaced with the actual admin user ID
+      'create',
+      user.id,
+      request,
+      `New ${user.role.toLowerCase()} user created: ${user.firstName} ${user.lastName} (${user.email})`
+    )
 
     return NextResponse.json({ user }, { status: 201 })
   } catch (error) {

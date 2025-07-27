@@ -9,32 +9,45 @@ import { FileText, BarChart4, PieChart, Download, Filter, Printer } from "lucide
 import { SkeletonCard } from "@/components/ui/skeleton-card"
 import { motion } from "framer-motion"
 
-// Mock data
-const attendanceReport = {
-  totalWorkDays: 22,
-  daysPresent: 20,
-  daysAbsent: 0,
-  daysLate: 2,
-  totalHoursWorked: 160.5,
-  averageHoursPerDay: 8.03,
-  leavesTaken: 0,
-  overtime: 0.5,
-  monthlyAttendanceRate: "90.9%",
-  yearlyAttendanceRate: "95.2%",
+interface AttendanceReport {
+  totalWorkDays: number
+  daysPresent: number
+  daysAbsent: number
+  daysLate: number
+  totalHoursWorked: number
+  averageHoursPerDay: number
+  leavesTaken: number
+  overtime: number
+  monthlyAttendanceRate: string
+  yearlyAttendanceRate: string
 }
 
 export default function EmployeeReports() {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("attendance")
+  const [attendanceReport, setAttendanceReport] = useState<AttendanceReport | null>(null)
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
-    return () => clearTimeout(timer)
+    fetchAttendanceReport()
   }, [])
+
+  const fetchAttendanceReport = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/employee/reports/attendance')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setAttendanceReport(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching attendance report:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   // Animation variants
   const containerVariants = {
@@ -102,6 +115,14 @@ export default function EmployeeReports() {
                 <SkeletonCard hasHeader={true} lines={10} />
               </div>
             </motion.div>
+          ) : !attendanceReport ? (
+            <div className="text-center py-12">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Report data not available</h2>
+              <p className="text-gray-600">Unable to load your attendance report. Please try again later.</p>
+              <Button onClick={fetchAttendanceReport} className="mt-4">
+                Retry
+              </Button>
+            </div>
           ) : (
             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column */}

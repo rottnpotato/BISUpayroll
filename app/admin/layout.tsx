@@ -4,7 +4,7 @@ import type React from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { BisuLogo } from "@/components/bisu-logo"
 import { AnimatedSidebar } from "@/components/animated-sidebar"
-import { LayoutDashboard, Users, Settings, FileText, Calendar, DollarSign } from "lucide-react"
+import { LayoutDashboard, Users, Activity, FileText, Calendar, DollarSign } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { motion } from "@/components/simple-motion"
@@ -12,11 +12,11 @@ import { PageLoading } from "@/components/ui/page-loading"
 
 const adminNavItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/users", label: "User Management", icon: Users },
+  { href: "/admin/users", label: "Employee Management", icon: Users },
   { href: "/admin/payroll", label: "Payroll Rules", icon: DollarSign },
   { href: "/admin/attendance", label: "Attendance", icon: Calendar },
   { href: "/admin/reports", label: "Reports", icon: FileText },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/settings", label: "System Logs", icon: Activity },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

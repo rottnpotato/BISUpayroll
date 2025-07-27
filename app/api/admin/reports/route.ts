@@ -3,6 +3,44 @@ import { PrismaClient } from "@prisma/client"
 
 const prisma = new PrismaClient()
 
+async function getRecentReports() {
+  try {
+    // Get recent audit logs for report generation activities
+    const recentReportLogs = await prisma.auditLog.findMany({
+      where: {
+        action: 'report_generated',
+        entityType: 'report'
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    })
+
+    // Transform to reports format
+    const reports = recentReportLogs.map((log, index) => ({
+      id: `RPT-${new Date().getFullYear()}-${String(index + 1).padStart(3, '0')}`,
+      name: log.details || `Generated Report`,
+      type: log.entityId || 'general',
+      generatedBy: log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System',
+      generatedOn: log.createdAt.toISOString(),
+      status: 'ready',
+      downloadUrl: '#'
+    }))
+
+    return NextResponse.json({ reports })
+  } catch (error) {
+    console.error('Error fetching recent reports:', error)
+    return NextResponse.json({ reports: [] })
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -11,11 +49,9 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate")
     const department = searchParams.get("department")
 
+    // If no report type specified, return list of recent reports
     if (!reportType) {
-      return NextResponse.json(
-        { error: "Report type is required" },
-        { status: 400 }
-      )
+      return await getRecentReports()
     }
 
     const dateFilter = startDate && endDate ? {

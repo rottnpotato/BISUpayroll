@@ -21,14 +21,22 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog"
+import { EarningsModal } from "@/components/earnings-modal"
 
 // Define employee dashboard data type
 interface DashboardData {
   currentSalaryRate: string
+  dailyRate: string
+  hourlyRate: string
   prospectedSalary: string
   latesThisMonth: number
   absencesThisMonth: number
   hoursWorkedToday: number
+  totalHoursThisMonth: number
+  expectedHoursThisMonth: number
+  overtimeHoursThisMonth: number
+  grossPayThisMonth: string
+  deductionsThisMonth: string
   isTimedIn: boolean
   lastTimeAction: string | null
 }
@@ -48,6 +56,10 @@ export default function EmployeeDashboard() {
   // Time action confirmation dialog states
   const [isTimeActionDialogOpen, setIsTimeActionDialogOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<'time-in' | 'time-out' | null>(null)
+  
+  // Earnings modal states
+  const [isEarningsModalOpen, setIsEarningsModalOpen] = useState(false)
+  const [timeoutEarningsData, setTimeoutEarningsData] = useState<any>(null)
 
   // Fetch dashboard data
   useEffect(() => {
@@ -101,6 +113,26 @@ export default function EmployeeDashboard() {
 
   const handleTimeLogClick = () => {
     const action = isTimedIn ? 'time-out' : 'time-in'
+    
+    // Check time restrictions for time-in
+    if (action === 'time-in') {
+      const now = new Date()
+      const currentHour = now.getHours()
+      const currentMinute = now.getMinutes()
+      const currentTime = currentHour * 60 + currentMinute
+      
+      const morningStartTime = 6 * 60 // 6:00 AM
+      const morningEndTime = 12 * 60 + 59 // 12:59 PM
+      
+      if (currentTime < morningStartTime || currentTime > morningEndTime) {
+        toast({
+          title: "Time Restriction",
+          description: "Time-in is only allowed between 6:00 AM and 12:59 PM (PHT)",
+          variant: "destructive"
+        })
+        return
+      }
+    }
     
     // Additional validation to prevent inappropriate actions
     if (action === 'time-in' && isTimedIn) {
@@ -161,6 +193,12 @@ export default function EmployeeDashboard() {
           description: `${pendingAction === 'time-in' ? 'Time-in' : 'Time-out'} recorded successfully at ${currentTime}`,
           variant: "default",
         })
+        
+        // If this is a time-out and we have earnings data, show the earnings modal
+        if (pendingAction === 'time-out' && result.data?.earnings) {
+          setTimeoutEarningsData(result.data)
+          setIsEarningsModalOpen(true)
+        }
         
         // Refresh dashboard data after successful action
         setTimeout(() => {
@@ -265,39 +303,39 @@ export default function EmployeeDashboard() {
               <Clock className="mr-2 h-5 w-5" />
               Confirm {pendingAction === 'time-in' ? 'Time In' : 'Time Out'}
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
-              <div className="text-center py-4">
-                <div className="text-2xl font-mono font-bold text-bisu-purple-deep mb-2">
-                  {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {getCurrentTime().split(', ')[0]}, {getCurrentTime().split(', ')[1]}
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm">
-                  Are you sure you want to record your{' '}
-                  <span className="font-semibold text-bisu-purple-deep">
-                    {pendingAction === 'time-in' ? 'TIME IN' : 'TIME OUT'}
-                  </span>{' '}
-                  at this time?
-                </p>
-                
-                {pendingAction === 'time-in' && (
-                  <p className="text-xs text-amber-600 mt-2">
-                    ⚠️ Note: Late arrivals after 8:00 AM will be marked as late.
-                  </p>
-                )}
-                
-                {pendingAction === 'time-out' && (
-                  <p className="text-xs text-blue-600 mt-2">
-                    ✓ Your work hours will be calculated automatically.
-                  </p>
-                )}
-              </div>
+            <AlertDialogDescription>
+              Are you sure you want to record your{' '}
+              <span className="font-semibold text-bisu-purple-deep">
+                {pendingAction === 'time-in' ? 'TIME IN' : 'TIME OUT'}
+              </span>{' '}
+              at this time?
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
+          <div className="space-y-4 px-6">
+            <div className="text-center py-4">
+              <div className="text-2xl font-mono font-bold text-bisu-purple-deep mb-2">
+                {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+              </div>
+              <div className="text-sm text-gray-600">
+                {getCurrentTime().split(', ')[0]}, {getCurrentTime().split(', ')[1]}
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              {pendingAction === 'time-in' && (
+                <span className="text-xs text-amber-600 block">
+                  ⚠️ Note: Late arrivals after 8:00 AM will be marked as late.
+                </span>
+              )}
+              
+              {pendingAction === 'time-out' && (
+                <span className="text-xs text-blue-600 block">
+                  ✓ Your work hours will be calculated automatically.
+                </span>
+              )}
+            </div>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isTimeActionLoading}>
               Cancel
@@ -543,6 +581,36 @@ export default function EmployeeDashboard() {
           )}
         </motion.div>
       </motion.div>
+
+      {/* Time Action Confirmation Dialog */}
+      <AlertDialog open={isTimeActionDialogOpen} onOpenChange={setIsTimeActionDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm {pendingAction === 'time-in' ? 'Time In' : 'Time Out'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to {pendingAction === 'time-in' ? 'time in' : 'time out'} at {currentTimePHT}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingAction(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmTimeAction} disabled={isTimeActionLoading}>
+              {isTimeActionLoading ? 'Processing...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Earnings Modal */}
+      {timeoutEarningsData && (
+        <EarningsModal
+          isOpen={isEarningsModalOpen}
+          onClose={() => {
+            setIsEarningsModalOpen(false)
+            setTimeoutEarningsData(null)
+          }}
+          timeoutData={timeoutEarningsData}
+        />
+      )}
     </div>
   )
 }

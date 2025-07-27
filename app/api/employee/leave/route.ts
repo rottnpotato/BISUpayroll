@@ -5,7 +5,7 @@ import { LeaveRequest, LeaveStatus, LeaveType } from '@prisma/client'
 
 // Define the LeaveRequest with User type for better type safety
 type LeaveRequestWithApprover = LeaveRequest & {
-  approvedBy?: {
+  approvedBy: {
     firstName: string;
     lastName: string;
   } | null;

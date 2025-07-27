@@ -83,23 +83,102 @@ export async function GET(request: NextRequest) {
       hoursWorkedToday = parseFloat(todayAttendance.hoursWorked.toString())
     }
 
-    // Calculate prospected salary based on worked days
-    // this should be calculated based on the holidays and other factors for now, lets just use 22 days
-    const workDaysInMonth = 22 // Assuming 22 working days per month
+    // Get system configurations for calculations
+    const systemConfigs = await prisma.systemSettings.findMany({
+      where: {
+        key: {
+          in: [
+            'working_hours_dailyHours',
+            'rates_overtimeRate1',
+            'working_hours_lateDeductionAmount',
+            'working_hours_lateDeductionBasis'
+          ]
+        }
+      }
+    })
+
+    const configs = systemConfigs.reduce((acc, config) => {
+      acc[config.key] = config.value
+      return acc
+    }, {} as Record<string, string>)
+
+    // Get applicable payroll rules for deductions calculation
+    const payrollRules = await prisma.payrollRule.findMany({
+      where: {
+        OR: [
+          { applyToAll: true },
+          {
+            assignedUsers: {
+              some: {
+                userId: user.id
+              }
+            }
+          }
+        ],
+        isActive: true,
+        type: 'deduction'
+      }
+    })
+
+    // Calculate prospected salary based on actual payroll logic
+    const workDaysInMonth = 22 // Standard working days per month
     const daysWorked = monthlyAttendance.filter(record => 
       !record.isAbsent && (record.timeIn || record.timeOut)
     ).length
+
+    const totalHoursWorked = monthlyAttendance.reduce((sum, record) => {
+      return sum + (Number(record.hoursWorked) || 0)
+    }, 0)
+
+    const expectedDailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
+    const expectedTotalHours = daysWorked * expectedDailyHours
+    const overtimeHours = Math.max(0, totalHoursWorked - expectedTotalHours)
+    const regularHours = Math.min(totalHoursWorked, expectedTotalHours)
+
+    const monthlySalary = Number(employeeData.salary)
+    const dailyRate = monthlySalary / 22
+    const hourlyRate = dailyRate / expectedDailyHours
     
-    const dailyRate = employeeData.salary
-    const prospectedSalary = dailyRate.mul(new Decimal(daysWorked))
+    // Calculate overtime pay
+    const overtimeRate = parseFloat(configs['rates_overtimeRate1'] || '1.25')
+    const overtimePay = overtimeHours * hourlyRate * overtimeRate
+    
+    // Calculate base pay
+    const basePay = regularHours * hourlyRate
+
+    // Calculate late deductions
+    const lateDeductionAmount = parseFloat(configs['working_hours_lateDeductionAmount'] || '0')
+    const lateDeductions = latesThisMonth * lateDeductionAmount
+
+    // Calculate rule-based deductions
+    let totalRuleDeductions = 0
+    payrollRules.forEach(rule => {
+      const amount = Number(rule.amount)
+      if (rule.isPercentage) {
+        totalRuleDeductions += (basePay + overtimePay) * amount / 100
+      } else {
+        totalRuleDeductions += amount
+      }
+    })
+
+    const grossPay = basePay + overtimePay
+    const totalDeductions = totalRuleDeductions + lateDeductions
+    const prospectedSalary = new Decimal(Math.max(0, grossPay - totalDeductions))
 
     // Format response data
     const dashboardData = {
-      currentSalaryRate: `₱${dailyRate.toFixed(2)}`,
+      currentSalaryRate: `₱${monthlySalary.toFixed(2)}`,
+      dailyRate: `₱${dailyRate.toFixed(2)}`,
+      hourlyRate: `₱${hourlyRate.toFixed(2)}`,
       prospectedSalary: `₱${prospectedSalary.toFixed(2)}`,
       latesThisMonth,
       absencesThisMonth,
       hoursWorkedToday,
+      totalHoursThisMonth: totalHoursWorked,
+      expectedHoursThisMonth: expectedTotalHours,
+      overtimeHoursThisMonth: overtimeHours,
+      grossPayThisMonth: `₱${grossPay.toFixed(2)}`,
+      deductionsThisMonth: `₱${totalDeductions.toFixed(2)}`,
       isTimedIn: todayAttendance?.timeIn != null && todayAttendance?.timeOut == null,
       lastTimeAction: todayAttendance 
         ? todayAttendance.timeOut 
