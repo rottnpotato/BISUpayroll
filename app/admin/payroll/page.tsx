@@ -166,7 +166,7 @@ export default function PayrollPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Payroll Management</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Payroll Management Configuration</h1>
             <p className="text-muted-foreground">
               Configure payroll rules, schedules, and processing parameters
             </p>
@@ -195,7 +195,7 @@ export default function PayrollPage() {
       >
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">
-            Payroll Management System
+            Payroll Management Configuration
           </h1>
           <p className="text-muted-foreground">
             Configure payroll rules, schedules, and processing parameters for BISU

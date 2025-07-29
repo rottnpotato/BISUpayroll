@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/database"
 
 export async function POST(request: NextRequest) {
   try {
@@ -261,7 +259,10 @@ export async function POST(request: NextRequest) {
             deductions: totalDeductions,
             bonuses: bonuses + holidayPay,
             grossPay: grossPay,
-            netPay: netPay
+            netPay: netPay,
+            isGenerated: true,
+            generatedAt: new Date(),
+            isPaid: false
           },
           include: {
             user: {

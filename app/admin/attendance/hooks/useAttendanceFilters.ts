@@ -5,7 +5,7 @@ export default function useAttendanceFilters() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("All Departments")
   const [selectedStatus, setSelectedStatus] = useState("all")
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [currentPage, setCurrentPage] = useState(1)
 
   const filters: AttendanceFilters = {

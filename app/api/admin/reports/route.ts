@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/database"
 
 async function getRecentReports() {
   try {
@@ -71,6 +69,15 @@ export async function GET(request: NextRequest) {
       
       case "department-analytics":
         return await generateDepartmentAnalyticsReport(dateFilter)
+
+      case "department-payroll":
+        return await generateDepartmentPayrollReport(dateFilter, department || undefined)
+      
+      case "custom-period-payroll":
+        return await generateCustomPeriodPayrollReport(dateFilter, department || undefined)
+      
+      case "tax-withholding-summary":
+        return await generateTaxWithholdingSummaryReport(dateFilter, department || undefined)
       
       default:
         return NextResponse.json(
@@ -81,7 +88,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error generating report:", error)
     return NextResponse.json(
-      { error: "Failed to generate report" },
+      { 
+        error: "Failed to generate report", 
+        details: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }
@@ -288,4 +299,287 @@ async function generateDepartmentAnalyticsReport(dateFilter: any) {
   )
 
   return NextResponse.json({ analytics })
+} 
+
+async function generateDepartmentPayrollReport(dateFilter: any, department?: string) {
+  try {
+    if (!department || department === "all") {
+      return NextResponse.json(
+        { error: "Department parameter is required for department payroll report" },
+        { status: 400 }
+      )
+    }
+
+    const where: any = {
+      user: { department, role: "EMPLOYEE", status: "ACTIVE" }
+    }
+    
+    if (dateFilter) {
+      where.payPeriodStart = dateFilter
+    }
+
+    const payrollRecords = await prisma.payrollRecord.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            employeeId: true,
+            department: true,
+            position: true,
+            salary: true
+          }
+        }
+      },
+      orderBy: [
+        { user: { lastName: 'asc' } },
+        { user: { firstName: 'asc' } }
+      ]
+    })
+
+    if (payrollRecords.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: `No payroll records found for department: ${department}`,
+        records: [],
+        summary: {
+          totalEmployees: 0,
+          totalGrossPay: 0,
+          totalNetPay: 0,
+          totalDeductions: 0,
+          department
+        }
+      })
+    }
+
+    const summary = {
+      totalEmployees: payrollRecords.length,
+      totalGrossPay: payrollRecords.reduce((sum, record) => sum + (parseFloat(record.grossPay?.toString() || '0')), 0),
+      totalNetPay: payrollRecords.reduce((sum, record) => sum + (parseFloat(record.netPay?.toString() || '0')), 0),
+      totalDeductions: payrollRecords.reduce((sum, record) => sum + (parseFloat(record.deductions?.toString() || '0')), 0),
+      department
+    }
+
+    return NextResponse.json({
+      success: true,
+      records: payrollRecords,
+      summary,
+      reportType: 'department-payroll',
+      generatedAt: new Date().toISOString()
+    })
+
+  } catch (error) {
+    console.error('Error generating department payroll report:', error)
+    return NextResponse.json(
+      { 
+        error: "Failed to generate department payroll report", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      },
+      { status: 500 }
+    )
+  }
+}
+
+async function generateCustomPeriodPayrollReport(dateFilter: any, department?: string) {
+  try {
+    if (!dateFilter?.gte || !dateFilter?.lte) {
+      return NextResponse.json(
+        { error: "Start date and end date are required for custom period payroll report" },
+        { status: 400 }
+      )
+    }
+
+    const where: any = {
+      user: { role: "EMPLOYEE", status: "ACTIVE" },
+      payPeriodStart: dateFilter
+    }
+    
+    if (department && department !== "all") {
+      where.user.department = department
+    }
+
+    const payrollRecords = await prisma.payrollRecord.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            employeeId: true,
+            department: true,
+            position: true,
+            salary: true
+          }
+        }
+      },
+      orderBy: [
+        { user: { department: 'asc' } },
+        { user: { lastName: 'asc' } },
+        { user: { firstName: 'asc' } }
+      ]
+    })
+
+    if (payrollRecords.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: `No payroll records found for the specified period`,
+        records: [],
+        summary: {
+          totalEmployees: 0,
+          totalGrossPay: 0,
+          totalNetPay: 0,
+          totalDeductions: 0,
+          periodStart: dateFilter.gte,
+          periodEnd: dateFilter.lte
+        }
+      })
+    }
+
+    // Group by department for better analysis
+    const departmentGroups = payrollRecords.reduce((groups, record) => {
+      const dept = record.user.department || 'Unknown'
+      if (!groups[dept]) {
+        groups[dept] = []
+      }
+      groups[dept].push(record)
+      return groups
+    }, {} as Record<string, any[]>)
+
+    const summary = {
+      totalEmployees: payrollRecords.length,
+      totalGrossPay: payrollRecords.reduce((sum, record) => sum + (parseFloat(record.grossPay?.toString() || '0')), 0),
+      totalNetPay: payrollRecords.reduce((sum, record) => sum + (parseFloat(record.netPay?.toString() || '0')), 0),
+      totalDeductions: payrollRecords.reduce((sum, record) => sum + (parseFloat(record.deductions?.toString() || '0')), 0),
+      periodStart: dateFilter.gte,
+      periodEnd: dateFilter.lte,
+      departmentBreakdown: Object.keys(departmentGroups).map(dept => ({
+        department: dept,
+        employeeCount: departmentGroups[dept].length,
+        totalGrossPay: departmentGroups[dept].reduce((sum, record) => sum + (parseFloat(record.grossPay?.toString() || '0')), 0),
+        totalNetPay: departmentGroups[dept].reduce((sum, record) => sum + (parseFloat(record.netPay?.toString() || '0')), 0)
+      }))
+    }
+
+    return NextResponse.json({
+      success: true,
+      records: payrollRecords,
+      summary,
+      reportType: 'custom-period-payroll',
+      generatedAt: new Date().toISOString()
+    })
+
+  } catch (error) {
+    console.error('Error generating custom period payroll report:', error)
+    return NextResponse.json(
+      { 
+        error: "Failed to generate custom period payroll report", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      },
+      { status: 500 }
+    )
+  }
+}
+
+async function generateTaxWithholdingSummaryReport(dateFilter: any, department?: string) {
+  try {
+    const where: any = {
+      user: { role: "EMPLOYEE", status: "ACTIVE" }
+    }
+    
+    if (dateFilter) {
+      where.payPeriodStart = dateFilter
+    }
+    
+    if (department && department !== "all") {
+      where.user.department = department
+    }
+
+    const payrollRecords = await prisma.payrollRecord.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            employeeId: true,
+            department: true,
+            position: true,
+            salary: true
+          }
+        }
+      },
+      orderBy: [
+        { user: { lastName: 'asc' } },
+        { user: { firstName: 'asc' } }
+      ]
+    })
+
+    if (payrollRecords.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: `No payroll records found for tax withholding summary`,
+        records: [],
+        summary: {
+          totalEmployees: 0,
+          totalGrossPay: 0,
+          totalWithholdingTax: 0,
+          totalPagibigContribution: 0,
+          totalSSSContribution: 0,
+          totalPhilHealthContribution: 0
+        }
+      })
+    }
+
+    // Calculate tax withholdings and contributions for each record
+    const taxRecords = payrollRecords.map(record => {
+      const grossPay = parseFloat(record.grossPay?.toString() || '0')
+      const withholdingTax = grossPay * 0.12 // 12% withholding tax
+      const pagibigContribution = grossPay * 0.02 // 2% Pag-IBIG contribution
+      const sssContribution = Math.min(grossPay * 0.045, 1350) // 4.5% SSS, max 1350
+      const philHealthContribution = Math.min(grossPay * 0.0275, 1800) // 2.75% PhilHealth, max 1800
+
+      return {
+        ...record,
+        taxBreakdown: {
+          withholdingTax,
+          pagibigContribution,
+          sssContribution,
+          philHealthContribution,
+          totalContributions: withholdingTax + pagibigContribution + sssContribution + philHealthContribution
+        }
+      }
+    })
+
+    const summary = {
+      totalEmployees: taxRecords.length,
+      totalGrossPay: taxRecords.reduce((sum, record) => sum + (parseFloat(record.grossPay?.toString() || '0')), 0),
+      totalWithholdingTax: taxRecords.reduce((sum, record) => sum + record.taxBreakdown.withholdingTax, 0),
+      totalPagibigContribution: taxRecords.reduce((sum, record) => sum + record.taxBreakdown.pagibigContribution, 0),
+      totalSSSContribution: taxRecords.reduce((sum, record) => sum + record.taxBreakdown.sssContribution, 0),
+      totalPhilHealthContribution: taxRecords.reduce((sum, record) => sum + record.taxBreakdown.philHealthContribution, 0),
+      totalAllContributions: taxRecords.reduce((sum, record) => sum + record.taxBreakdown.totalContributions, 0)
+    }
+
+    return NextResponse.json({
+      success: true,
+      records: taxRecords,
+      summary,
+      reportType: 'tax-withholding-summary',
+      generatedAt: new Date().toISOString()
+    })
+
+  } catch (error) {
+    console.error('Error generating tax withholding summary report:', error)
+    return NextResponse.json(
+      { 
+        error: "Failed to generate tax withholding summary report", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      },
+      { status: 500 }
+    )
+  }
 } 

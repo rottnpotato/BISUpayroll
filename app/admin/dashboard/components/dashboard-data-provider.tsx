@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { DashboardData } from "./types"
+import EmptyState from "./EmptyState"
+import { Database, RefreshCw, AlertTriangle } from "lucide-react"
 
 interface DashboardDataProviderProps {
   children: (props: {
@@ -42,10 +44,23 @@ export default function DashboardDataProvider({ children }: DashboardDataProvide
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="text-center py-12">
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={fetchDashboardData}>Retry</Button>
+      <div className="min-h-screen bg-gradient-to-b from-white to-purple-50 p-4">
+        <div className="max-w-4xl mx-auto">
+          <EmptyState
+            icon={AlertTriangle}
+            title="Unable to Load Dashboard Data"
+            description="We're having trouble connecting to the BISU Payroll system. Please check your connection and try again."
+            variant="large"
+          />
+          <div className="text-center mt-6">
+            <Button 
+              onClick={fetchDashboardData}
+              className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     )

@@ -164,7 +164,7 @@ export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange) => 
             <th colspan="7">Compensations</th>
             <th colspan="4">Deductions/Contributions</th>
             <th rowspan="2">Net Amount Due</th>
-            <th rowspan="2">Signature</th>
+            
           </tr>
           <tr>
             <th>Rate per Hour</th>

@@ -119,9 +119,11 @@ export const PayrollGenerationCard = ({
                 </Popover>
               </div>
               
-              {template.type === 'department' && (
+              {(template.type === 'department' || template.type === 'tax' || template.type === 'custom') && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2">Department</p>
+                  <p className="text-xs text-gray-500 mb-2">
+                    {template.type === 'department' ? 'Department (Required)' : 'Department (Optional)'}
+                  </p>
                   <Select value={selectedDepartment} onValueChange={onDepartmentChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />

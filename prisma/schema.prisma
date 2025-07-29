@@ -72,6 +72,8 @@ model PayrollRecord {
   netPay         Decimal   @db.Decimal(10, 2)
   isPaid         Boolean   @default(false)
   paidAt         DateTime?
+  isGenerated    Boolean   @default(false)
+  generatedAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -126,14 +128,19 @@ model PayrollRuleAssignment {
 }
 
 model PayrollSchedule {
-  id            String   @id @default(cuid())
-  name          String   @unique
-  days          Int[]
-  isActive      Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  processHour   Int      @default(9)
-  processMinute Int      @default(0)
+  id                String   @id @default(cuid())
+  name              String   @unique
+  days              Int[]
+  isActive          Boolean  @default(false)
+  cutoffDays        Int[]    @default([])
+  payrollReleaseDay Int?
+  // New field for multiple processing dates (for bi-monthly schedules)
+  processingDays    Int[]    @default([])
+  cutoffType        String?
+  paymentMethod     String?
+  description       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("payroll_schedules")
 }

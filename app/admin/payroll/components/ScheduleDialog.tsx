@@ -19,13 +19,13 @@ interface ScheduleDialogProps {
 
 const defaultFormData: ScheduleFormData = {
   name: "",
-  days: [],
+  days: [1], // Default to 1st of month
   cutoffDays: [15, 30],
   payrollReleaseDay: 1,
+  // Default processing days for bi-monthly: 20th and 5th
+  processingDays: [20, 5],
   cutoffType: "bi-monthly",
   isActive: false,
-  processHour: 9,
-  processMinute: 0,
   paymentMethod: "bank_transfer",
   description: ""
 }
@@ -55,6 +55,15 @@ export function ScheduleDialog({
     onClose()
   }
 
+  const handleDayToggle = (day: number, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      days: checked 
+        ? [...prev.days, day].sort((a, b) => a - b)
+        : prev.days.filter(d => d !== day)
+    }))
+  }
+
   const handleCutoffDayToggle = (day: number, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -64,7 +73,7 @@ export function ScheduleDialog({
     }))
   }
 
-  const cutoffDayOptions = [1, 5, 10, 15, 20, 25, 30, 31]
+  const dayOptions = [1, 5, 10, 15, 20, 25, 30, 31]
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -108,7 +117,12 @@ export function ScheduleDialog({
                 <Label htmlFor="cutoffType">Cutoff Type</Label>
                 <Select 
                   value={formData.cutoffType} 
-                  onValueChange={(value: any) => setFormData(prev => ({ ...prev, cutoffType: value }))}
+                  onValueChange={(value: any) => setFormData(prev => ({ 
+                    ...prev, 
+                    cutoffType: value,
+                    // Reset processing days based on cutoff type
+                    processingDays: value === 'bi-monthly' ? [20, 5] : [1]
+                  }))}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -121,30 +135,71 @@ export function ScheduleDialog({
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="payrollReleaseDay">Payroll Release Day</Label>
-                <Input
-                  id="payrollReleaseDay"
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={formData.payrollReleaseDay}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    payrollReleaseDay: parseInt(e.target.value) || 1 
-                  }))}
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Day of the month payroll is released
-                </p>
-              </div>
+              {formData.cutoffType === 'bi-monthly' ? (
+                <div className="space-y-2">
+                  <Label>Bi-Monthly Processing Days</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="firstProcessingDay" className="text-xs">First Period (1st-15th)</Label>
+                      <Input
+                        id="firstProcessingDay"
+                        type="number"
+                        min="16"
+                        max="31"
+                        value={formData.processingDays[0] || 20}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          processingDays: [parseInt(e.target.value) || 20, prev.processingDays[1] || 5]
+                        }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="secondProcessingDay" className="text-xs">Second Period (16th-30th)</Label>
+                      <Input
+                        id="secondProcessingDay"
+                        type="number"
+                        min="1"
+                        max="15"
+                        value={formData.processingDays[1] || 5}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          processingDays: [prev.processingDays[0] || 20, parseInt(e.target.value) || 5]
+                        }))}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    First period processed around 20th, second period around 5th of next month
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="payrollReleaseDay">Payroll Generation Day</Label>
+                  <Input
+                    id="payrollReleaseDay"
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={formData.payrollReleaseDay}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      payrollReleaseDay: parseInt(e.target.value) || 1 
+                    }))}
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Day of the month when payroll is generated
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
               <Label>Cutoff Days</Label>
               <div className="grid grid-cols-4 gap-2 mt-2">
-                {cutoffDayOptions.map((day) => (
+                {dayOptions.map((day) => (
                   <div key={day} className="flex items-center space-x-2">
                     <Checkbox
                       id={`cutoff-${day}`}
@@ -163,59 +218,28 @@ export function ScheduleDialog({
             </div>
           </div>
 
-          {/* Processing Configuration */}
+          {/* Payment Method */}
           <div className="space-y-4">
-            <h4 className="font-medium text-bisu-purple-deep">Processing Configuration</h4>
+            <h4 className="font-medium text-bisu-purple-deep">Payment Configuration</h4>
             
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="processHour">Processing Hour</Label>
-                <Input
-                  id="processHour"
-                  type="number"
-                  min="0"
-                  max="23"
-                  value={formData.processHour}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    processHour: parseInt(e.target.value) || 9 
-                  }))}
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="processMinute">Processing Minute</Label>
-                <Input
-                  id="processMinute"
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={formData.processMinute}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    processMinute: parseInt(e.target.value) || 0 
-                  }))}
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="paymentMethod">Payment Method</Label>
-                <Select 
-                  value={formData.paymentMethod} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="check">Check</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Select 
+                value={formData.paymentMethod} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="check">Check</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Payment method to be used after employee signs payroll
+              </p>
             </div>
           </div>
 
@@ -232,7 +256,7 @@ export function ScheduleDialog({
               </Label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Note: Activating this schedule will deactivate any other active schedules
+              Note: Activating this schedule will deactivate any other active schedules. Payroll will be generated on scheduled dates but employees must sign before payment.
             </p>
           </div>
         </div>

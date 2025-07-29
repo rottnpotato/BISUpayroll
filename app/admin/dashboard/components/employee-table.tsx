@@ -5,8 +5,9 @@ import { formatCurrency } from '@/lib/utils'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { MoreHorizontal, ArrowUpDown, Eye, FileEdit, Trash2, TrendingUp } from 'lucide-react'
+import { MoreHorizontal, ArrowUpDown, Eye, FileEdit, Trash2, TrendingUp, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import EmptyState from './EmptyState'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,6 +58,8 @@ const EmployeeTable: FC<EmployeeTableProps> = ({ data, isLoading }) => {
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   // Transform the payroll data to match our employee interface
   const employees: Employee[] = data?.map((payroll: any) => ({
@@ -73,6 +76,39 @@ const EmployeeTable: FC<EmployeeTableProps> = ({ data, isLoading }) => {
     department: payroll.user?.department || 'Unassigned',
     employeeId: payroll.user?.employeeId
   })) || []
+
+  // Calculate pagination
+  const totalEmployees = employees.length
+  const totalPages = Math.ceil(totalEmployees / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = Math.min(startIndex + itemsPerPage, totalEmployees)
+  const currentEmployees = employees.slice(startIndex, endIndex)
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+        <div className="animate-pulse">
+          <div className="h-12 bg-gray-100"></div>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-16 border-t border-gray-100 bg-gray-50"></div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!employees.length) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+        <EmptyState
+          icon={Users}
+          title="No Employee Payroll Data"
+          description="No employees have been processed for payroll yet. Employee payroll records will appear here once they are generated."
+          variant="default"
+        />
+      </div>
+    )
+  }
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -156,7 +192,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({ data, isLoading }) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.map((employee) => {
+            {currentEmployees.map((employee) => {
               const isHovered = hoveredRow === employee.id
               
               return (
@@ -183,12 +219,6 @@ const EmployeeTable: FC<EmployeeTableProps> = ({ data, isLoading }) => {
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-gray-900">{formatCurrency(employee.grossPay || 0)}</div>
-                    {isHovered && 
-                      <div className="text-xs text-green-600 flex items-center mt-1">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        +5.2% from last month
-                      </div>
-                    }
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-gray-900">{formatCurrency(employee.netPay || 0)}</div>
@@ -292,14 +322,39 @@ const EmployeeTable: FC<EmployeeTableProps> = ({ data, isLoading }) => {
       </div>
       <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 bg-gray-50">
         <div className="text-sm text-gray-500">
-          Showing <span className="font-medium">5</span> of <span className="font-medium">25</span> employees
+          Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{endIndex}</span> of <span className="font-medium">{totalEmployees}</span> employees
         </div>
         <div className="flex items-center space-x-2">
-          <button className="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50">Previous</button>
-          <button className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700">1</button>
-          <button className="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50">2</button>
-          <button className="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50">3</button>
-          <button className="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50">Next</button>
+          <button 
+            className="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-50"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          >
+            Previous
+          </button>
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            const pageNum = i + 1
+            return (
+              <button
+                key={pageNum}
+                className={`px-2 py-1 text-xs rounded ${
+                  currentPage === pageNum
+                    ? 'bg-purple-600 text-white'
+                    : 'border border-gray-300 bg-white hover:bg-gray-50'
+                }`}
+                onClick={() => setCurrentPage(pageNum)}
+              >
+                {pageNum}
+              </button>
+            )
+          })}
+          <button
+            className="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-50"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>

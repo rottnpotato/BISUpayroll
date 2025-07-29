@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import { prisma } from "@/lib/database"
 import bcrypt from "bcryptjs"
 import { AuditLogger } from "@/lib/audit-logger"
-
-const prisma = new PrismaClient()
 
 export async function GET(
   request: NextRequest,

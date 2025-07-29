@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import { prisma } from "@/lib/database"
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns"
-
-const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   try {
@@ -69,13 +67,16 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      if (record.timeIn && record.timeOut) {
-        acc[dateKey].present++
+      if (record.timeIn) {
+        if (record.isLate) {
+          acc[dateKey].late++
+        } else {
+          acc[dateKey].present++
+        }
         if (record.hoursWorked) {
           acc[dateKey].totalHours += parseFloat(record.hoursWorked.toString())
         }
       }
-      if (record.isLate) acc[dateKey].late++
       if (record.isAbsent) acc[dateKey].absent++
 
       return acc
@@ -98,8 +99,13 @@ export async function GET(request: NextRequest) {
       }
 
       acc[dept].totalRecords++
-      if (record.timeIn && record.timeOut) acc[dept].presentCount++
-      if (record.isLate) acc[dept].lateCount++
+      if (record.timeIn) {
+        if (record.isLate) {
+          acc[dept].lateCount++
+        } else {
+          acc[dept].presentCount++
+        }
+      }
       if (record.isAbsent) acc[dept].absentCount++
       if (record.hoursWorked) {
         acc[dept].totalHours += parseFloat(record.hoursWorked.toString())
@@ -132,8 +138,13 @@ export async function GET(request: NextRequest) {
       }
 
       acc[dayOfWeek].totalRecords++
-      if (record.timeIn && record.timeOut) acc[dayOfWeek].presentCount++
-      if (record.isLate) acc[dayOfWeek].lateCount++
+      if (record.timeIn) {
+        if (record.isLate) {
+          acc[dayOfWeek].lateCount++
+        } else {
+          acc[dayOfWeek].presentCount++
+        }
+      }
       if (record.isAbsent) acc[dayOfWeek].absentCount++
 
       return acc
@@ -186,8 +197,13 @@ export async function GET(request: NextRequest) {
       }
 
       acc[empId].totalDays++
-      if (record.timeIn && record.timeOut) acc[empId].presentDays++
-      if (record.isLate) acc[empId].lateDays++
+      if (record.timeIn) {
+        if (record.isLate) {
+          acc[empId].lateDays++
+        } else {
+          acc[empId].presentDays++
+        }
+      }
 
       return acc
     }, {} as Record<string, any>)

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,9 +30,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, days, isActive, processHour, processMinute } = body
+    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, paymentMethod, description } = body
 
-    if (!name || !days || !Array.isArray(days)) {
+    if (!name || !Array.isArray(days)) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -52,14 +50,35 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    const scheduleData: any = {
+      name,
+      days: daysAsIntegers,
+      isActive: isActive || false
+    }
+
+    // Add optional fields if provided
+    if (cutoffDays && Array.isArray(cutoffDays)) {
+      scheduleData.cutoffDays = cutoffDays.map((day: any) => parseInt(day))
+    }
+    if (payrollReleaseDay) {
+      scheduleData.payrollReleaseDay = parseInt(payrollReleaseDay)
+    }
+    // Add processingDays for bi-monthly schedules
+    if (processingDays && Array.isArray(processingDays)) {
+      scheduleData.processingDays = processingDays.map((day: any) => parseInt(day))
+    }
+    if (cutoffType) {
+      scheduleData.cutoffType = cutoffType
+    }
+    if (paymentMethod) {
+      scheduleData.paymentMethod = paymentMethod
+    }
+    if (description) {
+      scheduleData.description = description
+    }
+
     const schedule = await prisma.payrollSchedule.create({
-      data: {
-        name,
-        days: daysAsIntegers,
-        isActive: isActive || false,
-        processHour: processHour !== undefined ? parseInt(processHour) : 9,
-        processMinute: processMinute !== undefined ? parseInt(processMinute) : 0
-      }
+      data: scheduleData
     })
 
     return NextResponse.json({ schedule }, { status: 201 })

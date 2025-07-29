@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/database"
 
 interface RouteParams {
   params: {
@@ -38,7 +36,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id
     const body = await request.json()
-    const { name, days, isActive, processHour, processMinute } = body
+    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, paymentMethod, description } = body
 
     if (!name || !days || !Array.isArray(days)) {
       return NextResponse.json(
@@ -61,13 +59,32 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       })
     }
 
-    const updateData = {
+    const updateData: any = {
       name,
       days: daysAsIntegers,
-      isActive: isActive || false,
-      processHour: processHour !== undefined ? parseInt(String(processHour)) : 9,
-      processMinute: processMinute !== undefined ? parseInt(String(processMinute)) : 0
-    } as any; // Type assertion to bypass type checking
+      isActive: isActive || false
+    }
+
+    // Add optional fields if provided
+    if (cutoffDays && Array.isArray(cutoffDays)) {
+      updateData.cutoffDays = cutoffDays.map((day: any) => parseInt(day))
+    }
+    if (payrollReleaseDay) {
+      updateData.payrollReleaseDay = parseInt(payrollReleaseDay)
+    }
+    // Add processingDays for bi-monthly schedules
+    if (processingDays && Array.isArray(processingDays)) {
+      updateData.processingDays = processingDays.map((day: any) => parseInt(day))
+    }
+    if (cutoffType) {
+      updateData.cutoffType = cutoffType
+    }
+    if (paymentMethod) {
+      updateData.paymentMethod = paymentMethod
+    }
+    if (description) {
+      updateData.description = description
+    }
 
     const schedule = await prisma.payrollSchedule.update({
       where: { id },
@@ -79,6 +96,38 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     console.error("Error updating payroll schedule:", error)
     return NextResponse.json(
       { error: "Failed to update payroll schedule" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const id = params.id
+    const body = await request.json()
+    const { isActive } = body
+
+    // Make sure only one schedule is active at a time
+    if (isActive) {
+      await prisma.payrollSchedule.updateMany({
+        where: { 
+          isActive: true,
+          id: { not: id }
+        },
+        data: { isActive: false }
+      })
+    }
+
+    const schedule = await prisma.payrollSchedule.update({
+      where: { id },
+      data: { isActive }
+    })
+
+    return NextResponse.json({ schedule })
+  } catch (error) {
+    console.error("Error updating payroll schedule status:", error)
+    return NextResponse.json(
+      { error: "Failed to update payroll schedule status" },
       { status: 500 }
     )
   }

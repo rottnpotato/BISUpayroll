@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Star, AlertTriangle } from "lucide-react"
+import { motion } from "framer-motion"
+import { TrendingUp, Clock, AlertTriangle, Calendar, FileText } from "lucide-react"
 import { DashboardData } from "./types"
+import EmptyState from "./EmptyState"
 
 interface QuickStatsProps {
   dashboardData: DashboardData | null
@@ -10,17 +12,19 @@ export default function QuickStats({ dashboardData }: QuickStatsProps) {
   if (!dashboardData) {
     return (
       <Card>
-        <CardHeader className="bg-gradient-to-r from-bisu-yellow-extralight to-bisu-purple-extralight">
+        <CardHeader className="bg-gradient-to-r from-bisu-purple-extralight to-bisu-yellow-extralight">
           <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-            <Star className="h-5 w-5" />
+            <TrendingUp className="h-5 w-5" />
             Quick Stats
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="text-center py-8">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-3 text-gray-400" />
-            <p className="text-gray-500 text-sm">No statistics available</p>
-          </div>
+        <CardContent className="p-0">
+          <EmptyState
+            icon={TrendingUp}
+            title="Statistics Loading"
+            description="BISU Payroll statistics will appear here once data is available."
+            variant="default"
+          />
         </CardContent>
       </Card>
     )
@@ -28,44 +32,69 @@ export default function QuickStats({ dashboardData }: QuickStatsProps) {
 
   const stats = [
     {
-      label: "On-time Rate",
+      label: "On-Time Rate",
       value: `${dashboardData.quickStats.onTimeRate}%`,
-      color: "text-green-600"
+      icon: <Clock className="h-4 w-4" />,
+      color: "green"
+    },
+    {
+      label: "Late Today",
+      value: dashboardData.quickStats.lateEmployees,
+      icon: <AlertTriangle className="h-4 w-4" />,
+      color: "orange"
     },
     {
       label: "Absent Today",
       value: dashboardData.quickStats.absentToday,
-      color: "text-red-600"
+      icon: <AlertTriangle className="h-4 w-4" />,
+      color: "red"
     },
     {
       label: "Upcoming Holidays",
       value: dashboardData.quickStats.upcomingHolidays,
-      color: "text-blue-600"
+      icon: <Calendar className="h-4 w-4" />,
+      color: "blue"
     },
     {
-      label: "Attendance Rate",
-      value: `${dashboardData.overview.attendanceRate}%`,
-      color: "text-green-600"
+      label: "Pending Reports",
+      value: dashboardData.quickStats.pendingReports,
+      icon: <FileText className="h-4 w-4" />,
+      color: "purple"
     }
   ]
 
   return (
     <Card>
-      <CardHeader className="bg-gradient-to-r from-bisu-yellow-extralight to-bisu-purple-extralight">
+      <CardHeader className="bg-gradient-to-r from-bisu-purple-extralight to-bisu-yellow-extralight">
         <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-          <Star className="h-5 w-5" />
+          <TrendingUp className="h-5 w-5" />
           Quick Stats
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6 space-y-4">
-        {stats.map((stat, index) => (
-          <div key={index} className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">{stat.label}</span>
-            <span className={`font-semibold ${stat.color}`}>
-              {stat.value}
-            </span>
-          </div>
-        ))}
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          {stats.map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg bg-${stat.color}-100`}>
+                  {stat.icon}
+                </div>
+                <span className="text-sm font-medium text-bisu-purple-deep">
+                  {stat.label}
+                </span>
+              </div>
+              <span className="text-lg font-bold text-gray-900">
+                {stat.value}
+              </span>
+            </motion.div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

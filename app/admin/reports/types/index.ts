@@ -36,6 +36,15 @@ export interface PayrollData {
     withholdingTax: number | string | null
     citySavingsLoan: number | string | null
     pagibigContribution: number | string | null
+    sssContribution?: number | string | null
+    philHealthContribution?: number | string | null
+  }
+  taxBreakdown?: {
+    withholdingTax: number
+    pagibigContribution: number
+    sssContribution: number
+    philHealthContribution: number
+    totalContributions: number
   }
 }
 
@@ -65,4 +74,31 @@ export interface FilterState {
   searchTerm: string
   selectedReportType: string
   dateRange: { from?: Date; to?: Date } | undefined
+}
+
+export interface ReportError {
+  error: string
+  details?: string
+  timestamp?: string
+}
+
+export interface ReportSummary {
+  totalEmployees: number
+  totalGrossPay: number
+  totalNetPay: number
+  totalDeductions: number
+  department?: string
+  periodStart?: Date
+  periodEnd?: Date
+  totalWithholdingTax?: number
+  totalPagibigContribution?: number
+  totalSSSContribution?: number
+  totalPhilHealthContribution?: number
+  totalAllContributions?: number
+  departmentBreakdown?: Array<{
+    department: string
+    employeeCount: number
+    totalGrossPay: number
+    totalNetPay: number
+  }>
 }

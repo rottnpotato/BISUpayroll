@@ -169,6 +169,7 @@ export default function PayrollGenerationPage() {
         onClose={() => setShowPreview(false)}
         payrollData={payrollData}
         templateDateRange={selectedTemplate ? templateDateRanges[selectedTemplate.id] : undefined}
+        selectedTemplate={selectedTemplate}
         onPrint={handlePrint}
       />
     </div>

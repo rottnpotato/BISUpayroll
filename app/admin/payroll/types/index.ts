@@ -41,11 +41,11 @@ export interface PayrollSchedule {
   name: string
   days: number[]
   isActive: boolean
-  processHour: number
-  processMinute: number
   cutoffDays?: number[]
   paymentMethod?: string
   payrollReleaseDay?: number
+  // New field for multiple processing dates (for bi-monthly schedules)
+  processingDays?: number[]
   cutoffType?: 'bi-monthly' | 'monthly' | 'weekly'
   description?: string
 }
@@ -132,10 +132,10 @@ export interface ScheduleFormData {
   days: number[]
   cutoffDays: number[]
   payrollReleaseDay: number
+  // New field for multiple processing dates (for bi-monthly schedules)
+  processingDays: number[]
   cutoffType: 'bi-monthly' | 'monthly' | 'weekly'
   isActive: boolean
-  processHour: number
-  processMinute: number
   paymentMethod: string
   description: string
 }

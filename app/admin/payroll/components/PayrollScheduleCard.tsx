@@ -175,19 +175,33 @@ export function PayrollScheduleCard({
                         <p className="text-gray-600 ml-4">{formatCutoffType(schedule.cutoffType)}</p>
                       </div>
                       
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-bisu-purple-medium" />
-                          <span className="font-medium text-gray-700">Processing Time:</span>
+                      {schedule.paymentMethod && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-bisu-purple-medium" />
+                            <span className="font-medium text-gray-700">Payment Method:</span>
+                          </div>
+                          <p className="text-gray-600 ml-4 capitalize">{schedule.paymentMethod.replace('_', ' ')}</p>
                         </div>
-                        <p className="text-gray-600 ml-4">{schedule.processHour}:{schedule.processMinute.toString().padStart(2, '0')}</p>
-                      </div>
+                      )}
                       
-                      {schedule.payrollReleaseDay && (
+                      {/* Show processing days for bi-monthly or single day for other types */}
+                      {schedule.cutoffType === 'bi-monthly' && schedule.processingDays && schedule.processingDays.length > 0 ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <CalendarDays className="h-3 w-3 text-bisu-purple-medium" />
-                            <span className="font-medium text-gray-700">Release Day:</span>
+                            <span className="font-medium text-gray-700">Processing Days:</span>
+                          </div>
+                          <div className="ml-4 space-y-1 text-gray-600">
+                            <p className="text-xs">1st-15th: {schedule.processingDays[0]}{schedule.processingDays[0] === 1 ? 'st' : schedule.processingDays[0] === 2 ? 'nd' : schedule.processingDays[0] === 3 ? 'rd' : 'th'}</p>
+                            <p className="text-xs">16th-30th: {schedule.processingDays[1]}{schedule.processingDays[1] === 1 ? 'st' : schedule.processingDays[1] === 2 ? 'nd' : schedule.processingDays[1] === 3 ? 'rd' : 'th'} (next month)</p>
+                          </div>
+                        </div>
+                      ) : schedule.payrollReleaseDay && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3 text-bisu-purple-medium" />
+                            <span className="font-medium text-gray-700">Generation Day:</span>
                           </div>
                           <p className="text-gray-600 ml-4">{schedule.payrollReleaseDay}{schedule.payrollReleaseDay === 1 ? 'st' : schedule.payrollReleaseDay === 2 ? 'nd' : schedule.payrollReleaseDay === 3 ? 'rd' : 'th'} of month</p>
                         </div>

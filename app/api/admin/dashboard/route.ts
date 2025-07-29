@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { prisma } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +24,10 @@ export async function GET(request: NextRequest) {
       lateEmployeesToday,
       absentToday,
       recentAttendance,
-      recentPayroll
+      recentPayroll,
+      totalPayrollRecords,
+      paidPayrolls,
+      monthlyPayrollTotal
     ] = await Promise.all([
       // Total employees
       prisma.user.count(),
@@ -152,6 +153,31 @@ export async function GET(request: NextRequest) {
               status: true
             }
           }
+        }
+      }),
+
+      // Count all payroll records for basic statistics
+      prisma.payrollRecord.count(),
+
+      // Count paid payrolls this month
+      prisma.payrollRecord.count({
+        where: {
+          isPaid: true,
+          paidAt: {
+            gte: startOfMonth
+          }
+        }
+      }),
+
+      // Monthly payroll total
+      prisma.payrollRecord.aggregate({
+        where: {
+          payPeriodStart: {
+            gte: startOfMonth
+          }
+        },
+        _sum: {
+          grossPay: true
         }
       })
     ])
@@ -338,34 +364,40 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({
+    // Ensure consistent data structure even when empty
+    const response = {
       overview: {
-        totalEmployees,
-        activeEmployees,
-        newEmployeesThisMonth,
-        todayAttendance,
-        thisWeekAttendance,
+        totalEmployees: totalEmployees || 0,
+        activeEmployees: activeEmployees || 0,
+        newEmployeesThisMonth: newEmployeesThisMonth || 0,
+        todayAttendance: todayAttendance || 0,
+        thisWeekAttendance: thisWeekAttendance || 0,
         thisMonthPayroll: {
           total: Number(thisMonthPayroll._sum.grossPay || 0),
           netTotal: Number(thisMonthPayroll._sum.netPay || 0),
-          count: thisMonthPayroll._count.id
+          count: thisMonthPayroll._count.id || 0
         },
-        unpaidPayroll,
-        attendanceRate
+        unpaidPayroll: unpaidPayroll || 0,
+        attendanceRate: attendanceRate || 0
       },
-      departmentStats,
-      attendanceTrends: attendanceTrends.reverse(),
-      payrollTrends: payrollTrends.reverse(),
+      totalEmployees: totalEmployees || 0,
+      monthlyPayrollTotal: Number(monthlyPayrollTotal._sum.grossPay || 0),
+      unpaidPayrolls: Math.max(0, (totalPayrollRecords || 0) - (paidPayrolls || 0)),
+      generatedPayrolls: totalPayrollRecords || 0,
+      paidPayrolls: paidPayrolls || 0,
+      departmentStats: departmentStats || [],
+      attendanceTrends: (attendanceTrends || []).reverse(),
+      payrollTrends: (payrollTrends || []).reverse(),
       quickStats: {
-        onTimeRate,
-        lateEmployees: lateEmployeesToday,
-        absentToday,
-        upcomingHolidays,
-        pendingReports
+        onTimeRate: onTimeRate || 0,
+        lateEmployees: lateEmployeesToday || 0,
+        absentToday: absentToday || 0,
+        upcomingHolidays: upcomingHolidays || 0,
+        pendingReports: pendingReports || 0
       },
       recentActivity: {
-        attendance: recentAttendance,
-        payroll: recentPayroll
+        attendance: recentAttendance || [],
+        payroll: recentPayroll || []
       },
       payrollDetails: {
         company: "BISU Balilihan Campus",
@@ -382,11 +414,47 @@ export async function GET(request: NextRequest) {
           employerContributions: Number(thisMonthPayroll._sum.grossPay || 0) * 0.05
         }
       }
-    })
+    }
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error("Error fetching dashboard data:", error)
     return NextResponse.json(
-      { error: "Failed to fetch dashboard data" },
+      { 
+        error: "Failed to fetch dashboard data",
+        // Provide empty data structure as fallback
+        overview: {
+          totalEmployees: 0,
+          activeEmployees: 0,
+          newEmployeesThisMonth: 0,
+          todayAttendance: 0,
+          thisWeekAttendance: 0,
+          thisMonthPayroll: { total: 0, netTotal: 0, count: 0 },
+          unpaidPayroll: 0,
+          attendanceRate: 0
+        },
+        departmentStats: [],
+        attendanceTrends: [],
+        payrollTrends: [],
+        quickStats: {
+          onTimeRate: 0,
+          lateEmployees: 0,
+          absentToday: 0,
+          upcomingHolidays: 0,
+          pendingReports: 0
+        },
+        recentActivity: {
+          attendance: [],
+          payroll: []
+        },
+        payrollDetails: {
+          company: "BISU Balilihan Campus",
+          period: { start: "", end: "" },
+          status: "No Data",
+          total: 0,
+          breakdown: { salary: 0, benefits: 0, incentives: 0, employerContributions: 0 }
+        }
+      },
       { status: 500 }
     )
   }

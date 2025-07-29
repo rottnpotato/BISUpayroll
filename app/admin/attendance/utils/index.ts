@@ -28,7 +28,7 @@ export const calculateSummaryStats = (
     (acc, record) => {
       if (record.isAbsent) {
         acc.absent++
-      } else if (record.timeIn && record.timeOut) {
+      } else if (record.timeIn) {
         if (record.isLate) {
           acc.late++
         } else {
