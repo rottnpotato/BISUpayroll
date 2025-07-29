@@ -27,13 +27,20 @@ import {
   LeaveBenefitsCard,
   HolidayConfigCard,
   TaxConfigSummaryCard,
-  PayrollOverview
+  PayrollOverview,
+  ReportsHeader,
+  RecentReportsTable,
+  PayrollGenerationCard,
+  PayrollPreviewDialog
 } from './components'
 
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
 import { usePayrollData } from './hooks/usePayrollData'
 import { usePayrollRules } from './hooks/usePayrollRules'
 import { usePayrollConfig } from './hooks/usePayrollConfig'
+import { useReportsState, usePayrollGeneration, usePrintPayroll } from './hooks'
+import { reportTemplateData } from './constants'
+import { filterReports } from './utils/reports'
 import type { PayrollRule } from './types'
 
 const containerVariants = {
@@ -67,6 +74,38 @@ export default function PayrollPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingRule, setEditingRule] = useState<PayrollRule | null>(null)
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+
+  // Reports state management
+  const {
+    isLoading: reportsLoading,
+    reports,
+    searchTerm,
+    setSearchTerm,
+    selectedReportType,
+    setSelectedReportType,
+    selectedTab: reportsTab,
+    setSelectedTab: setReportsTab,
+    dateRange,
+    setDateRange,
+    templateDateRanges,
+    updateTemplateDateRange,
+    selectedDepartment,
+    setSelectedDepartment
+  } = useReportsState()
+
+  const {
+    isGenerating,
+    payrollData,
+    selectedTemplate,
+    generatePayroll,
+    testUsers,
+    clearPayrollData
+  } = usePayrollGeneration()
+
+  const { printPayroll } = usePrintPayroll()
+
+  // UI state for reports
+  const [showPreview, setShowPreview] = useState(false)
 
   const {
     formData,
@@ -161,6 +200,32 @@ export default function PayrollPage() {
     return sections
   }
 
+  // Filter reports based on search criteria for reports tab
+  const filteredReports = filterReports(reports, searchTerm, selectedReportType)
+
+  // Handle payroll generation for reports tab
+  const handleGeneratePayroll = async (templateData: any) => {
+    const templateDateRange = templateDateRanges[templateData.id]
+    const result = await generatePayroll(
+      { ...templateData, icon: null }, // Convert template data to ReportTemplate
+      templateDateRange!,
+      selectedDepartment
+    )
+    
+    if (result) {
+      setShowPreview(true)
+    }
+  }
+
+  // Handle print for reports tab
+  const handlePrint = () => {
+    const templateDateRange = selectedTemplate ? templateDateRanges[selectedTemplate.id] : undefined
+    const success = printPayroll(payrollData, templateDateRange)
+    if (success) {
+      setShowPreview(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -243,7 +308,7 @@ export default function PayrollPage() {
       </motion.div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-bisu-purple-extralight">
+        <TabsList className="grid w-full grid-cols-5 bg-bisu-purple-extralight">
           <TabsTrigger value="overview" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
             <BarChart3 className="h-4 w-4" />
             Overview
@@ -265,6 +330,10 @@ export default function PayrollPage() {
             {hasUnsavedChanges && (
               <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse" />
             )}
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
+            <FileText className="h-4 w-4" />
+            Reports
           </TabsTrigger>
         </TabsList>
 
@@ -347,6 +416,79 @@ export default function PayrollPage() {
             </motion.div>
           </motion.div>
         </TabsContent>
+
+        <TabsContent value="reports" className="space-y-6">
+          <motion.div variants={itemVariants}>
+            <ReportsHeader 
+              title="Payroll Reports"
+              description="Generate comprehensive payroll reports with attendance integration"
+            />
+
+            <Tabs value={reportsTab} onValueChange={setReportsTab} className="mb-6">
+              <TabsList className="text-white w-full bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium border border-bisu-yellow-DEFAULT/20">
+                <TabsTrigger 
+                  value="recent" 
+                  className="flex-1 data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                >
+                  Recent Reports
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="generate" 
+                  className="flex-1 data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                >
+                  Generate Payroll
+                </TabsTrigger>
+              </TabsList>
+
+              {reportsLoading ? (
+                <SkeletonCard lines={8} />
+              ) : (
+                <>
+                  <TabsContent value="recent" className="mt-6">
+                    <motion.div
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      <RecentReportsTable
+                        reports={filteredReports}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        selectedReportType={selectedReportType}
+                        setSelectedReportType={setSelectedReportType}
+                        dateRange={dateRange}
+                        setDateRange={setDateRange}
+                        onTestUsers={testUsers}
+                      />
+                    </motion.div>
+                  </TabsContent>
+
+                  <TabsContent value="generate" className="mt-6">
+                    <motion.div
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate={reportsTab === "generate" ? "visible" : "hidden"}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                    >
+                      {reportTemplateData.map((template) => (
+                        <PayrollGenerationCard
+                          key={template.id}
+                          template={template}
+                          templateDateRange={templateDateRanges[template.id]}
+                          onDateRangeChange={(range) => updateTemplateDateRange(template.id, range)}
+                          selectedDepartment={selectedDepartment}
+                          onDepartmentChange={setSelectedDepartment}
+                          onGenerate={() => handleGeneratePayroll(template)}
+                          isGenerating={isGenerating}
+                        />
+                      ))}
+                    </motion.div>
+                  </TabsContent>
+                </>
+              )}
+            </Tabs>
+          </motion.div>
+        </TabsContent>
       </Tabs>
 
       {/* Payroll Rule Dialog */}
@@ -380,6 +522,16 @@ export default function PayrollPage() {
           loadConfigurations()
         }}
         changedSections={getChangedSections()}
+      />
+
+      {/* Payroll Preview Dialog */}
+      <PayrollPreviewDialog
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        payrollData={payrollData}
+        templateDateRange={selectedTemplate ? templateDateRanges[selectedTemplate.id] : undefined}
+        selectedTemplate={selectedTemplate}
+        onPrint={handlePrint}
       />
 
       {/* Fixed Save Button - Always visible when there are unsaved changes */}

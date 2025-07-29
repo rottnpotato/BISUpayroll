@@ -14,7 +14,7 @@ interface PayrollBreakdownProps {
 }
 
 const PayrollBreakdown: FC<PayrollBreakdownProps> = ({ data, isLoading }) => {
-  // Use actual data from dashboard API
+  //  actual data from dashboard API
   const totalAmount = data?.overview?.thisMonthPayroll?.total || 0
   const payrollBreakdown = data?.payrollDetails?.breakdown
   const payrollTrends = data?.payrollTrends || []
@@ -190,14 +190,14 @@ const PayrollBreakdown: FC<PayrollBreakdownProps> = ({ data, isLoading }) => {
       </div>
       
       <motion.div 
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-5"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         {cardData.map((card, index) => (
           <motion.div key={index} variants={itemVariants}>
-            <Card className={`overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-300 ${card.isMain ? 'ring-1 ring-bisu-purple-light' : ''}`}>
+            <Card className={`overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-300 h-48 flex flex-col ${card.isMain ? 'ring-1 ring-bisu-purple-light' : ''}`}>
               {/* Header Section */}
               <div className={`${card.bgColor} p-4 text-white`}>
                 <div className="flex justify-between items-center mb-3">
@@ -221,7 +221,7 @@ const PayrollBreakdown: FC<PayrollBreakdownProps> = ({ data, isLoading }) => {
               </div>
               
               {/* Content Section */}
-              <div className="p-4 bg-white">
+              <div className="p-3 bg-white flex-1 flex flex-col justify-between">
                 {/* Progress Bar */}
                 <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mb-3">
                   <div 
