@@ -4,7 +4,8 @@ import { FC } from 'react'
 import { DashboardData } from './types'
 import { formatCurrency } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
-import { DollarSign, TrendingUp, Award, Users, Building } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { PhilippinePeso, TrendingUp, Award, Users, Building } from 'lucide-react'
 import { motion } from 'framer-motion'
 import EmptyState from './EmptyState'
 
@@ -14,6 +15,7 @@ interface PayrollBreakdownProps {
 }
 
 const PayrollBreakdown: FC<PayrollBreakdownProps> = ({ data, isLoading }) => {
+  const router = useRouter()
   //  actual data from dashboard API
   const totalAmount = data?.overview?.thisMonthPayroll?.total || 0
   const payrollBreakdown = data?.payrollDetails?.breakdown
@@ -46,12 +48,14 @@ const PayrollBreakdown: FC<PayrollBreakdownProps> = ({ data, isLoading }) => {
       <div className="mt-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Payroll Breakdown</h2>
-          <button className="text-sm text-bisu-purple-deep hover:text-bisu-purple-medium font-medium">
+          <button 
+          onClick={() => router.push('/admin/payroll#reports')}
+          className="text-sm text-bisu-purple-deep hover:text-bisu-purple-medium font-medium">
             View detailed report
           </button>
         </div>
         <EmptyState
-          icon={DollarSign}
+          icon={PhilippinePeso}
           title="No Payroll Data Available"
           description="Payroll breakdown will be displayed here once payroll processing begins for BISU employees."
           variant="default"
@@ -132,7 +136,7 @@ const PayrollBreakdown: FC<PayrollBreakdownProps> = ({ data, isLoading }) => {
     { 
       title: 'Total Payroll', 
       amount: totalAmount, 
-      icon: <DollarSign className="h-5 w-5" />, 
+      icon: <PhilippinePeso className="h-5 w-5" />, 
       bgColor: 'bg-bisu-purple-deep',
       accentColor: 'border-bisu-purple-deep',
       progressColor: 'bg-bisu-purple-deep',

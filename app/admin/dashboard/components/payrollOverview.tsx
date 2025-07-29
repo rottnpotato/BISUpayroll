@@ -1,11 +1,11 @@
 "use client"
 
 import { FC } from 'react'
+import { useRouter } from 'next/navigation'
 import { DashboardData } from './types'
-import { formatCurrency } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CircleCheck, ArrowRight, Calendar, Users, DollarSign, Building2 } from 'lucide-react'
+import { CircleCheck, ArrowRight, Calendar, Users, PhilippinePeso, Building2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 interface PayrollOverviewProps {
@@ -15,6 +15,8 @@ interface PayrollOverviewProps {
 }
 
 const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyName }) => {
+  const router = useRouter()
+  
   // Use actual data from dashboard API
   const payrollPeriod = data?.payrollDetails?.period
   const startDate = payrollPeriod?.start ? new Date(payrollPeriod.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : "N/A"
@@ -110,8 +112,8 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
     },
     { 
       label: "Avg. Payroll", 
-      value: employeeCount > 0 ? formatCurrency(totalAmount / employeeCount) : formatCurrency(0), 
-      icon: <DollarSign className="h-4 w-4" />, 
+      value: employeeCount > 0 ? (totalAmount / employeeCount) : 0, 
+      icon: <PhilippinePeso className="h-4 w-4" />, 
       change: calculatePayrollGrowth(), 
       color: "bisu-purple-medium",
       bgColor: "bg-purple-50"
@@ -233,15 +235,18 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
       <div className="flex flex-col sm:flex-row justify-between items-center mt-6 p-4 bg-bisu-purple-extralight border border-bisu-purple-light rounded-lg">
         <div className="flex items-center gap-3 mb-3 sm:mb-0">
           <div className="p-2 bg-bisu-purple-deep rounded-lg">
-            <DollarSign className="h-5 w-5 text-white" />
+            <PhilippinePeso className="h-5 w-5 text-white" />
           </div>
           <div>
             <div className="text-sm text-bisu-purple-medium font-medium">Total Monthly Payroll</div>
-            <div className="text-2xl font-bold text-bisu-purple-deep">{formatCurrency(totalAmount)}</div>
+            <div className="text-2xl font-bold text-bisu-purple-deep">{totalAmount}</div>
           </div>
         </div>
         
-        <button className="flex items-center gap-2 px-4 py-2 bg-bisu-purple-deep text-white rounded-lg text-sm font-medium hover:bg-bisu-purple-medium transition-colors">
+        <button 
+          onClick={() => router.push('/admin/payroll')}
+          className="flex items-center gap-2 px-4 py-2 bg-bisu-purple-deep text-white rounded-lg text-sm font-medium hover:bg-bisu-purple-medium transition-colors"
+        >
           <span>View Payroll Details</span>
           <ArrowRight className="h-4 w-4" />
         </button>

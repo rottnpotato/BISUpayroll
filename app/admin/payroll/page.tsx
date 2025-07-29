@@ -70,6 +70,17 @@ export default function PayrollPage() {
   // Use our custom hooks for data and state management
   const { rules, users, schedules, isLoading, loadData } = usePayrollData()
   
+  // Tab state management with URL hash support
+  const [activeTab, setActiveTab] = useState("overview")
+  
+  // Handle URL hash for tab navigation
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '')
+    if (hash && ['overview', 'rules', 'schedules', 'configuration', 'reports'].includes(hash)) {
+      setActiveTab(hash)
+    }
+  }, [])
+  
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingRule, setEditingRule] = useState<PayrollRule | null>(null)
@@ -307,7 +318,7 @@ export default function PayrollPage() {
         </div>
       </motion.div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5 bg-bisu-purple-extralight">
           <TabsTrigger value="overview" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
             <BarChart3 className="h-4 w-4" />

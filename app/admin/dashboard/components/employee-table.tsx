@@ -1,6 +1,6 @@
 "use client"
 
-import { FC, useState } from 'react'
+import { FC, useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -52,9 +52,20 @@ interface Employee {
 interface EmployeeTableProps {
   data: any[]
   isLoading: boolean
+  searchTerm?: string
+  selectedDepartment?: string
+  selectedStatus?: string
+  sortBy?: string
 }
 
-const EmployeeTable: FC<EmployeeTableProps> = ({ data, isLoading }) => {
+const EmployeeTable: FC<EmployeeTableProps> = ({ 
+  data, 
+  isLoading, 
+  searchTerm = "", 
+  selectedDepartment = "All Departments", 
+  selectedStatus = "All Status", 
+  sortBy = "Name" 
+}) => {
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
@@ -62,7 +73,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({ data, isLoading }) => {
   const itemsPerPage = 10
 
   // Transform the payroll data to match our employee interface
-  const employees: Employee[] = data?.map((payroll: any) => ({
+  let employees: Employee[] = data?.map((payroll: any) => ({
     id: payroll.id,
     firstName: payroll.user?.firstName || 'Unknown',
     lastName: payroll.user?.lastName || 'Employee',
@@ -76,6 +87,51 @@ const EmployeeTable: FC<EmployeeTableProps> = ({ data, isLoading }) => {
     department: payroll.user?.department || 'Unassigned',
     employeeId: payroll.user?.employeeId
   })) || []
+
+  // Apply search filter
+  if (searchTerm) {
+    employees = employees.filter(emp => 
+      `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.department?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }
+
+  // Apply department filter
+  if (selectedDepartment !== "All Departments") {
+    employees = employees.filter(emp => emp.department === selectedDepartment)
+  }
+
+  // Apply status filter
+  if (selectedStatus !== "All Status") {
+    const statusFilter = selectedStatus.toLowerCase().replace(" ", "")
+    employees = employees.filter(emp => {
+      const empStatus = emp.status?.toLowerCase()
+      if (selectedStatus === "On Leave") return empStatus === "leave"
+      return empStatus === statusFilter
+    })
+  }
+
+  // Apply sorting based on sortBy prop
+  if (sortBy !== "Name") {
+    employees.sort((a, b) => {
+      switch (sortBy.toLowerCase()) {
+        case 'department':
+          return (a.department || '').localeCompare(b.department || '')
+        case 'salary':
+          return (b.grossPay || 0) - (a.grossPay || 0)
+        case 'status':
+          return (a.status || '').localeCompare(b.status || '')
+        default:
+          return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+      }
+    })
+  }
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedDepartment, selectedStatus, sortBy])
 
   // Calculate pagination
   const totalEmployees = employees.length

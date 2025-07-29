@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar, ArrowRight, AlertCircle, Clock, FileText, Bell } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
 import EmptyState from "./EmptyState"
@@ -20,7 +21,7 @@ export default function ScheduleCard() {
   const [payrollEvents, setPayrollEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+  const router = useRouter()
   useEffect(() => {
     const fetchPayrollSchedules = async () => {
       try {
@@ -242,7 +243,9 @@ export default function ScheduleCard() {
         )}
         
         <div className="mt-4 pt-3 border-t border-gray-100">
-          <button className="text-xs text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1">
+          <button 
+          onClick={() => router.push('/admin/payroll#schedules')}
+          className="text-xs text-gray-600 hover:text-gray-900 font-medium flex items-center gap-1">
             View full payroll calendar
             <ArrowRight className="h-3 w-3" />
           </button>
