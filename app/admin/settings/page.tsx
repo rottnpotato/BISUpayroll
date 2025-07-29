@@ -153,8 +153,8 @@ export default function LogsPage() {
       case 'update': return 'bg-blue-100 text-blue-800'
       case 'delete': return 'bg-red-100 text-red-800'
       case 'login': return 'bg-purple-100 text-purple-800'
-      case 'logout': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-yellow-100 text-yellow-800'
+      case 'logout': return 'bg-gray-100 text-gray-800 '
+      default: return 'bg-white-100 text-yellow-800'
     }
   }
 
@@ -208,6 +208,12 @@ export default function LogsPage() {
                   <SelectItem value="delete">Delete</SelectItem>
                   <SelectItem value="login">Login</SelectItem>
                   <SelectItem value="logout">Logout</SelectItem>
+                  <SelectItem value="approve">Approve</SelectItem>
+                  <SelectItem value="reject">Reject</SelectItem>
+                  <SelectItem value="process">Process</SelectItem>
+                  <SelectItem value="view">View</SelectItem>
+                  <SelectItem value="export">Export</SelectItem>
+                  <SelectItem value="system_start">System Start</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -225,6 +231,7 @@ export default function LogsPage() {
                   <SelectItem value="Attendance">Attendance</SelectItem>
                   <SelectItem value="Leave">Leave</SelectItem>
                   <SelectItem value="System">System</SelectItem>
+                  <SelectItem value="Auth">Auth</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -318,18 +325,18 @@ export default function LogsPage() {
             <>
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Timestamp</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Details</TableHead>
-                    <TableHead>IP Address</TableHead>
+                  <TableRow className="text-center">
+                    <TableHead className="text-center">Timestamp</TableHead>
+                    <TableHead className="text-center">User</TableHead>
+                    <TableHead className="text-center">Action</TableHead>
+                    <TableHead className="text-center">Entity</TableHead>
+                    <TableHead className="text-center">Details</TableHead>
+                    <TableHead className="text-center">IP Address</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logs.map((log) => (
-                    <TableRow key={log.id}>
+                    <TableRow key={log.id} className="hover:bg-yellow-50/80">
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">

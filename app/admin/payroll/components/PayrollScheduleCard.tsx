@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CalendarDays, Plus, Save, Clock, Calendar } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { CalendarDays, Plus, Save, Clock, Calendar, Edit, Trash2, MoreVertical } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { motion } from "framer-motion"
 import { PayrollSchedule, ScheduleFormData } from "../types"
 import { ScheduleDialog } from "./ScheduleDialog"
@@ -23,6 +25,8 @@ export function PayrollScheduleCard({
   onRefresh
 }: PayrollScheduleCardProps) {
   const [isAddScheduleDialogOpen, setIsAddScheduleDialogOpen] = useState(false)
+  const [isEditScheduleDialogOpen, setIsEditScheduleDialogOpen] = useState(false)
+  const [editingSchedule, setEditingSchedule] = useState<PayrollSchedule | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const itemVariants = {
@@ -109,6 +113,61 @@ export function PayrollScheduleCard({
     }
   }
 
+  const handleEditSchedule = async (formData: ScheduleFormData): Promise<boolean> => {
+    if (!editingSchedule) return false
+    
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/admin/payroll/schedules/${editingSchedule.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update schedule')
+      }
+
+      toast.success('Payroll schedule updated successfully')
+      onRefresh()
+      return true
+    } catch (error) {
+      console.error('Error updating schedule:', error)
+      toast.error('Failed to update payroll schedule')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteSchedule = async (schedule: PayrollSchedule) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/admin/payroll/schedules/${schedule.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete schedule')
+      }
+
+      toast.success('Payroll schedule deleted successfully')
+      onRefresh()
+    } catch (error) {
+      console.error('Error deleting schedule:', error)
+      toast.error('Failed to delete payroll schedule')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEditClick = (schedule: PayrollSchedule) => {
+    setEditingSchedule(schedule)
+    setIsEditScheduleDialogOpen(true)
+  }
+
   return (
     <motion.div variants={itemVariants} className="h-full ">
       <Card className="shadow-lg border-2 h-full flex flex-col">
@@ -159,11 +218,51 @@ export function PayrollScheduleCard({
                           </span>
                         )}
                       </div>
-                      <Switch 
-                        checked={schedule.isActive} 
-                        onCheckedChange={() => handleToggleStatus(schedule)}
-                        disabled={isLoading}
-                      />
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          checked={schedule.isActive} 
+                          onCheckedChange={() => handleToggleStatus(schedule)}
+                          disabled={isLoading}
+                        />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditClick(schedule)} className="cursor-pointer">
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Schedule
+                            </DropdownMenuItem>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer text-red-600 focus:text-red-600">
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Schedule
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Payroll Schedule</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{schedule.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteSchedule(schedule)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-3 text-sm">
@@ -236,6 +335,19 @@ export function PayrollScheduleCard({
         onClose={() => setIsAddScheduleDialogOpen(false)}
         onSubmit={handleAddSchedule}
         isLoading={isLoading}
+        title="Create Payroll Schedule"
+      />
+
+      <ScheduleDialog
+        isOpen={isEditScheduleDialogOpen}
+        onClose={() => {
+          setIsEditScheduleDialogOpen(false)
+          setEditingSchedule(null)
+        }}
+        onSubmit={handleEditSchedule}
+        isLoading={isLoading}
+        title="Edit Payroll Schedule"
+        initialData={editingSchedule}
       />
     </motion.div>
   )

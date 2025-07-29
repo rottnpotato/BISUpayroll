@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,8 @@ interface ScheduleDialogProps {
   onClose: () => void
   onSubmit: (formData: ScheduleFormData) => Promise<boolean>
   isLoading?: boolean
+  title?: string
+  initialData?: any
 }
 
 const defaultFormData: ScheduleFormData = {
@@ -34,7 +36,9 @@ export function ScheduleDialog({
   isOpen,
   onClose,
   onSubmit,
-  isLoading = false
+  isLoading = false,
+  title = "Create Payroll Schedule",
+  initialData = null
 }: ScheduleDialogProps) {
   const [formData, setFormData] = useState<ScheduleFormData>(defaultFormData)
 
@@ -54,6 +58,25 @@ export function ScheduleDialog({
     setFormData(defaultFormData)
     onClose()
   }
+
+  // Set initial data when dialog opens for editing
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setFormData({
+        name: initialData.name || "",
+        days: initialData.days || [1],
+        cutoffDays: initialData.cutoffDays || [15, 30],
+        payrollReleaseDay: initialData.payrollReleaseDay || 1,
+        processingDays: initialData.processingDays || [20, 5],
+        cutoffType: initialData.cutoffType || "bi-monthly",
+        isActive: initialData.isActive || false,
+        paymentMethod: initialData.paymentMethod || "bank_transfer",
+        description: initialData.description || ""
+      })
+    } else if (isOpen && !initialData) {
+      setFormData(defaultFormData)
+    }
+  }, [isOpen, initialData])
 
   const handleDayToggle = (day: number, checked: boolean) => {
     setFormData(prev => ({
@@ -79,7 +102,7 @@ export function ScheduleDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-bisu-purple-deep">Create Payroll Schedule</DialogTitle>
+          <DialogTitle className="text-bisu-purple-deep">{title}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">

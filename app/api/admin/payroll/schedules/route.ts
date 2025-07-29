@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
+import { AuditLogger, AuditActions, EntityTypes } from "@/lib/audit-logger"
 
 export async function GET(request: NextRequest) {
   try {
@@ -80,6 +81,14 @@ export async function POST(request: NextRequest) {
     const schedule = await prisma.payrollSchedule.create({
       data: scheduleData
     })
+
+    // Log audit event
+    await AuditLogger.log({
+      action: AuditActions.CREATE,
+      entityType: EntityTypes.PAYROLL,
+      entityId: schedule.id,
+      details: `Created payroll schedule: ${schedule.name}`
+    }, request)
 
     return NextResponse.json({ schedule }, { status: 201 })
   } catch (error) {

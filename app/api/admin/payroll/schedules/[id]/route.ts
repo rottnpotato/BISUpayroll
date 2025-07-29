@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
+import { AuditLogger, AuditActions, EntityTypes } from "@/lib/audit-logger"
 
 interface RouteParams {
   params: {
@@ -86,12 +87,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       updateData.description = description
     }
 
-    const schedule = await prisma.payrollSchedule.update({
-      where: { id },
-      data: updateData
-    })
+      const schedule = await prisma.payrollSchedule.update({
+    where: { id },
+    data: updateData
+  })
 
-    return NextResponse.json({ schedule })
+  // Log audit event
+  await AuditLogger.log({
+    action: AuditActions.UPDATE,
+    entityType: EntityTypes.PAYROLL,
+    entityId: id,
+    details: `Updated payroll schedule: ${schedule.name}`
+  }, request)
+
+  return NextResponse.json({ schedule })
   } catch (error) {
     console.error("Error updating payroll schedule:", error)
     return NextResponse.json(
@@ -118,12 +127,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       })
     }
 
-    const schedule = await prisma.payrollSchedule.update({
-      where: { id },
-      data: { isActive }
-    })
+      const schedule = await prisma.payrollSchedule.update({
+    where: { id },
+    data: { isActive }
+  })
 
-    return NextResponse.json({ schedule })
+  // Log audit event
+  await AuditLogger.log({
+    action: AuditActions.UPDATE,
+    entityType: EntityTypes.PAYROLL,
+    entityId: id,
+    details: `${isActive ? 'Activated' : 'Deactivated'} payroll schedule: ${schedule.name}`
+  }, request)
+
+  return NextResponse.json({ schedule })
   } catch (error) {
     console.error("Error updating payroll schedule status:", error)
     return NextResponse.json(
@@ -137,9 +154,29 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id
 
+    // Get schedule name before deletion for audit log
+    const schedule = await prisma.payrollSchedule.findUnique({
+      where: { id }
+    })
+
+    if (!schedule) {
+      return NextResponse.json(
+        { error: "Payroll schedule not found" },
+        { status: 404 }
+      )
+    }
+
     await prisma.payrollSchedule.delete({
       where: { id }
     })
+
+    // Log audit event
+    await AuditLogger.log({
+      action: AuditActions.DELETE,
+      entityType: EntityTypes.PAYROLL,
+      entityId: id,
+      details: `Deleted payroll schedule: ${schedule.name}`
+    }, request)
 
     return new NextResponse(null, { status: 204 })
   } catch (error) {
