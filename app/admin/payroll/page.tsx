@@ -229,9 +229,15 @@ export default function PayrollPage() {
   }
 
   // Handle print for reports tab
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const templateDateRange = selectedTemplate ? templateDateRanges[selectedTemplate.id] : undefined
-    const success = printPayroll(payrollData, templateDateRange)
+    const success = await printPayroll(
+      payrollData, 
+      templateDateRange, 
+      selectedTemplate?.type || 'custom',
+      undefined, // scheduleId - you can get this from the active schedule if needed
+      undefined  // scheduleName - you can get this from the active schedule if needed
+    )
     if (success) {
       setShowPreview(false)
     }

@@ -304,3 +304,65 @@ export interface ReportSummary {
     totalNetPay: number
   }>
 }
+
+export interface PayrollFile {
+  id: string
+  fileName: string
+  filePath: string
+  fileSize: number
+  fileType: string
+  reportType: string
+  payPeriodStart: string | Date
+  payPeriodEnd: string | Date
+  generatedBy: string
+  generatedAt: string | Date
+  department?: string
+  employeeCount: number
+  totalGrossPay: number
+  totalNetPay: number
+  totalDeductions: number
+  status: 'GENERATED' | 'APPROVED' | 'REJECTED' | 'ARCHIVED'
+  isArchived: boolean
+  downloadCount: number
+  lastDownloadAt?: string | Date
+  scheduleId?: string
+  scheduleName?: string
+  generatedByUser?: {
+    firstName: string
+    lastName: string
+    employeeId: string
+  }
+}
+
+export interface PayrollGroup {
+  id: string
+  scheduleId: string
+  scheduleName: string
+  payPeriodStart: string | Date
+  payPeriodEnd: string | Date
+  employeeCount: number
+  totalGrossPay: number
+  totalNetPay: number
+  totalDeductions: number
+  status: 'GENERATED' | 'PROCESSING' | 'COMPLETED' | 'APPROVED'
+  generatedAt: string | Date
+  generatedBy?: string
+  generatedByUser?: {
+    firstName: string
+    lastName: string
+  }
+  departments: string[]
+  fileCount: number
+}
+
+export interface PayrollOverviewSummary {
+  totalEmployees: number
+  activeRules: number
+  activeSchedules: number
+  monthlyPayrollTotal: number
+  generatedGroups: number
+  pendingApproval: number
+  completedPayrolls: number
+  upcomingPayDate: string | null
+  totalPayrollFiles: number
+}

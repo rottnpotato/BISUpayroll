@@ -100,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (sidebarCollapsed ? 'ml-20' : 'ml-64')}`}
       >
         {/* Page content */}
-        <main className="flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-[1200px]">
+        <main className="flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-[1200px] pb-5">
           {isLoading ? <PageLoading message="Loading admin dashboard..." /> : children}
         </main>
       </motion.div>

@@ -36,6 +36,7 @@ model User {
   payrollRules                 PayrollRuleAssignment[]
   payrollResults               PayrollResult[]
   approvedPayrollResults       PayrollResult[]         @relation("PayrollResultApprovedBy")
+  generatedPayrollFiles        PayrollFile[]            @relation("PayrollFileGeneratedBy")
 
   @@map("users")
 }
@@ -262,6 +263,49 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model PayrollFile {
+  id                String   @id @default(cuid())
+  fileName          String
+  filePath          String
+  fileSize          Int      // File size in bytes
+  fileType          String   // e.g., "pdf", "excel", "csv"
+  reportType        String   // e.g., "monthly", "department", "tax", "custom"
+  
+  // Payroll period information
+  payPeriodStart    DateTime
+  payPeriodEnd      DateTime
+  
+  // Generation metadata
+  generatedBy       String   // User ID who generated the report
+  generatedAt       DateTime @default(now())
+  department        String?  // Department filter used, null if all departments
+  employeeCount     Int      // Number of employees included in the report
+  
+  // Financial summary
+  totalGrossPay     Decimal  @db.Decimal(12, 2)
+  totalNetPay       Decimal  @db.Decimal(12, 2)
+  totalDeductions   Decimal  @db.Decimal(12, 2)
+  
+  // Status and metadata
+  status            PayrollFileStatus @default(GENERATED)
+  isArchived        Boolean  @default(false)
+  downloadCount     Int      @default(0)
+  lastDownloadAt    DateTime?
+  
+  // Schedule reference (optional)
+  scheduleId        String?
+  scheduleName      String?
+  
+  // Additional metadata
+  metadata          String?  // JSON string for additional data
+  checksum          String?  // File integrity check
+  
+  // Relations
+  generatedByUser   User     @relation("PayrollFileGeneratedBy", fields: [generatedBy], references: [id])
+  
+  @@map("payroll_files")
+}
+
 enum Role {
   ADMIN
   EMPLOYEE
@@ -304,4 +348,11 @@ enum PayrollResultStatus {
   APPROVED
   REJECTED
   PAID
+}
+
+enum PayrollFileStatus {
+  GENERATED
+  APPROVED
+  REJECTED
+  ARCHIVED
 }

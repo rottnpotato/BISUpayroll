@@ -27,7 +27,11 @@ export async function GET(request: NextRequest) {
       recentPayroll,
       totalPayrollRecords,
       paidPayrolls,
-      monthlyPayrollTotal
+      monthlyPayrollTotal,
+      payrollGroups,
+      totalPayrollFiles,
+      pendingApprovalGroups,
+      completedGroups
     ] = await Promise.all([
       // Total employees
       prisma.user.count(),
@@ -196,7 +200,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate attendance rates and average salaries for each department
     const departmentStats = await Promise.all(
-      departments.map(async (dept) => {
+      departments.map(async (dept: any) => {
         const totalEmployees = dept._count.id
         const attendanceCount = await prisma.attendanceRecord.count({
           where: {
@@ -385,6 +389,10 @@ export async function GET(request: NextRequest) {
       unpaidPayrolls: Math.max(0, (totalPayrollRecords || 0) - (paidPayrolls || 0)),
       generatedPayrolls: totalPayrollRecords || 0,
       paidPayrolls: paidPayrolls || 0,
+      generatedGroups: payrollGroups?.length || 0,
+      pendingApproval: pendingApprovalGroups?.length || 0,
+      completedPayrolls: completedGroups?.length || 0,
+      totalPayrollFiles: totalPayrollFiles || 0,
       departmentStats: departmentStats || [],
       attendanceTrends: (attendanceTrends || []).reverse(),
       payrollTrends: (payrollTrends || []).reverse(),

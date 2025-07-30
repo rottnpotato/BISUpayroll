@@ -15,10 +15,13 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  PenTool,
-  RefreshCw
+  FileText,
+  Download,
+  RefreshCw,
+  FolderOpen,
+  Archive
 } from "lucide-react"
-import { PayrollRule, PayrollSchedule, WorkingHoursConfig, RatesConfig, LeaveBenefitsConfig } from '../types'
+import { PayrollRule, PayrollSchedule, WorkingHoursConfig, RatesConfig, LeaveBenefitsConfig, PayrollGroup, PayrollFile, PayrollOverviewSummary } from '../types'
 import { toast } from "sonner"
 
 interface PayrollOverviewProps {
@@ -29,34 +32,6 @@ interface PayrollOverviewProps {
   leaveBenefitsConfig: LeaveBenefitsConfig
 }
 
-interface PayrollSummary {
-  totalEmployees: number
-  activeRules: number
-  activeSchedules: number
-  monthlyPayrollTotal: number
-  unpaidPayrolls: number
-  generatedPayrolls: number
-  paidPayrolls: number
-  upcomingPayDate: string | null
-}
-
-interface RecentPayroll {
-  id: string
-  user: {
-    firstName: string
-    lastName: string
-    employeeId: string | null
-    department: string | null
-  }
-  payPeriodStart: string
-  payPeriodEnd: string
-  grossPay: number
-  netPay: number
-  isPaid: boolean
-  generatedAt: string | null
-  paidAt: string | null
-}
-
 export function PayrollOverview({
   rules,
   schedules,
@@ -64,17 +39,19 @@ export function PayrollOverview({
   ratesConfig,
   leaveBenefitsConfig
 }: PayrollOverviewProps) {
-  const [payrollSummary, setPayrollSummary] = useState<PayrollSummary>({
+  const [payrollSummary, setPayrollSummary] = useState<PayrollOverviewSummary>({
     totalEmployees: 0,
     activeRules: 0,
     activeSchedules: 0,
     monthlyPayrollTotal: 0,
-    unpaidPayrolls: 0,
-    generatedPayrolls: 0,
-    paidPayrolls: 0,
-    upcomingPayDate: null
+    generatedGroups: 0,
+    pendingApproval: 0,
+    completedPayrolls: 0,
+    upcomingPayDate: null,
+    totalPayrollFiles: 0
   })
-  const [recentPayrolls, setRecentPayrolls] = useState<RecentPayroll[]>([])
+  const [payrollGroups, setPayrollGroups] = useState<PayrollGroup[]>([])
+  const [recentFiles, setRecentFiles] = useState<PayrollFile[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const fetchPayrollOverview = async () => {
@@ -87,19 +64,21 @@ export function PayrollOverview({
         activeRules: rules.filter(r => r.isActive).length,
         activeSchedules: schedules.filter(s => s.isActive).length,
         monthlyPayrollTotal: 0,
-        unpaidPayrolls: 0,
-        generatedPayrolls: 0,
-        paidPayrolls: 0,
-        upcomingPayDate: getUpcomingPayDate()
+        generatedGroups: 0,
+        pendingApproval: 0,
+        completedPayrolls: 0,
+        upcomingPayDate: getUpcomingPayDate(),
+        totalPayrollFiles: 0
       }
       
       setPayrollSummary(basicSummary)
 
       // Try to fetch additional data
       try {
-        const [summaryResponse, payrollsResponse] = await Promise.all([
+        const [summaryResponse, groupsResponse, filesResponse] = await Promise.all([
           fetch('/api/admin/dashboard'),
-          fetch('/api/admin/payroll?limit=10')
+          fetch('/api/admin/payroll/groups?limit=5'),
+          fetch('/api/admin/payroll/files?limit=10')
         ])
 
         if (summaryResponse.ok) {
@@ -109,15 +88,21 @@ export function PayrollOverview({
             ...prev,
             totalEmployees: summaryData.totalEmployees || summaryData.overview?.totalEmployees || 0,
             monthlyPayrollTotal: summaryData.monthlyPayrollTotal || 0,
-            unpaidPayrolls: summaryData.unpaidPayrolls || 0,
-            generatedPayrolls: summaryData.generatedPayrolls || 0,
-            paidPayrolls: summaryData.paidPayrolls || 0
+            generatedGroups: summaryData.generatedGroups || 0,
+            pendingApproval: summaryData.pendingApproval || 0,
+            completedPayrolls: summaryData.completedPayrolls || 0,
+            totalPayrollFiles: summaryData.totalPayrollFiles || 0
           }))
         }
 
-        if (payrollsResponse.ok) {
-          const payrollsData = await payrollsResponse.json()
-          setRecentPayrolls(payrollsData.records || [])
+        if (groupsResponse.ok) {
+          const groupsData = await groupsResponse.json()
+          setPayrollGroups(groupsData.groups || [])
+        }
+
+        if (filesResponse.ok) {
+          const filesData = await filesResponse.json()
+          setRecentFiles(filesData.files || [])
         }
       } catch (apiError) {
         console.warn('API fetch failed, using fallback data:', apiError)
@@ -134,12 +119,14 @@ export function PayrollOverview({
         activeRules: rules.filter(r => r.isActive).length,
         activeSchedules: schedules.filter(s => s.isActive).length,
         monthlyPayrollTotal: 0,
-        unpaidPayrolls: 0,
-        generatedPayrolls: 0,
-        paidPayrolls: 0,
-        upcomingPayDate: getUpcomingPayDate()
+        generatedGroups: 0,
+        pendingApproval: 0,
+        completedPayrolls: 0,
+        upcomingPayDate: getUpcomingPayDate(),
+        totalPayrollFiles: 0
       })
-      setRecentPayrolls([])
+      setPayrollGroups([])
+      setRecentFiles([])
     } finally {
       setIsLoading(false)
     }
@@ -173,7 +160,7 @@ export function PayrollOverview({
     }).format(amount)
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | Date) => {
     return new Date(dateString).toLocaleDateString('en-PH', {
       month: 'short',
       day: 'numeric',
@@ -181,9 +168,36 @@ export function PayrollOverview({
     })
   }
 
-  const getPayrollStatus = (payroll: RecentPayroll) => {
-    if (payroll.isPaid) return { label: 'Paid', color: 'bg-green-100 text-green-800', icon: CheckCircle }
-    return { label: 'Awaiting Payment', color: 'bg-orange-100 text-orange-800', icon: Clock }
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const getGroupStatus = (group: PayrollGroup) => {
+    switch (group.status) {
+      case 'COMPLETED':
+        return { label: 'Completed', color: 'bg-green-100 text-green-800', icon: CheckCircle }
+      case 'APPROVED':
+        return { label: 'Approved', color: 'bg-blue-100 text-blue-800', icon: CheckCircle }
+      case 'PROCESSING':
+        return { label: 'Processing', color: 'bg-yellow-100 text-yellow-800', icon: Clock }
+      default:
+        return { label: 'Generated', color: 'bg-gray-100 text-gray-800', icon: FileText }
+    }
+  }
+
+  const getFileStatus = (file: PayrollFile) => {
+    switch (file.status) {
+      case 'APPROVED':
+        return { label: 'Approved', color: 'bg-green-100 text-green-800', icon: CheckCircle }
+      case 'ARCHIVED':
+        return { label: 'Archived', color: 'bg-gray-100 text-gray-800', icon: Archive }
+      default:
+        return { label: 'Generated', color: 'bg-blue-100 text-blue-800', icon: FileText }
+    }
   }
 
   useEffect(() => {
@@ -241,7 +255,7 @@ export function PayrollOverview({
         </motion.div>
 
         <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="border-l-4 border-l-bisu-yellow-DEFAULT">
+          <Card className="border-l-4 border-l-bisu-yellow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Monthly Payroll</CardTitle>
               <DollarSign className="h-4 w-4 text-bisu-yellow-dark" />
@@ -256,12 +270,12 @@ export function PayrollOverview({
         <motion.div variants={itemVariants} initial="hidden" animate="visible">
           <Card className="border-l-4 border-l-orange-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unpaid Payrolls</CardTitle>
+              <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
               <Clock className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.unpaidPayrolls}</div>
-              <p className="text-xs text-muted-foreground">Awaiting payment processing</p>
+              <div className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.pendingApproval}</div>
+              <p className="text-xs text-muted-foreground">Awaiting approval</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -285,7 +299,7 @@ export function PayrollOverview({
       {/* Configuration Summary */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="h-[280px] flex flex-col">
+          <Card className="flex flex-col h-full min-h-[280px]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                 <BarChart3 className="h-5 w-5" />
@@ -297,7 +311,7 @@ export function PayrollOverview({
                 <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.activeRules}</span>
                 <span className="text-sm text-muted-foreground">of {rules.length} total</span>
               </div>
-              <div className="flex-1 space-y-2 min-h-[140px]">
+              <div className="flex-1 space-y-2">
                 {rules.length > 0 ? (
                   rules.slice(0, 3).map((rule) => (
                     <div key={rule.id} className="flex justify-between items-center text-sm py-2">
@@ -323,7 +337,7 @@ export function PayrollOverview({
         </motion.div>
 
         <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="h-[280px] flex flex-col">
+          <Card className="flex flex-col h-full min-h-[280px]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                 <Clock className="h-5 w-5" />
@@ -335,7 +349,7 @@ export function PayrollOverview({
                 <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.activeSchedules}</span>
                 <span className="text-sm text-muted-foreground">of {schedules.length} total</span>
               </div>
-              <div className="flex-1 space-y-3 min-h-[140px]">
+              <div className="flex-1 space-y-3">
                 {schedules.length > 0 ? (
                   schedules.slice(0, 2).map((schedule) => (
                     <div key={schedule.id} className="flex justify-between items-start py-2">
@@ -366,35 +380,35 @@ export function PayrollOverview({
         </motion.div>
 
         <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="h-[280px] flex flex-col">
+          <Card className="flex flex-col h-full min-h-[280px]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                <TrendingUp className="h-5 w-5" />
-                Payroll Stats
+                <FolderOpen className="h-5 w-5" />
+                Payroll Groups
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.generatedPayrolls}</span>
-                <span className="text-sm text-muted-foreground">total records</span>
+                <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.generatedGroups}</span>
+                <span className="text-sm text-muted-foreground">generated</span>
               </div>
-              <div className="flex-1 space-y-3 min-h-[140px]">
+              <div className="flex-1 space-y-1">
                 <div className="flex justify-between py-1">
                   <span className="text-sm">Generated:</span>
-                  <span className="font-medium">{payrollSummary.generatedPayrolls}</span>
+                  <span className="font-medium">{payrollSummary.generatedGroups}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-sm">Paid:</span>
-                  <span className="font-medium text-green-600">{payrollSummary.paidPayrolls}</span>
+                  <span className="text-sm">Completed:</span>
+                  <span className="font-medium text-green-600">{payrollSummary.completedPayrolls}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-sm">Unpaid:</span>
-                  <span className="font-medium text-orange-600">{payrollSummary.unpaidPayrolls}</span>
+                  <span className="text-sm">Pending:</span>
+                  <span className="font-medium text-orange-600">{payrollSummary.pendingApproval}</span>
                 </div>
                 <Separator className="my-3" />
                 <div className="flex justify-between font-medium py-1">
-                  <span className="text-sm">Avg. Daily Rate:</span>
-                  <span className="text-sm">{formatCurrency(workingHoursConfig.dailyHours * 500)}</span>
+                  <span className="text-sm">Total Files:</span>
+                  <span className="text-sm">{payrollSummary.totalPayrollFiles}</span>
                 </div>
               </div>
             </CardContent>
@@ -402,14 +416,14 @@ export function PayrollOverview({
         </motion.div>
       </div>
 
-      {/* Recent Payrolls */}
+      {/* Recent Payroll Groups */}
       <motion.div variants={itemVariants} initial="hidden" animate="visible">
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                <DollarSign className="h-5 w-5" />
-                Recent Payroll Records
+                <FolderOpen className="h-5 w-5" />
+                Recent Payroll Groups
               </CardTitle>
               <Button
                 variant="outline"
@@ -423,29 +437,30 @@ export function PayrollOverview({
             </div>
           </CardHeader>
           <CardContent>
-            {recentPayrolls.length > 0 ? (
+            {payrollGroups.length > 0 ? (
               <div className="space-y-3">
-                {recentPayrolls.map((payroll) => {
-                  const status = getPayrollStatus(payroll)
+                {payrollGroups.map((group) => {
+                  const status = getGroupStatus(group)
                   const StatusIcon = status.icon
                   
                   return (
-                    <div key={payroll.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50">
+                    <div key={group.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50">
                       <div className="flex items-center gap-3">
                         <div>
                           <div className="font-medium">
-                            {payroll.user.firstName} {payroll.user.lastName}
+                            {group.scheduleName}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {payroll.user.employeeId} • {payroll.user.department}
+                            {group.employeeCount} employees • {group.departments.join(', ')}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {formatDate(payroll.payPeriodStart)} - {formatDate(payroll.payPeriodEnd)}
+                            {formatDate(group.payPeriodStart)} - {formatDate(group.payPeriodEnd)}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium">{formatCurrency(payroll.netPay)}</div>
+                        <div className="font-medium">{formatCurrency(group.totalNetPay)}</div>
+                        <div className="text-xs text-muted-foreground">{group.fileCount} files</div>
                         <Badge className={status.color}>
                           <StatusIcon className="h-3 w-3 mr-1" />
                           {status.label}
@@ -457,10 +472,90 @@ export function PayrollOverview({
               </div>
             ) : (
               <div className="text-center py-8">
-                <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Recent Payroll Records</h3>
+                <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Payroll Groups</h3>
                 <p className="text-gray-500 text-center">
-                  Payroll records will appear here once they are generated.
+                  Payroll groups will appear here once they are generated based on schedules.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Recent Payroll Files */}
+      <motion.div variants={itemVariants} initial="hidden" animate="visible">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                <FileText className="h-5 w-5" />
+                Recent Payroll Files
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchPayrollOverview}
+                className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-purple-light"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recentFiles.length > 0 ? (
+              <div className="space-y-3">
+                {recentFiles.map((file) => {
+                  const status = getFileStatus(file)
+                  const StatusIcon = status.icon
+                  
+                  return (
+                    <div key={file.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-8 w-8 text-bisu-purple-medium" />
+                        <div>
+                          <div className="font-medium">
+                            {file.fileName}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {file.reportType} • {file.employeeCount} employees
+                            {file.department && ` • ${file.department}`}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDate(file.generatedAt)} • {formatFileSize(file.fileSize)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium">{formatCurrency(file.totalNetPay)}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Downloads: {file.downloadCount}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge className={status.color}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {status.label}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Payroll Files</h3>
+                <p className="text-gray-500 text-center">
+                  Generated payroll files will appear here for safekeeping and backup.
                 </p>
               </div>
             )}
