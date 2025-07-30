@@ -245,7 +245,7 @@ export default function PayrollPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 space-y-6 xl:ml-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Payroll Management Configuration</h1>
@@ -265,7 +265,7 @@ export default function PayrollPage() {
 
   return (
     <motion.div 
-      className="space-y-6"
+      className="space-y-6 xl:ml-5"
       variants={containerVariants}
       initial="hidden"
       animate="visible"

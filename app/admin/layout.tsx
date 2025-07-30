@@ -83,7 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex h-screen bg-gray-50">
       <AnimatedSidebar
         items={adminNavItems}
-        logo={<BisuLogo size="sm" variant="light" showText={!sidebarCollapsed || !isMobile} />}
+        logo={<BisuLogo size="md" variant="light" showText={!sidebarCollapsed || !isMobile} />}
         userInfo={{
           name: userName || "Admin User",
           role: "Administrator",
@@ -97,10 +97,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (sidebarCollapsed ? 'ml-20' : 'ml-64')}`}
+        className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (sidebarCollapsed ? 'ml-0' : 'ml-64')}`}
       >
         {/* Page content */}
-        <main className="flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-[1200px] pb-5">
+        <main className="flex-1 overflow-auto bg-gray-50 pt-4 px-2 sm:px-2 md:px-6 w-full mx-auto mr-0 max-w-[1460px] pb-5">
           {isLoading ? <PageLoading message="Loading admin dashboard..." /> : children}
         </main>
       </motion.div>

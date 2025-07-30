@@ -78,12 +78,12 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col bg-gradient-to-b from-bisu-purple-deep to-bisu-purple-medium border-r border-bisu-yellow/20 shadow-xl transition-all duration-300 ease-in-out",
-          isMobile ? `w-64 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}` : isCollapsed ? "w-20" : "w-64",
+          isMobile ? `w-64 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}` : isCollapsed ? "w-24" : "w-64",
         )}
       >
         {/* Sidebar header */}
-        <div className="flex items-center justify-between h-20 px-4 border-b border-bisu-yellow/20">
-          <div className={cn("overflow-hidden", isCollapsed && !isMobile ? "scale-100 origin-left" : "animate-fade-in")}>
+        <div className="flex items-center justify-bectween h-20 px-4 border-b border-bisu-yellow/20">
+          <div className={cn("overflow-hidden", isCollapsed && !isMobile ? "scale-100 ml-2" : "animate-fade-in")}>
             {logo}
           </div>
 
@@ -170,8 +170,8 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
                   onClick={onLogout}
                   variant="outline"
                   className={cn(
-                    "border-bisu-yellow/50 text-bisu-yellow hover:bg-bisu-yellow hover:text-bisu-purple-deep transition-all duration-200",
-                    isCollapsed && !isMobile ? "w-10 h-10 p-0" : "w-full",
+                    "border-bisu-yellow/50 text-bisu-yellow hover:bg-bisu-yellow hover:text-bisu-purple-deep transition-all duration-200 justify-center ",
+                    isCollapsed && !isMobile ? "w-12 h-10 p-0 ml-2" : "w-full",
                   )}
                 >
                   <LogOut size={isCollapsed && !isMobile ? 20 : 16} className={isCollapsed && !isMobile ? "mx-auto" : "mr-2"} />
