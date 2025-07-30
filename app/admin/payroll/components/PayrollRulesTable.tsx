@@ -77,7 +77,7 @@ export function PayrollRulesTable({
             </div>
             <Button 
               onClick={onAdd}
-              className="bg-bisu-yellow-DEFAULT text-bisu-purple-deep hover:bg-bisu-yellow-light hover:text-bisu-purple-medium border-2 border-bisu-yellow-light shadow-md"
+              className="bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow-light hover:text-bisu-purple-medium border-2 border-bisu-yellow-light shadow-md"
             >
               <Plus size={16} className="mr-2" />
               Add Rule

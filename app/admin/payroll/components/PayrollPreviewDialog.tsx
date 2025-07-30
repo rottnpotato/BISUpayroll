@@ -123,20 +123,43 @@ export const PayrollPreviewDialog = ({
         .sort((a, b) => `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`))
         .map((employee, index) => {
           const salary = parseFloat(employee.user.salary?.toString() || '0')
-          const baseSalary = parseFloat(employee.baseSalary?.toString() || '0')
-          const deductions = parseFloat(employee.deductions?.toString() || '0')
+          
+          // Use the detailed data from PayrollResult if available
+          const regularPay = parseFloat(employee.earningsBreakdown?.regularPay?.toString() || employee.baseSalary?.toString() || '0')
+          const overtimePay = parseFloat(employee.earningsBreakdown?.overtimePay?.toString() || employee.overtime?.toString() || '0')
+          const holidayPay = parseFloat(employee.earningsBreakdown?.holidayPay?.toString() || '0')
+          const nightDifferential = parseFloat(employee.earningsBreakdown?.nightDifferential?.toString() || '0')
+          const allowances = parseFloat(employee.earningsBreakdown?.allowances?.toString() || '0')
+          const bonuses = parseFloat(employee.earningsBreakdown?.bonuses?.toString() || employee.bonuses?.toString() || '0')
+          const thirteenthMonthPay = parseFloat(employee.earningsBreakdown?.thirteenthMonthPay?.toString() || '0')
+          const serviceIncentiveLeave = parseFloat(employee.earningsBreakdown?.serviceIncentiveLeave?.toString() || '0')
+          
+          const grossPay = parseFloat(employee.grossPay?.toString() || '0')
           const netPay = parseFloat(employee.netPay?.toString() || '0')
-          const hoursWorked = parseFloat(employee.attendanceData.hoursWorked?.toString() || '0')
-          const lateHours = parseFloat(employee.attendanceData.lateHours?.toString() || '0')
-          const withholdingTax = parseFloat(employee.deductionBreakdown.withholdingTax?.toString() || '0')
-          const citySavingsLoan = parseFloat(employee.deductionBreakdown.citySavingsLoan?.toString() || '0')
-          const pagibigContribution = parseFloat(employee.deductionBreakdown.pagibigContribution?.toString() || '0')
-
-          const hourlyRate = salary > 0 ? salary / (30 * 8) : 0
-          const dailyRate = salary > 0 ? salary / 30 : 0
-          const earnedForPeriod = baseSalary
-          const undertimeDeduction = lateHours * hourlyRate * 0.5
-          const grossAmount = earnedForPeriod - undertimeDeduction
+          
+          // Use detailed deduction breakdown
+          const gsisContribution = parseFloat(employee.deductionBreakdown?.gsisContribution?.toString() || '0')
+          const philHealthContribution = parseFloat(employee.deductionBreakdown?.philHealthContribution?.toString() || '0')
+          const pagibigContribution = parseFloat(employee.deductionBreakdown?.pagibigContribution?.toString() || '0')
+          const withholdingTax = parseFloat(employee.deductionBreakdown?.withholdingTax?.toString() || '0')
+          const lateDeductions = parseFloat(employee.deductionBreakdown?.lateDeductions?.toString() || '0')
+          const loanDeductions = parseFloat(employee.deductionBreakdown?.loanDeductions?.toString() || '0')
+          const otherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
+          
+          // Attendance data
+          const hoursWorked = parseFloat(employee.attendanceData?.hoursWorked?.toString() || '0')
+          const daysWorked = parseFloat(employee.attendanceData?.daysPresent?.toString() || '0')
+          const lateHours = parseFloat(employee.attendanceData?.lateHours?.toString() || '0')
+          
+          // Calculate rates for display
+          const dailyRate = salary > 0 ? salary / 22 : 0 // 22 working days standard
+          const hourlyRate = salary > 0 ? salary / (22 * 8) : 0
+          
+          // Total earnings and deductions
+          const totalEarnings = regularPay + overtimePay + holidayPay + nightDifferential + 
+                               allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave
+          const totalDeductions = gsisContribution + philHealthContribution + pagibigContribution + 
+                                 withholdingTax + lateDeductions + loanDeductions + otherDeductions
 
           return (
             <tr key={employee.id} className="border-b border-gray-300">
@@ -146,15 +169,16 @@ export const PayrollPreviewDialog = ({
               <td className="border-r border-black p-1 text-center">{employee.user.employeeId || 'N/A'}</td>
               <td className="border-r border-black p-1 text-right">₱{hourlyRate.toFixed(2)}</td>
               <td className="border-r border-black p-1 text-right">₱{dailyRate.toFixed(2)}</td>
-              <td className="border-r border-black p-1 text-center">{employee.attendanceData.daysPresent || 0}</td>
+              <td className="border-r border-black p-1 text-center">{daysWorked.toFixed(1)}</td>
               <td className="border-r border-black p-1 text-center">{hoursWorked.toFixed(1)}</td>
-              <td className="border-r border-black p-1 text-right">₱{earnedForPeriod.toFixed(2)}</td>
-              <td className="border-r border-black p-1 text-right">₱{undertimeDeduction.toFixed(2)}</td>
-              <td className="border-r border-black p-1 text-right">₱{grossAmount.toFixed(2)}</td>
+              <td className="border-r border-black p-1 text-right">₱{totalEarnings.toFixed(2)}</td>
+              <td className="border-r border-black p-1 text-right">₱{lateDeductions.toFixed(2)}</td>
+              <td className="border-r border-black p-1 text-right">₱{grossPay.toFixed(2)}</td>
               <td className="border-r border-black p-1 text-right">₱{withholdingTax.toFixed(2)}</td>
-              <td className="border-r border-black p-1 text-right">₱{citySavingsLoan.toFixed(2)}</td>
+              <td className="border-r border-black p-1 text-right">₱{gsisContribution.toFixed(2)}</td>
+              <td className="border-r border-black p-1 text-right">₱{philHealthContribution.toFixed(2)}</td>
               <td className="border-r border-black p-1 text-right">₱{pagibigContribution.toFixed(2)}</td>
-              <td className="border-r border-black p-1 text-right">₱{deductions.toFixed(2)}</td>
+              <td className="border-r border-black p-1 text-right">₱{totalDeductions.toFixed(2)}</td>
               <td className="border-r border-black p-1 text-right">₱{netPay.toFixed(2)}</td>
               <td className="p-1"></td>
             </tr>
@@ -178,10 +202,10 @@ export const PayrollPreviewDialog = ({
           const netPay = parseFloat(employee.netPay?.toString() || '0')
           
           // Use tax breakdown if available, otherwise calculate
-          const withholdingTax = employee.taxBreakdown?.withholdingTax || parseFloat(employee.deductionBreakdown.withholdingTax?.toString() || '0')
-          const pagibigContribution = employee.taxBreakdown?.pagibigContribution || parseFloat(employee.deductionBreakdown.pagibigContribution?.toString() || '0')
-          const sssContribution = employee.taxBreakdown?.sssContribution || parseFloat(employee.deductionBreakdown.sssContribution?.toString() || '0')
-          const philHealthContribution = employee.taxBreakdown?.philHealthContribution || parseFloat(employee.deductionBreakdown.philHealthContribution?.toString() || '0')
+          const withholdingTax = employee.taxBreakdown?.withholdingTax || parseFloat(employee.deductionBreakdown?.withholdingTax?.toString() || '0')
+          const pagibigContribution = employee.taxBreakdown?.pagibigContribution || parseFloat(employee.deductionBreakdown?.pagibigContribution?.toString() || '0')
+          const sssContribution = employee.taxBreakdown?.sssContribution || parseFloat(employee.deductionBreakdown?.sssContribution?.toString() || '0')
+          const philHealthContribution = employee.taxBreakdown?.philHealthContribution || parseFloat(employee.deductionBreakdown?.philHealthContribution?.toString() || '0')
           const totalContributions = employee.taxBreakdown?.totalContributions || (withholdingTax + pagibigContribution + sssContribution + philHealthContribution)
 
           return (
@@ -219,7 +243,7 @@ export const PayrollPreviewDialog = ({
           const grossPay = parseFloat(employee.grossPay?.toString() || '0')
           const deductions = parseFloat(employee.deductions?.toString() || '0')
           const netPay = parseFloat(employee.netPay?.toString() || '0')
-          const hoursWorked = parseFloat(employee.attendanceData.hoursWorked?.toString() || '0')
+          const hoursWorked = parseFloat(employee.attendanceData?.hoursWorked?.toString() || '0')
 
           return (
             <tr key={employee.id} className="border-b border-gray-300">
@@ -228,7 +252,7 @@ export const PayrollPreviewDialog = ({
               <td className="border-r border-black p-1">{employee.user.position || 'N/A'}</td>
               <td className="border-r border-black p-1 text-center">{employee.user.employeeId || 'N/A'}</td>
               <td className="border-r border-black p-1 text-right">₱{salary.toFixed(2)}</td>
-              <td className="border-r border-black p-1 text-center">{employee.attendanceData.daysPresent || 0}</td>
+              <td className="border-r border-black p-1 text-center">{employee.attendanceData?.daysPresent || 0}</td>
               <td className="border-r border-black p-1 text-center">{hoursWorked.toFixed(1)}</td>
               <td className="border-r border-black p-1 text-right">₱{grossPay.toFixed(2)}</td>
               <td className="border-r border-black p-1 text-right">₱{deductions.toFixed(2)}</td>

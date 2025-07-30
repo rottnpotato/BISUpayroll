@@ -147,41 +147,70 @@ export const usePayrollGeneration = () => {
           }
         }))
       } else {
-        // For other report types, fetch attendance data if needed
+        // For other report types, use the detailed payroll data from backend
         detailedPayroll = await Promise.all(
           records.map(async (record: any) => {
             let attendanceData = { daysPresent: 0, hoursWorked: 0, lateHours: 0 }
             
-            try {
-              const attendanceResponse = await fetch(
-                `/api/admin/attendance?userId=${record.userId}&startDate=${templateDateRange.from?.toISOString()}&endDate=${templateDateRange.to?.toISOString()}`
-              )
-              
-              if (attendanceResponse.ok) {
-                const attendance = await attendanceResponse.json()
-                attendanceData = {
-                  daysPresent: attendance.records?.filter((r: any) => r.timeIn && r.timeOut).length || 0,
-                  hoursWorked: attendance.records?.reduce((sum: number, r: any) => 
-                    sum + (r.hoursWorked ? parseFloat(r.hoursWorked.toString()) : 0), 0) || 0,
-                  lateHours: attendance.records?.reduce((sum: number, r: any) => 
-                    sum + (r.isLate ? 1 : 0), 0) || 0
-                }
-              } else {
-                console.warn(`Failed to fetch attendance for user ${record.userId}`)
+            // If the record already has attendance data (from PayrollResult), use it
+            if (record.daysWorked !== undefined) {
+              attendanceData = {
+                daysPresent: record.daysWorked || 0,
+                hoursWorked: record.hoursWorked || 0,
+                lateHours: record.lateHours || 0
               }
-            } catch (error) {
-              console.warn(`Error fetching attendance for user ${record.userId}:`, error)
+            } else {
+              // Fallback: fetch attendance data if needed
+              try {
+                const attendanceResponse = await fetch(
+                  `/api/admin/attendance?userId=${record.userId}&startDate=${templateDateRange.from?.toISOString()}&endDate=${templateDateRange.to?.toISOString()}`
+                )
+                
+                if (attendanceResponse.ok) {
+                  const attendance = await attendanceResponse.json()
+                  attendanceData = {
+                    daysPresent: attendance.records?.filter((r: any) => r.timeIn && r.timeOut).length || 0,
+                    hoursWorked: attendance.records?.reduce((sum: number, r: any) => 
+                      sum + (r.hoursWorked ? parseFloat(r.hoursWorked.toString()) : 0), 0) || 0,
+                    lateHours: attendance.records?.reduce((sum: number, r: any) => 
+                      sum + (r.isLate ? 1 : 0), 0) || 0
+                  }
+                } else {
+                  console.warn(`Failed to fetch attendance for user ${record.userId}`)
+                }
+              } catch (error) {
+                console.warn(`Error fetching attendance for user ${record.userId}:`, error)
+              }
             }
 
-            const grossPay = parseFloat(record.grossPay?.toString() || '0')
+            // Use the detailed breakdown from PayrollResult if available
+            const deductionBreakdown = {
+              withholdingTax: record.withholdingTax || 0,
+              gsisContribution: record.gsisContribution || 0,
+              philHealthContribution: record.philHealthContribution || 0,
+              pagibigContribution: record.pagibigContribution || 0,
+              lateDeductions: record.lateDeductions || 0,
+              loanDeductions: record.loanDeductions || 0,
+              otherDeductions: record.otherDeductions || 0
+            }
+
+            // Use the detailed earnings breakdown from PayrollResult if available
+            const earningsBreakdown = {
+              regularPay: record.regularPay || 0,
+              overtimePay: record.overtimePay || 0,
+              holidayPay: record.holidayPay || 0,
+              nightDifferential: record.nightDifferential || 0,
+              allowances: record.allowances || 0,
+              bonuses: record.bonuses || 0,
+              thirteenthMonthPay: record.thirteenthMonthPay || 0,
+              serviceIncentiveLeave: record.serviceIncentiveLeave || 0
+            }
+
             return {
               ...record,
               attendanceData,
-              deductionBreakdown: {
-                withholdingTax: grossPay * 0.12,
-                citySavingsLoan: 0,
-                pagibigContribution: grossPay * 0.02
-              }
+              deductionBreakdown,
+              earningsBreakdown
             }
           })
         )

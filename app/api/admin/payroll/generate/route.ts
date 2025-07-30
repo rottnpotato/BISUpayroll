@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
+import { 
+  calculateCompletePayroll, 
+  PayrollCalculationData,
+  PayrollCalculationResult 
+} from "@/lib/payroll-calculations"
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +42,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    const configs = systemConfigs.reduce((acc, config) => {
+    const configs = systemConfigs.reduce((acc: { [x: string]: any }, config: { key: string | number; value: any }) => {
       acc[config.key] = config.value
       return acc
     }, {} as Record<string, string>)
@@ -118,151 +123,155 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const payrollRecords = []
+    const payrollResults = []
     const errors = []
 
-    // Parse configuration values
-    const dailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
-    const overtimeRate1 = parseFloat(configs['rates_overtimeRate1'] || '1.25')
-    const overtimeRate2 = parseFloat(configs['rates_overtimeRate2'] || '1.5')
-    const regularHolidayRate = parseFloat(configs['rates_regularHolidayRate'] || '2.0')
-    const specialHolidayRate = parseFloat(configs['rates_specialHolidayRate'] || '1.3')
-    const lateDeductionAmount = parseFloat(configs['working_hours_lateDeductionAmount'] || '0')
-    const lateDeductionBasis = configs['working_hours_lateDeductionBasis'] || 'fixed'
+    // Parse configuration values with defaults
+    const configurations = {
+      dailyHours: parseFloat(configs['working_hours_dailyHours'] || '8'),
+      overtimeRate1: parseFloat(configs['rates_overtimeRate1'] || '1.25'),
+      overtimeRate2: parseFloat(configs['rates_overtimeRate2'] || '1.5'),
+      nightDifferential: parseFloat(configs['rates_nightDifferential'] || '10'),
+      regularHolidayRate: parseFloat(configs['rates_regularHolidayRate'] || '2.0'),
+      specialHolidayRate: parseFloat(configs['rates_specialHolidayRate'] || '1.3'),
+      lateDeductionAmount: parseFloat(configs['working_hours_lateDeductionAmount'] || '0'),
+      lateDeductionBasis: configs['working_hours_lateDeductionBasis'] || 'fixed'
+    }
 
     for (const user of users) {
       try {
-        // Check if payroll already exists for this period
-        const existingPayroll = await prisma.payrollRecord.findFirst({
-          where: {
-            userId: user.id,
-            payPeriodStart: startDate,
-            payPeriodEnd: endDate
-          }
-        })
+        const baseSalary = Number(user.salary)
+        
+        // Calculate attendance data from records
+        let totalHoursWorked = 0
+        let overtimeHours = 0
+        let lateHours = 0
+        let undertimeHours = 0
+        let holidayHours = 0
+        let nightShiftHours = 0
+        let daysWorked = 0
 
-        if (existingPayroll) {
-          errors.push(`Payroll already exists for ${user.firstName} ${user.lastName}`)
-          continue
-        }
-
-        // Calculate attendance metrics
-        const totalHoursWorked = user.attendanceRecords.reduce((sum: number, record: any) => {
-          return sum + (Number(record.hoursWorked) || 0)
-        }, 0)
-
-        const lateCount = user.attendanceRecords.filter((record: any) => record.isLate).length
-        const absentCount = user.attendanceRecords.filter((record: any) => record.isAbsent).length
-        const workDays = user.attendanceRecords.filter((record: any) => !record.isAbsent).length
-
-        // Calculate expected hours and overtime
-        const expectedTotalHours = workDays * dailyHours
-        const regularHours = Math.min(totalHoursWorked, expectedTotalHours)
-        const overtimeHours = Math.max(0, totalHoursWorked - expectedTotalHours)
-
-        // Calculate salary rates
-        const monthlySalary = Number(user.salary)
-        const dailyRate = monthlySalary / 22 // Standard working days per month
-        const hourlyRate = dailyRate / dailyHours
-
-        // Calculate regular pay
-        let regularPay = regularHours * hourlyRate
-
-        // Calculate holiday pay
-        let holidayPay = 0
         user.attendanceRecords.forEach((record: any) => {
-          const recordDate = new Date(record.date)
-          const holiday = holidays.find((h: any) => {
-            const holidayDate = new Date(h.date)
-            return holidayDate.toDateString() === recordDate.toDateString()
-          })
-
-          if (holiday && record.hoursWorked) {
-            const hoursWorked = Number(record.hoursWorked)
-            if (holiday.type === 'REGULAR') {
-              holidayPay += hoursWorked * hourlyRate * (regularHolidayRate - 1) // Additional pay
-            } else if (holiday.type === 'SPECIAL') {
-              holidayPay += hoursWorked * hourlyRate * (specialHolidayRate - 1) // Additional pay
+          if (record.timeIn && record.timeOut) {
+            daysWorked++
+            const hoursWorked = Number(record.hoursWorked || 0)
+            totalHoursWorked += hoursWorked
+            
+            // Check if overtime (more than daily hours)
+            if (hoursWorked > configurations.dailyHours) {
+              overtimeHours += hoursWorked - configurations.dailyHours
+            }
+            
+            // Check if undertime (less than daily hours and not absent)
+            if (hoursWorked < configurations.dailyHours && !record.isAbsent) {
+              undertimeHours += configurations.dailyHours - hoursWorked
+            }
+            
+            if (record.isLate) {
+              lateHours += 1 // Simplified: count late instances
+            }
+            
+            // Check for holiday work
+            const recordDate = new Date(record.date)
+            const holiday = holidays.find((h: any) => {
+              const holidayDate = new Date(h.date)
+              return holidayDate.toDateString() === recordDate.toDateString()
+            })
+            
+            if (holiday) {
+              holidayHours += hoursWorked
+            }
+            
+            // Check for night shift (simplified - you may want to improve this logic)
+            const timeIn = new Date(record.timeIn)
+            const timeOut = new Date(record.timeOut)
+            if (timeIn.getHours() >= 22 || timeIn.getHours() <= 6) {
+              nightShiftHours += Math.min(hoursWorked, 8) // Max 8 hours night differential
             }
           }
         })
 
-        // Calculate overtime pay (different rates for different overtime hours)
-        let overtimePay = 0
-        if (overtimeHours > 0) {
-          const firstOvertimeHours = Math.min(overtimeHours, 2) // First 2 hours at rate1
-          const secondOvertimeHours = Math.max(0, overtimeHours - 2) // Remaining hours at rate2
-          
-          overtimePay = (firstOvertimeHours * hourlyRate * overtimeRate1) + 
-                       (secondOvertimeHours * hourlyRate * overtimeRate2)
-        }
-
-        // Calculate base gross pay
-        const baseGrossPay = regularPay + overtimePay + holidayPay
-
-        // Apply payroll rules for bonuses and allowances
-        let bonuses = 0
+        // Combine user-specific and global rules
         const userRules = user.payrollRules.map((ur: any) => ur.payrollRule).filter((rule: any) => rule.isActive)
         const allApplicableRules = [...userRules, ...globalRules]
 
-        allApplicableRules.forEach((rule: any) => {
-          if (rule.type === 'bonus' || rule.type === 'allowance') {
-            const amount = Number(rule.amount)
-            if (rule.isPercentage) {
-              bonuses += baseGrossPay * amount / 100
-            } else {
-              bonuses += amount
-            }
-          }
-        })
-
-        const grossPay = baseGrossPay + bonuses
-
-        // Calculate deductions
-        let totalDeductions = 0
-
-        // Apply payroll rules for deductions
-        allApplicableRules.forEach((rule: any) => {
-          if (rule.type === 'deduction') {
-            const amount = Number(rule.amount)
-            if (rule.isPercentage) {
-              totalDeductions += grossPay * amount / 100
-            } else {
-              totalDeductions += amount
-            }
-          }
-        })
-
-        // Calculate late deductions
-        let lateDeductions = 0
-        if (lateCount > 0) {
-          if (lateDeductionBasis === 'fixed') {
-            lateDeductions = lateCount * lateDeductionAmount
-          } else if (lateDeductionBasis === 'hourly') {
-            lateDeductions = lateCount * hourlyRate * lateDeductionAmount
-          } else if (lateDeductionBasis === 'daily') {
-            lateDeductions = lateCount * dailyRate * lateDeductionAmount
-          }
+        // Prepare calculation data
+        const calculationData: PayrollCalculationData = {
+          baseSalary,
+          daysWorked,
+          hoursWorked: totalHoursWorked,
+          overtimeHours,
+          lateHours,
+          undertimeHours,
+          holidayHours,
+          nightShiftHours,
+          holidayType: 'REGULAR', // Default, could be enhanced
+          appliedRules: allApplicableRules,
+          configurations
         }
 
-        totalDeductions += lateDeductions
+        // Calculate complete payroll using our new utility
+        const result: PayrollCalculationResult = calculateCompletePayroll(calculationData)
 
-        const netPay = Math.max(0, grossPay - totalDeductions)
-
-        const payrollRecord = await prisma.payrollRecord.create({
+        // Create PayrollResult record
+        const payrollResult = await prisma.payrollResult.create({
           data: {
             userId: user.id,
             payPeriodStart: startDate,
             payPeriodEnd: endDate,
-            baseSalary: regularPay,
-            overtime: overtimePay,
-            deductions: totalDeductions,
-            bonuses: bonuses + holidayPay,
-            grossPay: grossPay,
-            netPay: netPay,
-            isGenerated: true,
-            generatedAt: new Date(),
-            isPaid: false
+            
+            // Basic salary information
+            baseSalary: baseSalary,
+            dailyRate: result.dailyRate,
+            hourlyRate: result.hourlyRate,
+            
+            // Attendance data
+            daysWorked,
+            hoursWorked: totalHoursWorked,
+            overtimeHours,
+            undertimeHours,
+            lateHours,
+            holidayHours,
+            nightShiftHours,
+            
+            // Earnings breakdown
+            regularPay: result.regularPay,
+            overtimePay: result.overtimePay,
+            holidayPay: result.holidayPay,
+            nightDifferential: result.nightDifferential,
+            allowances: result.allowances,
+            bonuses: result.bonuses,
+            thirteenthMonthPay: result.thirteenthMonthPay,
+            serviceIncentiveLeave: result.serviceIncentiveLeave,
+            otherEarnings: result.otherEarnings,
+            
+            // Gross pay
+            grossPay: result.grossPay,
+            
+            // Mandatory contributions
+            gsisContribution: result.gsisContribution,
+            philHealthContribution: result.philHealthContribution,
+            pagibigContribution: result.pagibigContribution,
+            
+            // Tax calculations
+            taxableIncome: result.taxableIncome,
+            withholdingTax: result.withholdingTax,
+            
+            // Other deductions
+            lateDeductions: result.lateDeductions,
+            undertimeDeductions: result.undertimeDeductions,
+            loanDeductions: result.loanDeductions,
+            otherDeductions: result.otherDeductions,
+            
+            // Totals
+            totalEarnings: result.totalEarnings,
+            totalDeductions: result.totalDeductions,
+            netPay: result.netPay,
+            
+            // Applied rules as JSON
+            appliedRules: JSON.stringify(result.appliedRulesBreakdown),
+            
+            status: 'GENERATED'
           },
           include: {
             user: {
@@ -279,46 +288,71 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        payrollRecords.push({
-          ...payrollRecord,
-          calculationDetails: {
-            totalHoursWorked,
-            regularHours,
-            overtimeHours,
-            holidayPay,
-            lateCount,
-            absentCount,
-            workDays,
-            lateDeductions,
-            hourlyRate,
-            dailyRate,
-            appliedRules: allApplicableRules.length
+        // Also create/update the legacy PayrollRecord for backward compatibility
+        const existingPayrollRecord = await prisma.payrollRecord.findFirst({
+          where: {
+            userId: user.id,
+            payPeriodStart: startDate,
+            payPeriodEnd: endDate
           }
         })
-      } catch (error: any) {
+
+        if (existingPayrollRecord) {
+          await prisma.payrollRecord.update({
+            where: { id: existingPayrollRecord.id },
+            data: {
+              baseSalary: result.regularPay,
+              overtime: result.overtimePay,
+              deductions: result.totalDeductions,
+              bonuses: result.bonuses + result.holidayPay,
+              grossPay: result.grossPay,
+              netPay: result.netPay,
+              isGenerated: true,
+              generatedAt: new Date()
+            }
+          })
+        } else {
+          await prisma.payrollRecord.create({
+            data: {
+              userId: user.id,
+              payPeriodStart: startDate,
+              payPeriodEnd: endDate,
+              baseSalary: result.regularPay,
+              overtime: result.overtimePay,
+              deductions: result.totalDeductions,
+              bonuses: result.bonuses + result.holidayPay,
+              grossPay: result.grossPay,
+              netPay: result.netPay,
+              isGenerated: true,
+              generatedAt: new Date(),
+              isPaid: false
+            }
+          })
+        }
+
+        payrollResults.push(payrollResult)
+
+      } catch (error) {
         console.error(`Error generating payroll for user ${user.id}:`, error)
-        errors.push(`Failed to generate payroll for ${user.firstName} ${user.lastName}: ${error?.message || 'Unknown error'}`)
+        errors.push({
+          userId: user.id,
+          userName: `${user.firstName} ${user.lastName}`,
+          error: error instanceof Error ? error.message : "Unknown error"
+        })
       }
     }
 
     return NextResponse.json({
-      success: true,
-      generated: payrollRecords.length,
-      records: payrollRecords,
-      errors: errors,
-      summary: {
-        totalUsers: users.length,
-        successfulGenerations: payrollRecords.length,
-        errors: errors.length,
-        holidaysInPeriod: holidays.length,
-        configsUsed: Object.keys(configs).length
-      }
-    }, { status: 201 })
+      message: `Generated payroll for ${payrollResults.length} employees`,
+      generated: payrollResults.length,
+      records: payrollResults,
+      errors: errors.length > 0 ? errors : undefined
+    })
 
-  } catch (error: any) {
-    console.error("Error generating bulk payroll:", error)
+  } catch (error) {
+    console.error("Error generating payroll:", error)
     return NextResponse.json(
-      { error: "Failed to generate payroll records", details: error?.message || 'Unknown error' },
+      { error: "Failed to generate payroll" },
       { status: 500 }
     )
   }

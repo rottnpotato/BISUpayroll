@@ -12,11 +12,11 @@ export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange) => 
     const baseSalary = parseFloat(employee.baseSalary?.toString() || '0')
     const deductions = parseFloat(employee.deductions?.toString() || '0')
     const netPay = parseFloat(employee.netPay?.toString() || '0')
-    const hoursWorked = parseFloat(employee.attendanceData.hoursWorked?.toString() || '0')
-    const lateHours = parseFloat(employee.attendanceData.lateHours?.toString() || '0')
-    const withholdingTax = parseFloat(employee.deductionBreakdown.withholdingTax?.toString() || '0')
-    const citySavingsLoan = parseFloat(employee.deductionBreakdown.citySavingsLoan?.toString() || '0')
-    const pagibigContribution = parseFloat(employee.deductionBreakdown.pagibigContribution?.toString() || '0')
+    const hoursWorked = parseFloat(employee.attendanceData?.hoursWorked?.toString() || '0')
+    const lateHours = parseFloat(employee.attendanceData?.lateHours?.toString() || '0')
+    const withholdingTax = parseFloat(employee.deductionBreakdown?.withholdingTax?.toString() || '0')
+    const citySavingsLoan = parseFloat(employee.deductionBreakdown?.citySavingsLoan?.toString() || '0')
+    const pagibigContribution = parseFloat(employee.deductionBreakdown?.pagibigContribution?.toString() || '0')
 
     const hourlyRate = salary > 0 ? salary / (30 * 8) : 0
     const dailyRate = salary > 0 ? salary / 30 : 0
@@ -32,7 +32,7 @@ export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange) => 
         <td style="border-right: 1px solid #000; padding: 4px; text-align: center;">${employee.user.employeeId || 'N/A'}</td>
         <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">₱${hourlyRate.toFixed(2)}</td>
         <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">₱${dailyRate.toFixed(2)}</td>
-        <td style="border-right: 1px solid #000; padding: 4px; text-align: center;">${employee.attendanceData.daysPresent || 0}</td>
+        <td style="border-right: 1px solid #000; padding: 4px; text-align: center;">${employee.attendanceData?.daysPresent || 0}</td>
         <td style="border-right: 1px solid #000; padding: 4px; text-align: center;">${hoursWorked.toFixed(1)}</td>
         <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">₱${earnedForPeriod.toFixed(2)}</td>
         <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">₱${undertimeDeduction.toFixed(2)}</td>

@@ -149,16 +149,12 @@ async function seedPayrollConfiguration() {
     where: { name: 'Bi-monthly Payroll' },
     update: {
       days: [15, 30],
-      isActive: true,
-      processHour: 9,
-      processMinute: 0
+      isActive: true
     },
     create: {
       name: 'Bi-monthly Payroll',
       days: [15, 30],
-      isActive: true,
-      processHour: 9,
-      processMinute: 0
+      isActive: true
     }
   })
 

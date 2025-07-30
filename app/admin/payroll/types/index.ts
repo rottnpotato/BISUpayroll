@@ -163,36 +163,53 @@ export interface Report {
 }
 
 export interface PayrollData {
-  id: string
+  id?: string
+  userId: string
   user: {
     id: string
     firstName: string
     lastName: string
-    employeeId: string
-    department: string
-    position: string
-    salary: number | string | null
+    employeeId: string | null
+    department: string | null
+    position: string | null
+    salary: number | null
   }
-  payPeriodStart: string
-  payPeriodEnd: string
-  baseSalary: number | string | null
-  overtime: number | string | null
-  deductions: number | string | null
-  bonuses: number | string | null
-  grossPay: number | string | null
-  netPay: number | string | null
-  attendanceData: {
-    daysPresent: number | null
-    hoursWorked: number | string | null
-    lateHours: number | string | null
+  
+  // Legacy fields for backward compatibility
+  baseSalary?: number
+  overtime?: number
+  deductions?: number
+  bonuses?: number
+  grossPay: number
+  netPay: number
+  
+  // Detailed earnings breakdown
+  earningsBreakdown?: {
+    regularPay: number
+    overtimePay: number
+    holidayPay: number
+    nightDifferential: number
+    allowances: number
+    bonuses: number
+    thirteenthMonthPay: number
+    serviceIncentiveLeave: number
+    otherEarnings: number
   }
-  deductionBreakdown: {
-    withholdingTax: number | string | null
-    citySavingsLoan: number | string | null
-    pagibigContribution: number | string | null
-    sssContribution?: number | string | null
-    philHealthContribution?: number | string | null
+  
+  // Detailed deduction breakdown  
+  deductionBreakdown?: {
+    withholdingTax: string | number | null
+    gsisContribution?: string | number | null
+    philHealthContribution?: string | number | null
+    pagibigContribution: string | number | null
+    lateDeductions?: string | number | null
+    loanDeductions?: string | number | null
+    otherDeductions?: string | number | null
+    citySavingsLoan?: string | number | null
+    sssContribution?: string | number | null
   }
+  
+  // Tax breakdown for tax reports
   taxBreakdown?: {
     withholdingTax: number
     pagibigContribution: number
@@ -200,6 +217,37 @@ export interface PayrollData {
     philHealthContribution: number
     totalContributions: number
   }
+  
+  // Attendance data
+  attendanceData?: {
+    daysPresent: number
+    hoursWorked: number
+    lateHours: number
+  }
+  
+  // Applied rules breakdown
+  appliedRulesBreakdown?: Array<{
+    ruleId: string
+    ruleName: string
+    ruleType: string
+    category: string
+    amount: number
+    isPercentage: boolean
+    rate?: number
+  }>
+  
+  // PayrollResult specific fields
+  payPeriodStart?: string | Date
+  payPeriodEnd?: string | Date
+  status?: string
+  isApproved?: boolean
+  
+  // Additional calculation fields
+  dailyRate?: number
+  hourlyRate?: number
+  totalEarnings?: number
+  totalDeductions?: number
+  taxableIncome?: number
 }
 
 export interface ReportTemplate {

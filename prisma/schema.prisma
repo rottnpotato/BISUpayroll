@@ -34,6 +34,8 @@ model User {
   leaveRequests                LeaveRequest[]
   payrollRecords               PayrollRecord[]
   payrollRules                 PayrollRuleAssignment[]
+  payrollResults               PayrollResult[]
+  approvedPayrollResults       PayrollResult[]         @relation("PayrollResultApprovedBy")
 
   @@map("users")
 }
@@ -79,6 +81,83 @@ model PayrollRecord {
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("payroll_records")
+}
+
+model PayrollResult {
+  id                    String   @id @default(cuid())
+  userId                String
+  payrollScheduleId     String?
+  payPeriodStart        DateTime
+  payPeriodEnd          DateTime
+  
+  // Basic salary information
+  baseSalary            Decimal  @db.Decimal(10, 2)
+  dailyRate             Decimal  @db.Decimal(10, 2)
+  hourlyRate            Decimal  @db.Decimal(10, 2)
+  
+  // Attendance data
+  daysWorked            Int      @default(0)
+  hoursWorked           Decimal  @default(0) @db.Decimal(6, 2)
+  overtimeHours         Decimal  @default(0) @db.Decimal(6, 2)
+  undertimeHours        Decimal  @default(0) @db.Decimal(6, 2)
+  lateHours             Decimal  @default(0) @db.Decimal(6, 2)
+  holidayHours          Decimal  @default(0) @db.Decimal(6, 2)
+  nightShiftHours       Decimal  @default(0) @db.Decimal(6, 2)
+  
+  // Earnings breakdown
+  regularPay            Decimal  @default(0) @db.Decimal(10, 2)
+  overtimePay           Decimal  @default(0) @db.Decimal(10, 2)
+  holidayPay            Decimal  @default(0) @db.Decimal(10, 2)
+  nightDifferential     Decimal  @default(0) @db.Decimal(10, 2)
+  allowances            Decimal  @default(0) @db.Decimal(10, 2)
+  bonuses               Decimal  @default(0) @db.Decimal(10, 2)
+  thirteenthMonthPay    Decimal  @default(0) @db.Decimal(10, 2)
+  serviceIncentiveLeave Decimal  @default(0) @db.Decimal(10, 2)
+  otherEarnings         Decimal  @default(0) @db.Decimal(10, 2)
+  
+  // Gross pay
+  grossPay              Decimal  @db.Decimal(10, 2)
+  
+  // Mandatory contributions
+  gsisContribution      Decimal  @default(0) @db.Decimal(10, 2)
+  philHealthContribution Decimal @default(0) @db.Decimal(10, 2)
+  pagibigContribution   Decimal  @default(0) @db.Decimal(10, 2)
+  
+  // Tax calculations
+  taxableIncome         Decimal  @default(0) @db.Decimal(10, 2)
+  withholdingTax        Decimal  @default(0) @db.Decimal(10, 2)
+  
+  // Other deductions
+  lateDeductions        Decimal  @default(0) @db.Decimal(10, 2)
+  undertimeDeductions   Decimal  @default(0) @db.Decimal(10, 2)
+  loanDeductions        Decimal  @default(0) @db.Decimal(10, 2)
+  otherDeductions       Decimal  @default(0) @db.Decimal(10, 2)
+  
+  // Totals
+  totalEarnings         Decimal  @db.Decimal(10, 2)
+  totalDeductions       Decimal  @db.Decimal(10, 2)
+  netPay                Decimal  @db.Decimal(10, 2)
+  
+  // Status and metadata
+  status                PayrollResultStatus @default(GENERATED)
+  isApproved            Boolean  @default(false)
+  approvedAt            DateTime?
+  approvedById          String?
+  isPaid                Boolean  @default(false)
+  paidAt                DateTime?
+  
+  // Applied rules (JSON array of rule IDs and calculated amounts)
+  appliedRules          String?  // JSON string containing rule applications
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy            User?    @relation("PayrollResultApprovedBy", fields: [approvedById], references: [id])
+
+  @@unique([userId, payPeriodStart, payPeriodEnd])
+  @@map("payroll_results")
 }
 
 model LeaveRequest {
@@ -218,4 +297,11 @@ enum AttendanceStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum PayrollResultStatus {
+  GENERATED
+  APPROVED
+  REJECTED
+  PAID
 }

@@ -430,22 +430,22 @@ export default function PayrollPage() {
 
         <TabsContent value="reports" className="space-y-6">
           <motion.div variants={itemVariants}>
-            <ReportsHeader 
+            {/* <ReportsHeader 
               title="Payroll Reports"
               description="Generate comprehensive payroll reports with attendance integration"
-            />
+            /> */}
 
             <Tabs value={reportsTab} onValueChange={setReportsTab} className="mb-6">
               <TabsList className="text-white w-full bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium border border-bisu-yellow-DEFAULT/20">
                 <TabsTrigger 
                   value="recent" 
-                  className="flex-1 data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                  className="flex-1 data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
                 >
                   Recent Reports
                 </TabsTrigger>
                 <TabsTrigger 
                   value="generate" 
-                  className="flex-1 data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                  className="flex-1 data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
                 >
                   Generate Payroll
                 </TabsTrigger>
