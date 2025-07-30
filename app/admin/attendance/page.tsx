@@ -99,7 +99,7 @@ export default function AttendancePage() {
           <motion.div variants={itemVariants}>
             <Card className="shadow-md">
               <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg pb-4">
-                <CardTitle className="text-bisu-yellow-DEFAULT mb-4">Attendance Records</CardTitle>
+                <CardTitle className="text-bisu-yellow mb-4">Attendance Records</CardTitle>
                 
                 <AttendanceFilters
                   filters={filters}

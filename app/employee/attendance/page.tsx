@@ -395,14 +395,14 @@ export default function EmployeeAttendancePage() {
         <motion.div variants={itemVariants}>
           <Card className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white">
             <CardHeader>
-              <CardTitle className="text-bisu-yellow-DEFAULT flex items-center gap-2">
+              <CardTitle className="text-bisu-yellow flex items-center gap-2">
                 <Clock className="h-6 w-6" />
                 Time Clock
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="text-center">
-                <div className="text-3xl font-mono font-bold text-bisu-yellow-DEFAULT">
+                <div className="text-3xl font-mono font-bold text-bisu-yellow">
                   {format(currentTime, 'HH:mm:ss')}
                 </div>
                 <div className="text-lg text-bisu-yellow-light">

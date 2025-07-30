@@ -876,12 +876,12 @@ export default function PayrollRulesPage() {
               <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                   <div>
-                    <CardTitle className="text-bisu-yellow-DEFAULT text-xl">Payroll Rules</CardTitle>
+                    <CardTitle className="text-bisu-yellow text-xl">Payroll Rules</CardTitle>
                     <CardDescription className="text-bisu-yellow-light">Manage salary computation rules and deductions</CardDescription>
                   </div>
                   <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-bisu-yellow-DEFAULT text-bisu-purple-deep hover:bg-bisu-yellow-light hover:text-bisu-purple-medium border-2 border-bisu-yellow-light shadow-md">
+                      <Button className="bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow-light hover:text-bisu-purple-medium border-2 border-bisu-yellow-light shadow-md">
                         <Plus size={16} className="mr-2" />
                         Add Rule
                       </Button>
@@ -1130,34 +1130,34 @@ export default function PayrollRulesPage() {
                 
                 {/* Enhanced Tab Navigation */}
                 <Tabs defaultValue="all" className="mt-6" onValueChange={setActiveTab}>
-                  <TabsList className="bg-bisu-purple-light border-bisu-yellow-DEFAULT/30 text-bisu-yellow-light grid grid-cols-2 lg:grid-cols-5 w-full lg:w-auto">
+                  <TabsList className="bg-bisu-purple-light border-bisu-yellow/30 text-bisu-yellow-light grid grid-cols-2 lg:grid-cols-5 w-full lg:w-auto">
                     <TabsTrigger 
                       value="all" 
-                      className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                      className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
                     >
                       All Rules
                     </TabsTrigger>
                     <TabsTrigger 
                       value="base" 
-                      className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                      className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
                     >
                       Base Pay
                     </TabsTrigger>
                     <TabsTrigger 
                       value="additional" 
-                      className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                      className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
                     >
                       Additions
                     </TabsTrigger>
                     <TabsTrigger 
                       value="deduction" 
-                      className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                      className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
                     >
                       Deductions
                     </TabsTrigger>
                     <TabsTrigger 
                       value="tax" 
-                      className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                      className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
                     >
                       Tax & Benefits
                     </TabsTrigger>
@@ -1271,7 +1271,7 @@ export default function PayrollRulesPage() {
             {/* Payroll Schedule Configuration */}
             <motion.div variants={itemVariants}>
               <Card className="shadow-lg border-2 h-full">
-                <CardHeader className="bg-gradient-to-r from-bisu-yellow-DEFAULT to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
+                <CardHeader className="bg-gradient-to-r from-bisu-yellow to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
                   <div className="flex justify-between items-center">
                     <div>
                       <CardTitle className="flex items-center gap-2">
@@ -1358,8 +1358,8 @@ export default function PayrollRulesPage() {
                                       setScheduleFormData({...scheduleFormData, cutoffDays})
                                     }}
                                     className={scheduleFormData.cutoffDays.includes(day) 
-                                      ? "bg-bisu-yellow-DEFAULT text-bisu-purple-deep" 
-                                      : "border-bisu-yellow-DEFAULT text-bisu-yellow-dark"
+                                      ? "bg-bisu-yellow text-bisu-purple-deep" 
+                                      : "border-bisu-yellow text-bisu-yellow-dark"
                                     }
                                   >
                                     {day}
@@ -1479,7 +1479,7 @@ export default function PayrollRulesPage() {
             <motion.div variants={itemVariants}>
               <Card className="shadow-lg border-2 h-full">
                 <CardHeader className="bg-gradient-to-r from-bisu-purple-light to-bisu-purple-medium text-white rounded-t-lg">
-                  <CardTitle className="text-bisu-yellow-DEFAULT flex items-center gap-2">
+                  <CardTitle className="text-bisu-yellow flex items-center gap-2">
                     <Timer size={20} />
                     Working Hours & Attendance
                   </CardTitle>

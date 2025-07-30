@@ -79,7 +79,7 @@ export function RatesConfigCard({ config, onConfigChange }: RatesConfigCardProps
   return (
     <motion.div variants={itemVariants} className="h-full">
       <Card className="shadow-lg border-2 h-full flex flex-col">
-        <CardHeader className="bg-gradient-to-r from-bisu-yellow-DEFAULT to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
+        <CardHeader className="bg-gradient-to-r from-bisu-yellow to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
           <CardTitle className="flex items-center gap-2">
             <TrendingUp size={20} />
             Rates & Differentials Configuration

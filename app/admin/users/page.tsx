@@ -443,7 +443,7 @@ export default function AdminUsersPage() {
           <Card className="shadow-lg border-0 overflow-hidden">
             <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg pb-4">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <CardTitle className="text-bisu-yellow-DEFAULT flex items-center">
+                <CardTitle className="text-bisu-yellow flex items-center">
                   <UserPlus size={20} className="mr-2" />
                   Employee Management
                 </CardTitle>
@@ -453,7 +453,7 @@ export default function AdminUsersPage() {
                       <TooltipTrigger asChild>
                         <Button 
                           variant="outline" 
-                          className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-yellow-light/10"
+                          className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
                           onClick={fetchUsers}
                         >
                     <RefreshCcw size={16} className="mr-2" />
@@ -471,7 +471,7 @@ export default function AdminUsersPage() {
                       <TooltipTrigger asChild>
                         <Button 
                           variant="outline" 
-                          className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-yellow-light/10"
+                          className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
                           onClick={() => setShowAddDialog(true)}
                         >
                     <Plus size={16} className="mr-2" />
@@ -489,7 +489,7 @@ export default function AdminUsersPage() {
                       <TooltipTrigger asChild>
                         <Button 
                           variant="outline" 
-                          className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-yellow-light/10"
+                          className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
                           onClick={() => setShowAddDialog(true)}
                         >
                     <UserPlus size={16} className="mr-2" />
@@ -506,18 +506,18 @@ export default function AdminUsersPage() {
               
               <div className="flex flex-col md:flex-row gap-4 mt-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow-DEFAULT" />
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow" />
                   <Input
                     placeholder="Search by name, email, ID, or position..."
-                    className="pl-10 bg-bisu-purple-light text-white placeholder:text-bisu-yellow-DEFAULT/70 border-bisu-yellow-DEFAULT/30 focus:border-bisu-yellow-DEFAULT"
+                    className="pl-10 bg-bisu-purple-light text-white placeholder:text-bisu-yellow/70 border-bisu-yellow/30 focus:border-bisu-yellow"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                    <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow-DEFAULT/30">
-                      <Filter size={16} className="mr-2 text-bisu-yellow-DEFAULT" />
+                    <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow/30">
+                      <Filter size={16} className="mr-2 text-bisu-yellow" />
                       <SelectValue placeholder="Department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -530,17 +530,17 @@ export default function AdminUsersPage() {
                   </Select>
                   
                   <Tabs value={selectedStatus} onValueChange={setSelectedStatus} className="w-[260px]">
-                    <TabsList className="bg-bisu-purple-light border-bisu-yellow-DEFAULT/30 text-bisu-yellow-light hover:text-bisu-yellow-DEFAULT">
-                      <TabsTrigger value="all" className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+                    <TabsList className="bg-bisu-purple-light border-bisu-yellow/30 text-bisu-yellow-light hover:text-bisu-yellow">
+                      <TabsTrigger value="all" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
                         All
                       </TabsTrigger>
-                      <TabsTrigger value="active" className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+                      <TabsTrigger value="active" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
                         Active
                       </TabsTrigger>
-                      <TabsTrigger value="inactive" className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+                      <TabsTrigger value="inactive" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
                         Inactive
                       </TabsTrigger>
-                      <TabsTrigger value="pending" className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+                      <TabsTrigger value="pending" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
                         Pending
                       </TabsTrigger>
                     </TabsList>
@@ -553,13 +553,13 @@ export default function AdminUsersPage() {
                 <Table className="border-collapse">
                 <TableHeader>
                     <TableRow className="bg-gradient-to-r from-bisu-purple-deep/90 to-bisu-purple-medium/90 text-white hover:bg-bisu-purple-deep/90">
-                      <TableHead className="font-semibold text-bisu-yellow-DEFAULT border-b border-bisu-purple-light/20 py-3">Name</TableHead>
-                      <TableHead className="font-semibold text-bisu-yellow-DEFAULT border-b border-bisu-purple-light/20">Email</TableHead>
-                      <TableHead className="font-semibold text-bisu-yellow-DEFAULT border-b border-bisu-purple-light/20">Position</TableHead>
-                      <TableHead className="font-semibold text-bisu-yellow-DEFAULT border-b border-bisu-purple-light/20">Department</TableHead>
-                      <TableHead className="font-semibold text-bisu-yellow-DEFAULT border-b border-bisu-purple-light/20">Status</TableHead>
-                      <TableHead className="font-semibold text-bisu-yellow-DEFAULT border-b border-bisu-purple-light/20">Date Added</TableHead>
-                      <TableHead className="text-right font-semibold text-bisu-yellow-DEFAULT border-b border-bisu-purple-light/20">Actions</TableHead>
+                      <TableHead className="font-semibold text-bisu-yellow border-b border-bisu-purple-light/20 py-3">Name</TableHead>
+                      <TableHead className="font-semibold text-bisu-yellow border-b border-bisu-purple-light/20">Email</TableHead>
+                      <TableHead className="font-semibold text-bisu-yellow border-b border-bisu-purple-light/20">Position</TableHead>
+                      <TableHead className="font-semibold text-bisu-yellow border-b border-bisu-purple-light/20">Department</TableHead>
+                      <TableHead className="font-semibold text-bisu-yellow border-b border-bisu-purple-light/20">Status</TableHead>
+                      <TableHead className="font-semibold text-bisu-yellow border-b border-bisu-purple-light/20">Date Added</TableHead>
+                      <TableHead className="text-right font-semibold text-bisu-yellow border-b border-bisu-purple-light/20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -585,7 +585,7 @@ export default function AdminUsersPage() {
                         >
                           <TableCell className="font-medium border-b border-gray-100 py-3">
                             <div className="flex items-center gap-3">
-                              <Avatar className="h-9 w-9 bg-gradient-to-br from-bisu-purple-deep to-bisu-purple-medium text-white ring-2 ring-bisu-yellow-DEFAULT/20 ring-offset-1">
+                              <Avatar className="h-9 w-9 bg-gradient-to-br from-bisu-purple-deep to-bisu-purple-medium text-white ring-2 ring-bisu-yellow-/20 ring-offset-1">
                                 <AvatarFallback>{user.firstName.charAt(0)}{user.lastName.charAt(0)}</AvatarFallback>
                                 {/* {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />} */}
                               </Avatar>

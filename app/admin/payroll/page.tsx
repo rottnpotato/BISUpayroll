@@ -442,7 +442,7 @@ export default function PayrollPage() {
             /> */}
 
             <Tabs value={reportsTab} onValueChange={setReportsTab} className="mb-6">
-              <TabsList className="text-white w-full bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium border border-bisu-yellow-DEFAULT/20">
+              <TabsList className="text-white w-full bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium border border-bisu-yellow/20">
                 <TabsTrigger 
                   value="recent" 
                   className="flex-1 data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"

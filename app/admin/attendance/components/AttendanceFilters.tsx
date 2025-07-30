@@ -37,7 +37,7 @@ export default function AttendanceFilters({
         <div className="flex flex-wrap gap-2">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[240px] justify-start text-left font-normal bg-transparent text-bisu-yellow-DEFAULT border-bisu-yellow-DEFAULT/30 hover:bg-bisu-yellow-light">
+              <Button variant="outline" className="w-[240px] justify-start text-left font-normal bg-transparent text-bisu-yellow border-bisu-yellow/30 hover:bg-bisu-yellow-light">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {filters.selectedDate ? format(filters.selectedDate, 'PPP') : <span>All Dates</span>}
               </Button>
@@ -64,7 +64,7 @@ export default function AttendanceFilters({
           </Popover>
           <Button 
             variant="outline" 
-            className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-yellow-light"
+            className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light"
             onClick={onRefresh}
           >
             <RefreshCcw size={16} className="mr-2" />
@@ -72,7 +72,7 @@ export default function AttendanceFilters({
           </Button>
           <Button 
             variant="outline" 
-            className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-yellow-light"
+            className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light"
             onClick={onExport}
           >
             <FileDown size={16} className="mr-2" />
@@ -83,18 +83,18 @@ export default function AttendanceFilters({
       
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow-DEFAULT" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow" />
           <Input
             placeholder="Search by name, ID, or department..."
-            className="pl-10 bg-bisu-purple-light text-white placeholder:text-bisu-yellow-DEFAULT/70 border-bisu-yellow-DEFAULT/30"
+            className="pl-10 bg-bisu-purple-light text-white placeholder:text-bisu-yellow/70 border-bisu-yellow/30"
             value={filters.searchTerm}
             onChange={(e) => onFiltersChange.setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex gap-2">
           <Select value={filters.selectedDepartment} onValueChange={onFiltersChange.setSelectedDepartment}>
-            <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow-DEFAULT/30">
-              <Filter size={16} className="mr-2 text-bisu-yellow-DEFAULT" />
+            <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow/30">
+              <Filter size={16} className="mr-2 text-bisu-yellow" />
               <SelectValue placeholder="Department" />
             </SelectTrigger>
             <SelectContent>
@@ -107,12 +107,12 @@ export default function AttendanceFilters({
           </Select>
           
           <Tabs value={filters.selectedStatus} onValueChange={onFiltersChange.setSelectedStatus} className="w-[300px]">
-            <TabsList className="bg-bisu-purple-light border-bisu-yellow-DEFAULT/30 text-bisu-yellow-light hover:text-bisu-yellow-DEFAULT">
+            <TabsList className="bg-bisu-purple-light border-bisu-yellow/30 text-bisu-yellow-light hover:text-bisu-yellow">
               {ATTENDANCE_STATUSES.map((status) => (
                 <TabsTrigger 
                   key={status.value}
                   value={status.value} 
-                  className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                  className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
                 >
                   {status.label}
                 </TabsTrigger>

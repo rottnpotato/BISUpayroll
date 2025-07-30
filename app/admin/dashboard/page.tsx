@@ -225,8 +225,8 @@ export default function AdminDashboard() {
               </div>
               
               {/* Decorative Elements */}
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-bisu-yellow-DEFAULT/10 rounded-full animate-pulse-subtle"></div>
-              <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-bisu-yellow-DEFAULT/10 rounded-full animate-pulse-subtle"></div>
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-bisu-yellow/10 rounded-full animate-pulse-subtle"></div>
+              <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-bisu-yellow/10 rounded-full animate-pulse-subtle"></div>
               <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full"></div>
             </motion.div>
           

@@ -11,7 +11,7 @@ export default function DashboardHeader() {
       <div className="absolute inset-0 bg-black/10"></div>
       <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-2 text-bisu-yellow-DEFAULT">
+          <h1 className="text-3xl font-bold mb-2 text-bisu-yellow">
             BISU Payroll Dashboard
           </h1>
           <p className="text-bisu-yellow-light/90 mb-4 md:mb-0">
@@ -20,7 +20,7 @@ export default function DashboardHeader() {
         </div>
         <div className="hidden md:block">
           <div className="text-right">
-            <div className="text-2xl font-bold text-bisu-yellow-DEFAULT">
+            <div className="text-2xl font-bold text-bisu-yellow">
               {new Date().toLocaleDateString('en-PH', { 
                 weekday: 'long',
                 year: 'numeric',
@@ -38,8 +38,8 @@ export default function DashboardHeader() {
         </div>
       </div>
       
-      <div className="absolute -top-10 -right-10 w-32 h-32 bg-bisu-yellow-DEFAULT/10 rounded-full"></div>
-      <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-bisu-yellow-DEFAULT/10 rounded-full"></div>
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-bisu-yellow/10 rounded-full"></div>
+      <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-bisu-yellow/10 rounded-full"></div>
     </motion.div>
   )
 }

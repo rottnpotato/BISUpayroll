@@ -171,7 +171,7 @@ export default function EmployeeProfile() {
         </div>
         <Button
           onClick={() => window.print()}
-          className="bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
+          className="bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
         >
           <Printer className="mr-2 h-4 w-4" />
           Print Profile
@@ -250,7 +250,7 @@ export default function EmployeeProfile() {
                 </div>
 
                 <Button 
-                  className="mt-6 w-full bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep"
+                  className="mt-6 w-full bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep"
                   onClick={() => setIsEditing(!isEditing)}
                 >
                   {isEditing ? "Cancel Editing" : "Edit Profile"}
@@ -263,15 +263,15 @@ export default function EmployeeProfile() {
           <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-6 bg-bisu-purple-extralight">
-                <TabsTrigger value="personal" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+                <TabsTrigger value="personal" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
                   <User className="mr-2 h-4 w-4" />
                   Personal Info
                 </TabsTrigger>
-                <TabsTrigger value="employment" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+                <TabsTrigger value="employment" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
                   <Briefcase className="mr-2 h-4 w-4" />
                   Employment
                 </TabsTrigger>
-                <TabsTrigger value="security" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+                <TabsTrigger value="security" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
                   <Lock className="mr-2 h-4 w-4" />
                   Security
                 </TabsTrigger>
@@ -539,7 +539,7 @@ export default function EmployeeProfile() {
                             </div>
                           </div>
                           
-                          <div className="mt-6 p-4 border border-dashed border-bisu-yellow-DEFAULT/50 rounded-lg bg-bisu-yellow-extralight/30">
+                          <div className="mt-6 p-4 border border-dashed border-bisu-yellow/50 rounded-lg bg-bisu-yellow-extralight/30">
                             <div className="flex">
                               <FileText className="h-5 w-5 mr-3 text-bisu-yellow-dark flex-shrink-0" />
                               <div>

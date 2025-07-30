@@ -88,7 +88,7 @@ export default function EmployeeReports() {
         </div>
         <Button
           onClick={() => window.print()}
-          className="bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
+          className="bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
         >
           <Printer className="mr-2 h-4 w-4" />
           Print Report
@@ -97,11 +97,11 @@ export default function EmployeeReports() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full md:w-auto grid-cols-2 md:inline-flex mb-6 bg-bisu-purple-extralight">
-          <TabsTrigger value="attendance" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+          <TabsTrigger value="attendance" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
             <FileText className="mr-2 h-4 w-4" />
             Attendance Report
           </TabsTrigger>
-          <TabsTrigger value="performance" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep">
+          <TabsTrigger value="performance" className="text-bisu-purple-deep data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
             <BarChart4 className="mr-2 h-4 w-4" />
             Performance Overview
           </TabsTrigger>
@@ -144,7 +144,7 @@ export default function EmployeeReports() {
                         onSelect={setDate}
                         className="rounded-md"
                         modifiersClassNames={{
-                          selected: "bg-bisu-yellow-DEFAULT text-bisu-purple-deep hover:bg-bisu-yellow-dark",
+                          selected: "bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow-dark",
                           today: "bg-bisu-purple-light text-white",
                         }}
                       />
@@ -154,7 +154,7 @@ export default function EmployeeReports() {
                         <Filter className="mr-2 h-4 w-4" />
                         Filter
                       </Button>
-                      <Button className="w-full bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep">
+                      <Button className="w-full bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep">
                         <Download className="mr-2 h-4 w-4" />
                         Export
                       </Button>
@@ -254,7 +254,7 @@ export default function EmployeeReports() {
                           <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-bisu-purple-extralight">
                             <div 
                               style={{ width: "90%" }} 
-                              className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-bisu-yellow-DEFAULT"
+                              className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-bisu-yellow"
                             ></div>
                           </div>
                         </div>
@@ -375,7 +375,7 @@ export default function EmployeeReports() {
                           We're currently developing comprehensive performance analytics for employees. 
                           Check back in the next update for detailed performance metrics and insights.
                         </p>
-                        <Button className="mt-4 bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep">
+                        <Button className="mt-4 bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep">
                           Request Early Access
                         </Button>
                       </div>

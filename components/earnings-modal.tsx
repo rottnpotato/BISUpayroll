@@ -115,7 +115,7 @@ export function EarningsModal({ isOpen, onClose, timeoutData }: EarningsModalPro
           {/* Earnings Overview */}
           <Card className="border-bisu-purple-light">
             <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white">
-              <CardTitle className="flex items-center text-bisu-yellow-DEFAULT">
+              <CardTitle className="flex items-center text-bisu-yellow">
                 <Banknote className="mr-2 h-5 w-5" />
                 Today's Earnings (Gross)
               </CardTitle>

@@ -31,8 +31,8 @@ const quickActions = [
     icon: DollarSign,
     iconBg: "bg-bisu-yellow-extralight",
     iconColor: "text-bisu-yellow-dark",
-    hoverColor: "hover:border-bisu-yellow-DEFAULT",
-    hoverBg: "group-hover:bg-bisu-yellow-DEFAULT group-hover:text-bisu-purple-deep",
+    hoverColor: "hover:border-bisu-yellow",
+    hoverBg: "group-hover:bg-bisu-yellow group-hover:text-bisu-purple-deep",
     hoverIcon: "group-hover:text-bisu-purple-deep",
     hoverChevron: "group-hover:text-bisu-yellow-dark"
   },

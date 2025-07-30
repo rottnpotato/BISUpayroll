@@ -59,13 +59,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (userRole !== "admin") {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-bisu-purple-deep to-bisu-purple-medium text-bisu-yellow-DEFAULT">
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-bisu-purple-deep to-bisu-purple-medium text-bisu-yellow">
         <div className="text-center p-8 rounded-lg glass-effect">
           <h2 className="text-2xl font-bold mb-4 text-gradient">Access Denied</h2>
           <p className="mb-6">You need administrator privileges to access this area.</p>
           <button
             onClick={() => logout()}
-            className="px-4 py-2 bg-bisu-yellow-DEFAULT text-bisu-purple-deep rounded-lg hover:bg-bisu-yellow-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+            className="px-4 py-2 bg-bisu-yellow text-bisu-purple-deep rounded-lg hover:bg-bisu-yellow-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
             style={
               {
                 "--tw-ring-color": "#FFC107",

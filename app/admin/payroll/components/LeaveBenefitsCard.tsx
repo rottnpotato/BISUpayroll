@@ -38,7 +38,7 @@ export function LeaveBenefitsCard({ config, onConfigChange }: LeaveBenefitsCardP
     <motion.div variants={itemVariants} className="h-full">
       <Card className="shadow-lg border-2 h-full flex flex-col">
         <CardHeader className="bg-gradient-to-r from-bisu-purple-medium to-bisu-purple-deep text-white rounded-t-lg">
-          <CardTitle className="text-bisu-yellow-DEFAULT flex items-center gap-2">
+          <CardTitle className="text-bisu-yellow flex items-center gap-2">
             <Users size={20} />
             Leave Benefits Configuration
           </CardTitle>

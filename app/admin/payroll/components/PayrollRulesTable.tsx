@@ -70,7 +70,7 @@ export function PayrollRulesTable({
         <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <CardTitle className="text-bisu-yellow-DEFAULT text-xl">Payroll Rules</CardTitle>
+              <CardTitle className="text-bisu-yellow text-xl">Payroll Rules</CardTitle>
               <CardDescription className="text-bisu-yellow-light">
                 Manage salary computation rules and deductions
               </CardDescription>
@@ -85,34 +85,34 @@ export function PayrollRulesTable({
           </div>
           
           <Tabs defaultValue="all" className="mt-6" onValueChange={setActiveTab}>
-            <TabsList className="bg-bisu-purple-light border-bisu-yellow-DEFAULT/30 text-bisu-yellow-light grid grid-cols-2 lg:grid-cols-5 w-full lg:w-auto">
+            <TabsList className="bg-bisu-purple-light border-bisu-yellow/30 text-bisu-yellow-light grid grid-cols-2 lg:grid-cols-5 w-full lg:w-auto">
               <TabsTrigger 
                 value="all" 
-                className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
               >
                 All Rules
               </TabsTrigger>
               <TabsTrigger 
                 value="base" 
-                className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
               >
                 Base Pay
               </TabsTrigger>
               <TabsTrigger 
                 value="additional" 
-                className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
               >
                 Additions
               </TabsTrigger>
               <TabsTrigger 
                 value="deduction" 
-                className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
               >
                 Deductions
               </TabsTrigger>
               <TabsTrigger 
                 value="tax" 
-                className="data-[state=active]:bg-bisu-yellow-DEFAULT data-[state=active]:text-bisu-purple-deep"
+                className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
               >
                 Tax & Benefits
               </TabsTrigger>

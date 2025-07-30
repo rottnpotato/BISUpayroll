@@ -171,7 +171,7 @@ export function PayrollScheduleCard({
   return (
     <motion.div variants={itemVariants} className="h-full ">
       <Card className="shadow-lg border-2 h-full flex flex-col">
-        <CardHeader className="bg-gradient-to-r from-bisu-yellow-DEFAULT to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
+        <CardHeader className="bg-gradient-to-r from-bisu-yellow to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="flex items-center gap-2">

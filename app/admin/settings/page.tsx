@@ -203,7 +203,7 @@ export default function LogsPage() {
               <div className="flex-1 overflow-hidden flex flex-col">
                 {/* Modal Filters */}
                 <Card className="shadow-md mb-4 flex-shrink-0">
-                  <CardHeader className="bg-gradient-to-r from-bisu-yellow-DEFAULT to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg py-3">
+                  <CardHeader className="bg-gradient-to-r from-bisu-yellow to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg py-3">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <Filter className="h-4 w-4" />
                       Filters & Search
@@ -321,7 +321,7 @@ export default function LogsPage() {
                 {/* Modal Table */}
                 <Card className="shadow-md flex-1 flex flex-col overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg py-3 flex-shrink-0">
-                    <CardTitle className="text-bisu-yellow-DEFAULT flex items-center gap-2 text-base">
+                    <CardTitle className="text-bisu-yellow flex items-center gap-2 text-base">
                       <Activity className="h-4 w-4" />
                       Activity Logs ({pagination.total} total)
                     </CardTitle>
@@ -455,7 +455,7 @@ export default function LogsPage() {
 
       {/* Filters */}
       <Card className="shadow-md mb-6">
-        <CardHeader className="bg-gradient-to-r from-bisu-yellow-DEFAULT to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
+        <CardHeader className="bg-gradient-to-r from-bisu-yellow to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
             Filters & Search
@@ -573,7 +573,7 @@ export default function LogsPage() {
       {/* Logs Table */}
       <Card className="shadow-md">
         <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg">
-          <CardTitle className="text-bisu-yellow-DEFAULT flex items-center gap-2">
+          <CardTitle className="text-bisu-yellow flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Activity Logs ({pagination.total} total)
           </CardTitle>

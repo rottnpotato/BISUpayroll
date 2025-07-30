@@ -71,7 +71,7 @@ export const PayrollGenerationCard = ({
 }: PayrollGenerationCardProps) => {
   return (
     <motion.div variants={itemVariants}>
-      <Card className="shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-transparent hover:border-bisu-yellow-DEFAULT h-full">
+      <Card className="shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-transparent hover:border-bisu-yellow h-full">
         <CardHeader className="flex flex-row items-center gap-4">
           <div className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-100">
             {getIcon(template.iconName, template.iconColor)}

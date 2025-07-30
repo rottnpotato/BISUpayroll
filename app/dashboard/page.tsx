@@ -22,9 +22,9 @@ export default function DashboardRedirect() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-bisu-purple-deep text-bisu-yellow-DEFAULT">
+      <div className="flex items-center justify-center h-screen bg-bisu-purple-deep text-bisu-yellow">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-bisu-yellow-DEFAULT mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-bisu-yellow mx-auto mb-4"></div>
           <p>Loading your dashboard...</p>
         </div>
       </div>
@@ -32,7 +32,7 @@ export default function DashboardRedirect() {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-bisu-purple-deep text-bisu-yellow-DEFAULT">
+    <div className="flex items-center justify-center h-screen bg-bisu-purple-deep text-bisu-yellow">
       <p>Redirecting...</p>
     </div>
   )

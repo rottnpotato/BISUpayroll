@@ -82,7 +82,7 @@ export default function MetricsGrid({ dashboardData, isLoading }: MetricsGridPro
       badgeColor: "text-blue-600 border-blue-200",
       iconBg: "bg-bisu-yellow-extralight",
       iconColor: "text-bisu-yellow-dark",
-      borderColor: "border-l-bisu-yellow-DEFAULT",
+      borderColor: "border-l-bisu-yellow",
       trend: {
         value: 5.2,
         label: `Net: ${formatCurrency(dashboardData.overview.thisMonthPayroll.netTotal)}`

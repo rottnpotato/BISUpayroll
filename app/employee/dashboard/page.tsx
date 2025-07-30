@@ -360,7 +360,7 @@ export default function EmployeeDashboard() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-bisu-yellow-DEFAULT mb-2">Hello, {userName}!</h1>
+            <h1 className="text-3xl font-bold text-bisu-yellow mb-2">Hello, {userName}!</h1>
             <p className="text-bisu-purple-extralight">Welcome to your payroll dashboard</p>
           </div>
           <div className="text-right flex flex-col items-end space-y-2">
@@ -372,7 +372,7 @@ export default function EmployeeDashboard() {
             <Button 
               onClick={() => window.print()} 
               size="sm"
-              className="mt-2 bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
+              className="mt-2 bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
             >
               <Printer className="mr-2 h-4 w-4" />
               Print Dashboard
@@ -397,7 +397,7 @@ export default function EmployeeDashboard() {
           ) : (
             <>
               {/* Time Clock */}
-              <Card className="border-l-4 border-l-bisu-yellow-DEFAULT shadow-md hover:shadow-lg transition-all duration-300">
+              <Card className="border-l-4 border-l-bisu-yellow shadow-md hover:shadow-lg transition-all duration-300">
                 <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
                   <CardTitle className="text-bisu-purple-deep flex items-center">
                     <Clock className="mr-2 h-5 w-5" />
@@ -410,7 +410,7 @@ export default function EmployeeDashboard() {
                     disabled={isTimeActionLoading}
                     className={`w-full py-6 text-lg font-semibold ${
                       isTimedIn
-                        ? "bg-bisu-yellow-DEFAULT hover:bg-bisu-yellow-dark text-bisu-purple-deep"
+                        ? "bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep"
                         : "bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
                     }`}
                   >
@@ -451,7 +451,7 @@ export default function EmployeeDashboard() {
                     onSelect={setDate}
                     className="rounded-md"
                     modifiersClassNames={{
-                      selected: "bg-bisu-yellow-DEFAULT text-bisu-purple-deep hover:bg-bisu-yellow-dark",
+                      selected: "bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow-dark",
                       today: "bg-bisu-purple-light text-white",
                     }}
                   />
@@ -514,7 +514,7 @@ export default function EmployeeDashboard() {
 
               {/* Salary Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border-l-4 border-l-bisu-yellow-DEFAULT card-hover">
+                <Card className="border-l-4 border-l-bisu-yellow card-hover">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-600">Current Salary Rate</CardTitle>
                     <DollarSign className="h-4 w-4 text-bisu-yellow-dark" />
@@ -540,7 +540,7 @@ export default function EmployeeDashboard() {
               {/* Quick Actions */}
               <Card className="shadow-md hover:shadow-lg transition-all duration-300">
                 <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg">
-                  <CardTitle className="text-bisu-yellow-DEFAULT">Quick Actions</CardTitle>
+                  <CardTitle className="text-bisu-yellow">Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                   <Button 

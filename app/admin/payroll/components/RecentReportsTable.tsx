@@ -53,13 +53,13 @@ export const RecentReportsTable = ({
     <Card className="shadow-md">
       <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg pb-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <CardTitle className="text-bisu-yellow-DEFAULT">Recent Reports</CardTitle>
+          <CardTitle className="text-bisu-yellow">Recent Reports</CardTitle>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-purple-light">
+            <Button variant="outline" className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-purple-light">
               <RefreshCcw size={16} className="mr-2" />
               Refresh
             </Button>
-            <Button variant="outline" onClick={onTestUsers} className="text-bisu-yellow-DEFAULT bg-transparent border-bisu-yellow-DEFAULT hover:bg-bisu-purple-light">
+            <Button variant="outline" onClick={onTestUsers} className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-purple-light">
               <Users size={16} className="mr-2" />
               Test Users
             </Button>
@@ -68,18 +68,18 @@ export const RecentReportsTable = ({
         
         <div className="flex flex-col md:flex-row gap-4 mt-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow-DEFAULT" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow" />
             <Input
               placeholder="Search reports..."
-              className="pl-10 bg-bisu-purple-light text-white placeholder:text-bisu-yellow-DEFAULT/70 border-bisu-yellow-DEFAULT/30"
+              className="pl-10 bg-bisu-purple-light text-white placeholder:text-bisu-yellow/70 border-bisu-yellow/30"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex gap-2">
             <Select value={selectedReportType} onValueChange={setSelectedReportType}>
-              <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow-DEFAULT/30">
-                <Filter size={16} className="mr-2 text-bisu-yellow-DEFAULT" />
+              <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow/30">
+                <Filter size={16} className="mr-2 text-bisu-yellow" />
                 <SelectValue placeholder="Report Type" />
               </SelectTrigger>
               <SelectContent>
@@ -93,7 +93,7 @@ export const RecentReportsTable = ({
             
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[240px] justify-start text-left bg-transparent font-normal text-bisu-yellow-DEFAULT border-bisu-yellow-DEFAULT/30">
+                  <Button variant="outline" className="w-[240px] justify-start text-left bg-transparent font-normal text-bisu-yellow border-bisu-yellow/30">
                   <CalendarRange className="mr-2 h-4 w-4" />
                   {dateRange?.from ? (
                     dateRange.to ? (
