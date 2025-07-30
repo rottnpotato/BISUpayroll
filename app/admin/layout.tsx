@@ -15,7 +15,6 @@ const adminNavItems = [
   { href: "/admin/users", label: "Employee Management", icon: Users },
   { href: "/admin/payroll", label: "Payroll Management", icon: DollarSign },
   { href: "/admin/attendance", label: "Attendance", icon: Calendar },
-  { href: "/admin/reports", label: "Reports", icon: FileText },
   { href: "/admin/settings", label: "System Logs", icon: Activity },
 ]
 

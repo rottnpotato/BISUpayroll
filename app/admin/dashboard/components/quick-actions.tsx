@@ -49,7 +49,7 @@ const quickActions = [
     hoverChevron: "group-hover:text-blue-600"
   },
   {
-    href: "/admin/reports",
+    href: "/admin/payroll",
     title: "Reports",
     description: "Generate comprehensive reports",
     icon: FileText,

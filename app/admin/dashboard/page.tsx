@@ -58,7 +58,7 @@ export default function AdminDashboard() {
   }
 
   const handleReportsClick = () => {
-    router.push('/admin/reports')
+    router.push('/admin/payroll')
   }
 
   const handleExportClick = async () => {
@@ -100,12 +100,12 @@ export default function AdminDashboard() {
         description: "Dashboard data has been downloaded successfully.",
       })
     } catch (error) {
-      // If export API is not available, redirect to reports page
+      // If export API is not available, redirect to payroll page
       toast({
-        title: "Redirecting to Reports",
-        description: "Opening reports page for data export options.",
+        title: "Redirecting to Payroll",
+        description: "Opening payroll page for data export options.",
       })
-      router.push('/admin/reports')
+      router.push('/admin/payroll')
     }
   }
 
