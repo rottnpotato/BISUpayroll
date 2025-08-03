@@ -49,7 +49,6 @@ export async function GET(request: NextRequest) {
           department: true,
           position: true,
           hireDate: true,
-          salary: true,
           phone: true,
           createdAt: true,
           updatedAt: true
@@ -90,7 +89,6 @@ export async function POST(request: NextRequest) {
       department,
       position,
       hireDate,
-      salary,
       phone,
       address,
       emergencyContactName,
@@ -147,7 +145,6 @@ export async function POST(request: NextRequest) {
         department,
         position,
         hireDate: hireDate ? new Date(hireDate) : null,
-        salary: salary ? parseFloat(salary) : null,
         phone,
         address,
         emergencyContactName,
@@ -165,7 +162,6 @@ export async function POST(request: NextRequest) {
         department: true,
         position: true,
         hireDate: true,
-        salary: true,
         phone: true,
         createdAt: true
       }

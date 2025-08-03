@@ -25,7 +25,6 @@ async function main() {
       department: 'Information Technology',
       position: 'System Administrator',
       hireDate: new Date('2024-01-01'),
-      salary: 50000.00,
       phone: '+63 38 123 4567',
       address: 'BISU Balilihan Campus, Balilihan, Bohol',
       emergencyContactName: 'IT Department Head',
@@ -43,7 +42,6 @@ async function main() {
       employeeId: 'EMP001',
       department: 'Faculty',
       position: 'Assistant Professor',
-      salary: 35000.00,
     },
     {
       email: 'maria.santos@bisu.edu.ph',
@@ -52,7 +50,6 @@ async function main() {
       employeeId: 'EMP002',
       department: 'Administration',
       position: 'Administrative Assistant',
-      salary: 25000.00,
     },
     {
       email: 'jose.reyes@bisu.edu.ph',
@@ -61,7 +58,6 @@ async function main() {
       employeeId: 'EMP003',
       department: 'Faculty',
       position: 'Associate Professor',
-      salary: 40000.00,
     },
     {
       email: 'ana.garcia@bisu.edu.ph',
@@ -70,7 +66,6 @@ async function main() {
       employeeId: 'EMP004',
       department: 'Human Resources',
       position: 'HR Specialist',
-      salary: 30000.00,
     },
     {
       email: 'carlos.martinez@bisu.edu.ph',
@@ -79,7 +74,6 @@ async function main() {
       employeeId: 'EMP005',
       department: 'Maintenance',
       position: 'Facilities Manager',
-      salary: 28000.00,
     },
   ]
 
@@ -98,7 +92,6 @@ async function main() {
         department: employee.department,
         position: employee.position,
         hireDate: new Date('2024-01-15'),
-        salary: employee.salary,
         phone: '+63 912 345 6789',
         address: 'Balilihan, Bohol',
         emergencyContactName: 'Emergency Contact',

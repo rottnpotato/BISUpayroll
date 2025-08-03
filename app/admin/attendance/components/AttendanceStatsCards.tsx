@@ -64,35 +64,35 @@ export default function AttendanceStatsCards({ stats, isLoading }: AttendanceSta
       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
     >
       <motion.div variants={itemVariants}>
-        <Card className="border-l-4 border-l-green-500">
+        <Card className="border-l-4 border-l-bisu-purple-light hover:bg-bisu-purple-extralight hover:text-bisu-purple-deep transition-colors duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Present Today</p>
-                <p className="text-2xl font-bold text-green-600">{stats.present}</p>
+                <p className="text-2xl font-bold text-bisu-purple-medium">{stats.present}</p>
               </div>
-              <UserCheck className="h-8 w-8 text-green-500" />
+              <UserCheck className="h-8 w-8 text-bisu-purple-light" />
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <Card className="border-l-4 border-l-yellow-500">
+        <Card className="border-l-4 border-l-bisu-yellow-500 hover:bg-bisu-yellow-extralight hover:text-bisu-yellow-dark transition-colors duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Late Today</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.late}</p>
+                <p className="text-2xl font-bold text-bisu-yellow-600">{stats.late}</p>
               </div>
-              <Clock className="h-8 w-8 text-yellow-500" />
+              <Clock className="h-8 w-8 text-bisu-yellow-500" />
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <Card className="border-l-4 border-l-red-500">
+        <Card className="border-l-4 border-l-red-500 hover:bg-red-50 hover:text-red-700 transition-colors duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>

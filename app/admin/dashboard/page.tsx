@@ -10,6 +10,7 @@ import PayrollBreakdown from "./components/payroll-breakdown"
 import EmployeeTable from "./components/employee-table"
 import DashboardTabs from "./components/dashboard-tabs"
 import ScheduleCard from "./components/schedule-card"
+import PayrollAlerts from "./components/PayrollAlerts"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
@@ -269,6 +270,20 @@ export default function AdminDashboard() {
                 </motion.div>
               </div>
             </div>
+            
+            {/* Payroll Alerts Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="mb-6"
+            >
+              <PayrollAlerts 
+                data={dashboardData}
+                isLoading={isLoading}
+              />
+            </motion.div>
+            
               {/* Payroll Breakdown Section */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}

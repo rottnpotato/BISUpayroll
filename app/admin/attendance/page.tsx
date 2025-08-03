@@ -40,12 +40,14 @@ const itemVariants = {
 }
 
 export default function AttendancePage() {
-  const { filters, updateFilters, clearDateFilter } = useAttendanceFilters()
+  const { filters, updateFilters, clearDateFilter, clearAllFilters, setDateRange } = useAttendanceFilters()
   
   const { isLoading, records, totalPages, summaryStats, refetch } = useAttendanceData({
     currentPage: filters.currentPage,
     selectedDate: filters.selectedDate,
-    selectedDepartment: filters.selectedDepartment
+    selectedDepartment: filters.selectedDepartment,
+    startDate: filters.startDate,
+    endDate: filters.endDate
   })
 
   const {
@@ -55,6 +57,8 @@ export default function AttendancePage() {
   } = useAttendanceActions({
     selectedDate: filters.selectedDate,
     selectedDepartment: filters.selectedDepartment,
+    startDate: filters.startDate,
+    endDate: filters.endDate,
     onRefetch: refetch
   })
 
@@ -63,6 +67,15 @@ export default function AttendancePage() {
     filters.searchTerm,
     filters.selectedStatus
   )
+
+  // Debug logging
+  console.log('Admin Attendance Debug:', {
+    isLoading,
+    records: records.length,
+    filteredRecords: filteredRecords.length,
+    filters,
+    summaryStats
+  })
 
   return (
     <div className="p-6">
@@ -107,6 +120,8 @@ export default function AttendancePage() {
                   onRefresh={refetch}
                   onExport={exportAttendance}
                   onClearDate={clearDateFilter}
+                  onClearAllFilters={clearAllFilters}
+                  onDateRangeChange={setDateRange}
                 />
               </CardHeader>
               <CardContent className="p-0">

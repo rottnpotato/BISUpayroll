@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
         department: true,
         hireDate: true,
         status: true,
-        salary: true,
         address: true,
         emergencyContactName: true,
         emergencyContactRelationship: true,

@@ -40,11 +40,11 @@ export function WorkingHoursCard({ config, onConfigChange }: WorkingHoursCardPro
     <motion.div variants={itemVariants} className="h-full">
       <Card className="shadow-lg border-2 h-full flex flex-col">
         <CardHeader className="bg-gradient-to-r from-bisu-purple-light to-bisu-purple-medium text-white rounded-t-lg">
-          <CardTitle className="text-bisu-yellow flex items-center gap-2">
+          <CardTitle className="text-bisu-yellow-300 flex items-center gap-2">
             <Timer size={20} />
             Working Hours & Attendance
           </CardTitle>
-          <CardDescription className="text-bisu-yellow-light">
+          <CardDescription className="text-bisu-yellow-100">
             Configure work schedules and attendance policies
           </CardDescription>
         </CardHeader>

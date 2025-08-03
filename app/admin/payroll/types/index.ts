@@ -172,7 +172,6 @@ export interface PayrollData {
     employeeId: string | null
     department: string | null
     position: string | null
-    salary: number | null
   }
   
   // Legacy fields for backward compatibility

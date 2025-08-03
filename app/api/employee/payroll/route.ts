@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { Decimal } from '@prisma/client/runtime/library'
+import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     const startOfMonth = new Date(year, month - 1, 1)
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999)
 
-    // Get user data with salary
+    // Get user data
     const employeeData = await prisma.user.findUnique({
       where: { id: user.id },
       select: {
@@ -38,15 +39,14 @@ export async function GET(request: NextRequest) {
         employeeId: true,
         department: true,
         position: true,
-        salary: true,
         hireDate: true,
       }
     })
 
-    if (!employeeData || !employeeData.salary) {
+    if (!employeeData) {
       return NextResponse.json({ 
         success: false, 
-        message: 'Employee data or salary not found' 
+        message: 'Employee data not found' 
       }, { status: 404 })
     }
 
@@ -140,8 +140,8 @@ export async function GET(request: NextRequest) {
     const overtimeHours = Math.max(0, totalHoursWorked - expectedTotalHours)
     const regularHours = Math.min(totalHoursWorked, expectedTotalHours)
 
-    // Calculate rates
-    const monthlySalary = Number(employeeData.salary)
+    // Calculate base salary from payroll rules
+    const monthlySalary = calculateBaseSalaryFromRules(payrollRules)
     const dailyRate = monthlySalary / 22 // Assuming 22 working days per month
     const hourlyRate = dailyRate / expectedDailyHours
 

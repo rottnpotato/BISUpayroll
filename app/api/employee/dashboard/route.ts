@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { Decimal } from '@prisma/client/runtime/library'
+import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
 
 export async function GET(request: NextRequest) {
   try {
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
     const overtimeHours = Math.max(0, totalHoursWorked - expectedTotalHours)
     const regularHours = Math.min(totalHoursWorked, expectedTotalHours)
 
-    const monthlySalary = Number(employeeData.salary)
+    const monthlySalary = calculateBaseSalaryFromRules(payrollRules)
     const dailyRate = monthlySalary / 22
     const hourlyRate = dailyRate / expectedDailyHours
     

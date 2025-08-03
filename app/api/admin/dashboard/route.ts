@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
+import { checkPayrollDeadlineStatus, getUpcomingPayrollDeadlines, checkPayrollFileStatus } from "@/lib/payroll-deadline-utils"
 
 export async function GET(request: NextRequest) {
   try {
@@ -183,6 +184,48 @@ export async function GET(request: NextRequest) {
         _sum: {
           grossPay: true
         }
+      }),
+
+      // Get payroll groups (using PayrollResult table)
+      prisma.payrollResult.findMany({
+        where: {
+          payPeriodStart: {
+            gte: startOfMonth
+          }
+        },
+        select: {
+          id: true,
+          status: true
+        }
+      }),
+
+      // Total payroll files
+      prisma.payrollFile.count(),
+
+      // Pending approval groups
+      prisma.payrollResult.findMany({
+        where: {
+          payPeriodStart: {
+            gte: startOfMonth
+          },
+          isApproved: false
+        },
+        select: {
+          id: true
+        }
+      }),
+
+      // Completed groups
+      prisma.payrollResult.findMany({
+        where: {
+          payPeriodStart: {
+            gte: startOfMonth
+          },
+          isPaid: true
+        },
+        select: {
+          id: true
+        }
       })
     ])
 
@@ -361,12 +404,78 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Get pending reports (using leave requests as proxy for reports)
+          // Get pending reports (using leave requests as proxy for reports)
     const pendingReports = await prisma.leaveRequest.count({
       where: {
         status: "PENDING"
       }
     })
+
+    // Get actual payroll status based on current month's PayrollResult records
+    const currentMonthPayrollResults = await prisma.payrollResult.findMany({
+      where: {
+        payPeriodStart: {
+          gte: startOfMonth
+        }
+      },
+      select: {
+        status: true,
+        isPaid: true,
+        isApproved: true
+      }
+    })
+
+    // Determine actual payroll status
+    let payrollStatus = "No Payroll Generated"
+    if (currentMonthPayrollResults.length > 0) {
+      const allPaid = currentMonthPayrollResults.every(p => p.isPaid)
+      const allApproved = currentMonthPayrollResults.every(p => p.isApproved)
+      const hasGenerated = currentMonthPayrollResults.some(p => p.status === 'GENERATED')
+      
+      if (allPaid) {
+        payrollStatus = "Paid"
+      } else if (allApproved) {
+        payrollStatus = "Approved & Ready for Payment"
+      } else if (hasGenerated) {
+        payrollStatus = "Generated & Pending Approval"
+      }
+    }
+
+    // Get active payroll schedule for timeline calculation
+    const activePayrollSchedule = await prisma.payrollSchedule.findFirst({
+      where: { isActive: true }
+    })
+
+    // Check for missed payroll deadlines
+    const payrollDeadlineStatus = await checkPayrollDeadlineStatus()
+    
+    // Get upcoming payroll deadlines
+    const upcomingDeadlines = await getUpcomingPayrollDeadlines(14) // Next 14 days
+    
+    // Check payroll file status for current month
+    const payrollFileStatus = await checkPayrollFileStatus(startOfMonth, new Date())
+
+    // Calculate payroll period based on schedule or default to current month
+    let payrollPeriodStart = startOfMonth
+    let payrollPeriodEnd = new Date()
+
+    if (activePayrollSchedule && activePayrollSchedule.days.length > 0) {
+      // Use the first payroll day of current month as period start
+      const payrollDay = activePayrollSchedule.days[0]
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
+      
+      // If we're past the payroll day, use current month's payroll day
+      // Otherwise, use previous month's payroll day as start
+      if (new Date().getDate() >= payrollDay) {
+        payrollPeriodStart = new Date(currentYear, currentMonth, payrollDay)
+      } else {
+        payrollPeriodStart = new Date(currentYear, currentMonth - 1, payrollDay)
+      }
+      
+      // Period end is the next payroll day
+      payrollPeriodEnd = new Date(currentYear, currentMonth + 1, payrollDay)
+    }
 
     // Ensure consistent data structure even when empty
     const response = {
@@ -410,17 +519,21 @@ export async function GET(request: NextRequest) {
       payrollDetails: {
         company: "BISU Balilihan Campus",
         period: {
-          start: startOfMonth.toISOString().split('T')[0],
-          end: new Date().toISOString().split('T')[0]
+          start: payrollPeriodStart.toISOString().split('T')[0],
+          end: payrollPeriodEnd.toISOString().split('T')[0]
         },
-        status: "Finalized & Ready for Payment",
+        status: payrollStatus,
         total: Number(thisMonthPayroll._sum.grossPay || 0),
         breakdown: {
           salary: Number(thisMonthPayroll._sum.grossPay || 0) * 0.7,
           benefits: Number(thisMonthPayroll._sum.grossPay || 0) * 0.15,
           incentives: Number(thisMonthPayroll._sum.grossPay || 0) * 0.1,
           employerContributions: Number(thisMonthPayroll._sum.grossPay || 0) * 0.05
-        }
+        },
+        schedule: activePayrollSchedule,
+        deadlineStatus: payrollDeadlineStatus,
+        upcomingDeadlines: upcomingDeadlines,
+        fileStatus: payrollFileStatus
       }
     }
 
@@ -460,7 +573,8 @@ export async function GET(request: NextRequest) {
           period: { start: "", end: "" },
           status: "No Data",
           total: 0,
-          breakdown: { salary: 0, benefits: 0, incentives: 0, employerContributions: 0 }
+          breakdown: { salary: 0, benefits: 0, incentives: 0, employerContributions: 0 },
+          schedule: null
         }
       },
       { status: 500 }

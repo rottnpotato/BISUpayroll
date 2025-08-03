@@ -13,22 +13,19 @@ export async function GET(request: NextRequest) {
         status: true,
         employeeId: true,
         department: true,
-        position: true,
-        salary: true
+        position: true
       }
     })
 
     // Filter employees specifically
     const employees = allUsers.filter(user => user.role === 'EMPLOYEE')
     const activeEmployees = employees.filter(user => user.status === 'ACTIVE')
-    const employeesWithSalary = activeEmployees.filter(user => user.salary !== null)
 
     return NextResponse.json({
       success: true,
       totalUsers: allUsers.length,
       totalEmployees: employees.length,
       activeEmployees: activeEmployees.length,
-      employeesWithSalary: employeesWithSalary.length,
       breakdown: {
         roles: allUsers.reduce((acc, user) => {
           acc[user.role] = (acc[user.role] || 0) + 1
@@ -37,11 +34,9 @@ export async function GET(request: NextRequest) {
         statuses: allUsers.reduce((acc, user) => {
           acc[user.status] = (acc[user.status] || 0) + 1
           return acc
-        }, {} as Record<string, number>),
-        withSalary: allUsers.filter(user => user.salary !== null).length,
-        withoutSalary: allUsers.filter(user => user.salary === null).length
+        }, {} as Record<string, number>)
       },
-      sampleEmployees: employeesWithSalary.slice(0, 3),
+      sampleEmployees: activeEmployees.slice(0, 3),
       allUsers: allUsers
     })
   } catch (error) {

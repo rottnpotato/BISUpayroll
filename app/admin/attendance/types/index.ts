@@ -60,6 +60,8 @@ export interface AttendanceFilters {
   selectedDepartment: string
   selectedStatus: string
   selectedDate: Date | undefined
+  startDate: Date | undefined
+  endDate: Date | undefined
   currentPage: number
 }
 

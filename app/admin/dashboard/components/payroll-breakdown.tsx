@@ -147,9 +147,9 @@ const PayrollBreakdown: FC<PayrollBreakdownProps> = ({ data, isLoading }) => {
       title: 'Base Salary', 
       amount: salary, 
       icon: <Users className="h-5 w-5" />, 
-      bgColor: 'bg-bisu-yellow',
-      accentColor: 'border-bisu-yellow',
-      progressColor: 'bg-bisu-yellow',
+      bgColor: 'bg-bisu-yellow-600',
+      accentColor: 'border-bisu-yellow-600',
+      progressColor: 'bg-bisu-yellow-600',
       percentage: calculateGrowthPercentage(salary, 'salary') + '%'
     },
     { 
@@ -165,18 +165,18 @@ const PayrollBreakdown: FC<PayrollBreakdownProps> = ({ data, isLoading }) => {
       title: 'Performance Incentives', 
       amount: incentives, 
       icon: <Award className="h-5 w-5" />, 
-      bgColor: 'bg-amber-600',
-      accentColor: 'border-amber-600',
-      progressColor: 'bg-amber-600',
+      bgColor: 'bg-bisu-yellow-600',
+      accentColor: 'border-bisu-yellow-600',
+      progressColor: 'bg-bisu-yellow-600',
       percentage: calculateGrowthPercentage(incentives, 'incentives') + '%'
     },
     { 
       title: 'Employer Contributions', 
       amount: employerContributions, 
       icon: <TrendingUp className="h-5 w-5" />, 
-      bgColor: 'bg-indigo-600',
-      accentColor: 'border-indigo-600',
-      progressColor: 'bg-indigo-600',
+      bgColor: 'bg-bisu-purple-light',
+      accentColor: 'border-bisu-purple-light',
+      progressColor: 'bg-bisu-purple-light',
       percentage: calculateGrowthPercentage(employerContributions, 'contributions') + '%'
     }
   ]

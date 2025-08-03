@@ -3,8 +3,12 @@ import { prisma } from "@/lib/database"
 import { 
   calculateCompletePayroll, 
   PayrollCalculationData,
-  PayrollCalculationResult 
+  PayrollCalculationResult,
+  calculateBaseSalaryFromRules
 } from "@/lib/payroll-calculations"
+import { encryptPayrollFile, createSecureDirectory } from "@/lib/crypto-utils"
+import fs from 'fs'
+import path from 'path'
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,8 +63,7 @@ export async function POST(request: NextRequest) {
 
     // Get users to generate payroll for
     const whereClause: any = {
-      status: "ACTIVE",
-      salary: { not: null }
+      status: "ACTIVE"
     }
 
     // Filter by role (default to EMPLOYEE for payroll)
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
           error: "No eligible users found for payroll generation",
           debug: {
             whereClause,
-            message: "Check if users have role 'EMPLOYEE', status 'ACTIVE', and salary not null"
+            message: "Check if users have role 'EMPLOYEE' and status 'ACTIVE'"
           }
         },
         { status: 400 }
@@ -140,7 +143,9 @@ export async function POST(request: NextRequest) {
 
     for (const user of users) {
       try {
-        const baseSalary = Number(user.salary)
+        // Get user-specific payroll rules and combine with global rules
+        const userRules = [...user.payrollRules.map(ur => ur.payrollRule), ...globalRules]
+        const baseSalary = calculateBaseSalaryFromRules(userRules)
         
         // Calculate attendance data from records
         let totalHoursWorked = 0
@@ -342,11 +347,112 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Generate and encrypt payroll file
+    let payrollFileRecord = null
+    if (payrollResults.length > 0) {
+      try {
+        // Create payroll summary data
+        const payrollSummary = {
+          payPeriodStart: startDate.toISOString(),
+          payPeriodEnd: endDate.toISOString(),
+          generatedAt: new Date().toISOString(),
+          department: department || 'All Departments',
+          employees: payrollResults.map(result => ({
+            employeeId: result.user?.employeeId || 'N/A',
+            name: `${result.user?.firstName || ''} ${result.user?.lastName || ''}`.trim(),
+            department: result.user?.department || 'Unassigned',
+            position: result.user?.position || 'N/A',
+            baseSalary: Number(result.baseSalary),
+            grossPay: Number(result.grossPay),
+            netPay: Number(result.netPay),
+            totalDeductions: Number(result.totalDeductions),
+            regularPay: Number(result.regularPay),
+            overtimePay: Number(result.overtimePay),
+            holidayPay: Number(result.holidayPay),
+            allowances: Number(result.allowances),
+            bonuses: Number(result.bonuses),
+            deductions: {
+              gsisContribution: Number(result.gsisContribution),
+              philHealthContribution: Number(result.philHealthContribution),
+              pagibigContribution: Number(result.pagibigContribution),
+              withholdingTax: Number(result.withholdingTax),
+              lateDeductions: Number(result.lateDeductions),
+              loanDeductions: Number(result.loanDeductions),
+              otherDeductions: Number(result.otherDeductions)
+            }
+          })),
+          totals: {
+            totalGrossPay: payrollResults.reduce((sum, r) => sum + Number(r.grossPay), 0),
+            totalNetPay: payrollResults.reduce((sum, r) => sum + Number(r.netPay), 0),
+            totalDeductions: payrollResults.reduce((sum, r) => sum + Number(r.totalDeductions), 0)
+          }
+        }
+
+        // Create temporary file
+        const tempDir = path.join(process.cwd(), 'temp')
+        await fs.promises.mkdir(tempDir, { recursive: true })
+        
+        const timestamp = Date.now()
+        const tempFileName = `payroll_${department || 'all'}_${timestamp}.json`
+        const tempFilePath = path.join(tempDir, tempFileName)
+        
+        await fs.promises.writeFile(tempFilePath, JSON.stringify(payrollSummary, null, 2))
+
+        // Encrypt and store the file
+        const encryptionResult = await encryptPayrollFile(
+          tempFilePath,
+          tempFileName,
+          { start: startDate, end: endDate },
+          department
+        )
+
+        // Get current user from request (you might need to implement authentication middleware)
+        const currentUserId = 'admin-user-id' // This should come from authentication
+
+        // Create PayrollFile record
+        payrollFileRecord = await prisma.payrollFile.create({
+          data: {
+            fileName: encryptionResult.metadata.originalFileName,
+            filePath: encryptionResult.encryptedFilePath,
+            fileSize: encryptionResult.metadata.fileSize,
+            fileType: 'json',
+            reportType: 'monthly',
+            payPeriodStart: startDate,
+            payPeriodEnd: endDate,
+            generatedBy: currentUserId,
+            department: department || null,
+            employeeCount: payrollResults.length,
+            totalGrossPay: payrollSummary.totals.totalGrossPay,
+            totalNetPay: payrollSummary.totals.totalNetPay,
+            totalDeductions: payrollSummary.totals.totalDeductions,
+            status: 'GENERATED',
+            metadata: JSON.stringify({
+              encryptedAt: encryptionResult.metadata.encryptedAt,
+              checksum: encryptionResult.metadata.checksum,
+              originalFileName: encryptionResult.metadata.originalFileName
+            }),
+            checksum: encryptionResult.metadata.checksum
+          }
+        })
+
+        console.log(`Payroll file encrypted and stored: ${encryptionResult.encryptedFilePath}`)
+      } catch (fileError) {
+        console.error('Error creating payroll file:', fileError)
+        // Don't fail the entire operation if file creation fails
+      }
+    }
+
     return NextResponse.json({
       message: `Generated payroll for ${payrollResults.length} employees`,
       generated: payrollResults.length,
       records: payrollResults,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
+      payrollFile: payrollFileRecord ? {
+        id: payrollFileRecord.id,
+        fileName: payrollFileRecord.fileName,
+        isEncrypted: true,
+        generatedAt: payrollFileRecord.generatedAt
+      } : null
     })
 
   } catch (error) {

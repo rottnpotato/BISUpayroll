@@ -20,9 +20,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (startDate && endDate) {
+      // Create proper date range that covers full days
+      const start = new Date(startDate)
+      start.setHours(0, 0, 0, 0) // Start of day
+      
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999) // End of day
+      
       where.date = {
-        gte: new Date(startDate),
-        lte: new Date(endDate)
+        gte: start,
+        lte: end
       }
     }
 

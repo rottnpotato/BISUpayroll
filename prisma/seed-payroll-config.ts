@@ -43,6 +43,15 @@ async function seedPayrollConfiguration() {
   // Seed standard payroll rules
   const payrollRules = [
     {
+      name: 'Basic Salary',
+      type: 'base',
+      amount: 25000,
+      isPercentage: false,
+      isActive: true,
+      description: 'Base monthly salary for government employees',
+      applyToAll: true
+    },
+    {
       name: 'SSS Contribution',
       type: 'deduction',
       amount: 580,

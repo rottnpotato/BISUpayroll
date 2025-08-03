@@ -21,7 +21,6 @@ export async function GET(
         department: true,
         position: true,
         hireDate: true,
-        salary: true,
         phone: true,
         address: true,
         emergencyContactName: true,
@@ -66,7 +65,6 @@ export async function PUT(
       department,
       position,
       hireDate,
-      salary,
       phone,
       address,
       emergencyContactName,
@@ -125,7 +123,6 @@ export async function PUT(
       department: department || existingUser.department,
       position: position || existingUser.position,
       hireDate: hireDate ? new Date(hireDate) : existingUser.hireDate,
-      salary: salary ? parseFloat(salary) : existingUser.salary,
       phone: phone || existingUser.phone,
       address: address || existingUser.address,
       emergencyContactName: emergencyContactName || existingUser.emergencyContactName,
@@ -154,7 +151,6 @@ export async function PUT(
         department: true,
         position: true,
         hireDate: true,
-        salary: true,
         phone: true,
         updatedAt: true
       }

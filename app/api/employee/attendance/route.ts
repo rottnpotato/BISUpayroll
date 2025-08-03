@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
+import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
 
 export async function GET(request: NextRequest) {
   try {
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
         timeOut,
         status,
         hours: record.hoursWorked ? parseFloat(record.hoursWorked.toString()) : 0,
-        approvalStatus: (record as any).status || 'PENDING',
+        approvalStatus: record.status || 'PENDING',
         rejectionReason: (record as any).rejectionReason || null,
         approvedAt: (record as any).approvedAt ? new Date((record as any).approvedAt).toISOString() : null
       }
@@ -127,6 +128,7 @@ export async function POST(request: NextRequest) {
     // Get action from request body
     const body = await request.json()
     const action = body.action // 'time-in' or 'time-out'
+    const skipTimeRestrictions = body.skipTimeRestrictions || false // Testing mode flag
 
     if (!action || (action !== 'time-in' && action !== 'time-out')) {
       return NextResponse.json({ 
@@ -197,14 +199,17 @@ export async function POST(request: NextRequest) {
       const currentTime = currentHour * 60 + currentMinute // Convert to minutes for easier comparison
       
       // Time restrictions: Allow time-in only between 6:00 AM and 12:59 PM (PHT)
-      const morningStartTime = 6 * 60 // 6:00 AM in minutes
-      const morningEndTime = 12 * 60 + 59 // 12:59 PM in minutes
-      
-      if (currentTime < morningStartTime || currentTime > morningEndTime) {
-        return NextResponse.json({
-          success: false,
-          message: 'Time-in is only allowed between 6:00 AM and 12:59 PM (PHT)'
-        }, { status: 400 })
+      // Skip restrictions if testing mode is enabled
+      if (!skipTimeRestrictions) {
+        const morningStartTime = 6 * 60 // 6:00 AM in minutes
+        const morningEndTime = 12 * 60 + 59 // 12:59 PM in minutes
+        
+        if (currentTime < morningStartTime || currentTime > morningEndTime) {
+          return NextResponse.json({
+            success: false,
+            message: 'Time-in is only allowed between 6:00 AM and 12:59 PM (PHT)'
+          }, { status: 400 })
+        }
       }
 
       // If no record exists for today, create one
@@ -213,23 +218,41 @@ export async function POST(request: NextRequest) {
         const isLate = now.getHours() > workStartHour || 
           (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes))
 
+        // Auto-approve time-in if not excessively late (more than 2 hours)
+        const shouldAutoApproveTimeIn = (() => {
+          if (!isLate) return true // Auto-approve if on time
+          
+          const currentHour = now.getHours()
+          const currentMinute = now.getMinutes()
+          const actualTimeIn = currentHour * 60 + currentMinute
+          const expectedTimeIn = workStartHour * 60 + workStartMinute
+          const lateMinutes = actualTimeIn - expectedTimeIn
+          
+          // Don't auto-approve if more than 2 hours late (120 minutes)
+          return lateMinutes <= 120
+        })()
+
         attendanceRecord = await prisma.attendanceRecord.create({
           data: {
             userId: user.id,
             date: now,
             timeIn: now,
             isLate: isLate,
-            status: 'PENDING'
+            status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING'
           } as any
         })
 
         return NextResponse.json({
           success: true,
-          message: 'Time-in recorded successfully',
+          message: shouldAutoApproveTimeIn 
+            ? 'Time-in recorded and automatically approved'
+            : 'Time-in recorded - pending approval by supervisor',
           data: {
             time: formatTime(now),
             isLate: attendanceRecord.isLate,
-            expectedWorkHours: dailyHours
+            expectedWorkHours: dailyHours,
+            status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
+            approvalStatus: shouldAutoApproveTimeIn ? 'Auto-approved' : 'Pending supervisor approval'
           }
         })
       } 
@@ -248,22 +271,40 @@ export async function POST(request: NextRequest) {
         const isLate = now.getHours() > workStartHour || 
           (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes))
 
+        // Auto-approve time-in if not excessively late (more than 2 hours)
+        const shouldAutoApproveTimeIn = (() => {
+          if (!isLate) return true // Auto-approve if on time
+          
+          const currentHour = now.getHours()
+          const currentMinute = now.getMinutes()
+          const actualTimeIn = currentHour * 60 + currentMinute
+          const expectedTimeIn = workStartHour * 60 + workStartMinute
+          const lateMinutes = actualTimeIn - expectedTimeIn
+          
+          // Don't auto-approve if more than 2 hours late (120 minutes)
+          return lateMinutes <= 120
+        })()
+
         attendanceRecord = await prisma.attendanceRecord.update({
           where: { id: attendanceRecord.id },
           data: {
             timeIn: now,
             isLate: isLate,
-            status: 'PENDING'
+            status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING'
           } as any
         })
 
         return NextResponse.json({
           success: true,
-          message: 'Time-in recorded successfully',
+          message: shouldAutoApproveTimeIn 
+            ? 'Time-in recorded and automatically approved'
+            : 'Time-in recorded - pending approval by supervisor',
           data: {
             time: formatTime(now),
             isLate: attendanceRecord.isLate,
-            expectedWorkHours: dailyHours
+            expectedWorkHours: dailyHours,
+            status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
+            approvalStatus: shouldAutoApproveTimeIn ? 'Auto-approved' : 'Pending supervisor approval'
           }
         })
       }
@@ -327,11 +368,36 @@ export async function POST(request: NextRequest) {
           ? parseFloat(configs['rates_specialHolidayRate'] || '1.3')
           : 1.0
 
+        // Determine if this attendance should be auto-approved
+        // Auto-approve if:
+        // 1. Employee worked reasonable hours (between 4-12 hours)
+        // 2. Not excessively late (more than 2 hours late)
+        // 3. Has both time-in and time-out
+        const shouldAutoApprove = (() => {
+          // Check reasonable working hours (4-12 hours)
+          if (hoursWorked < 4 || hoursWorked > 12) return false
+          
+          // Check if excessively late (more than 2 hours)
+          if (attendanceRecord.isLate) {
+            const timeInHour = attendanceRecord.timeIn?.getHours() || 0
+            const timeInMinute = attendanceRecord.timeIn?.getMinutes() || 0
+            const actualTimeIn = timeInHour * 60 + timeInMinute
+            const expectedTimeIn = workStartHour * 60 + workStartMinute
+            const lateMinutes = actualTimeIn - expectedTimeIn
+            
+            // Don't auto-approve if more than 2 hours late (120 minutes)
+            if (lateMinutes > 120) return false
+          }
+          
+          return true
+        })()
+
         attendanceRecord = await prisma.attendanceRecord.update({
           where: { id: attendanceRecord.id },
           data: {
             timeOut: now,
-            hoursWorked
+            hoursWorked,
+            status: shouldAutoApprove ? 'APPROVED' : 'PENDING'
           }
         })
 
@@ -339,13 +405,24 @@ export async function POST(request: NextRequest) {
         const regularHours = Math.min(hoursWorked, dailyHours)
         const overtimeHours = Math.max(0, hoursWorked - dailyHours)
         
-        // Get employee salary to calculate rates
-        const employeeData = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { salary: true }
+        // Get payroll rules to calculate rates
+        const payrollRules = await prisma.payrollRule.findMany({
+          where: {
+            OR: [
+              { applyToAll: true },
+              {
+                assignedUsers: {
+                  some: {
+                    userId: user.id
+                  }
+                }
+              }
+            ],
+            isActive: true
+          }
         })
         
-        const monthlySalary = Number(employeeData?.salary || 0)
+        const monthlySalary = calculateBaseSalaryFromRules(payrollRules)
         const dailyRate = monthlySalary / 22 // Standard working days per month
         const hourlyRate = dailyRate / dailyHours
         
@@ -396,7 +473,9 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          message: 'Time-out recorded successfully',
+          message: shouldAutoApprove 
+            ? 'Time-out recorded and automatically approved'
+            : 'Time-out recorded - pending approval by supervisor',
           data: {
             time: formatTime(now),
             hoursWorked,
@@ -408,6 +487,8 @@ export async function POST(request: NextRequest) {
             holidayMultiplier: isHoliday ? holidayRate : 1.0,
             isWeekend,
             expectedDailyHours: dailyHours,
+            status: shouldAutoApprove ? 'APPROVED' : 'PENDING',
+            approvalStatus: shouldAutoApprove ? 'Auto-approved' : 'Pending supervisor approval',
             earnings: {
               dailyRate,
               hourlyRate,

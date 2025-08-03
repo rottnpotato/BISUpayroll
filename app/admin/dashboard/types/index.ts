@@ -87,5 +87,39 @@ export interface DashboardData {
       incentives: number
       employerContributions: number
     }
+    schedule?: {
+      id: string
+      name: string
+      days: number[]
+      isActive: boolean
+      cutoffDays?: number[]
+      payrollReleaseDay?: number
+      processingDays?: number[]
+      cutoffType?: string
+      paymentMethod?: string
+      description?: string
+    } | null
+    deadlineStatus?: {
+      isMissed: boolean
+      daysOverdue?: number
+      expectedGenerationDate?: string
+      nextGenerationDate?: string
+      scheduleName?: string
+      message?: string
+    }
+    upcomingDeadlines?: Array<{
+      date: string
+      type: 'generation' | 'cutoff' | 'payment'
+      scheduleName: string
+      daysUntil: number
+      isUrgent: boolean
+    }>
+    fileStatus?: {
+      hasGeneratedFiles: boolean
+      fileCount: number
+      totalEmployees: number
+      encryptedFiles: number
+      lastGenerated?: string
+    }
   }
 } 

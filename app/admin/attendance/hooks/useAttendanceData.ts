@@ -8,12 +8,16 @@ interface UseAttendanceDataProps {
   currentPage: number
   selectedDate: Date | undefined
   selectedDepartment: string
+  startDate?: Date | undefined
+  endDate?: Date | undefined
 }
 
 export default function useAttendanceData({
   currentPage,
   selectedDate,
-  selectedDepartment
+  selectedDepartment,
+  startDate,
+  endDate
 }: UseAttendanceDataProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [records, setRecords] = useState<AttendanceRecord[]>([])
@@ -24,7 +28,7 @@ export default function useAttendanceData({
   const fetchAttendanceRecords = async () => {
     try {
       setIsLoading(true)
-      const params = buildApiParams(currentPage, selectedDate, selectedDepartment, PAGINATION_LIMITS.DEFAULT)
+      const params = buildApiParams(currentPage, selectedDate, selectedDepartment, PAGINATION_LIMITS.DEFAULT, startDate, endDate)
 
       const response = await fetch(`/api/admin/attendance?${params}`)
       if (!response.ok) {
@@ -32,6 +36,17 @@ export default function useAttendanceData({
       }
 
       const data: AttendanceResponse = await response.json()
+      
+      // Debug logging
+      console.log('useAttendanceData API Response:', {
+        url: `/api/admin/attendance?${params}`,
+        response: response.ok,
+        recordsCount: data.records?.length || 0,
+        totalRecords: data.pagination?.total || 0,
+        pagination: data.pagination,
+        firstRecord: data.records?.[0] || null
+      })
+      
       setRecords(data.records)
       setTotalPages(data.pagination.pages)
 
@@ -62,7 +77,7 @@ export default function useAttendanceData({
   useEffect(() => {
     fetchAttendanceRecords()
     fetchUsers()
-  }, [currentPage, selectedDate, selectedDepartment])
+  }, [currentPage, selectedDate, selectedDepartment, startDate, endDate])
 
   const refetch = () => {
     fetchAttendanceRecords()

@@ -32,8 +32,8 @@ export default function QuickStatsCard({ dashboardData, isLoading }: QuickStatsC
       label: "Attendance Rate",
       value: `${dashboardData?.overview.attendanceRate || 0}%`,
       icon: CheckCircle,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-bisu-purple-medium",
+      bgColor: "bg-bisu-purple-extralight",
       trend: { value: 2.1, positive: true }
     },
     {
@@ -47,8 +47,8 @@ export default function QuickStatsCard({ dashboardData, isLoading }: QuickStatsC
       label: "Pending Reports",
       value: dashboardData?.quickStats.pendingReports || 0,
       icon: Clock,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50"
+      color: "text-bisu-yellow-dark",
+      bgColor: "bg-bisu-yellow-extralight"
     }
   ]
 
@@ -60,7 +60,7 @@ export default function QuickStatsCard({ dashboardData, isLoading }: QuickStatsC
           {stats.map((stat, index) => (
             <motion.div
               key={stat.label}
-              className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-between p-3 rounded-lg hover:bg-bisu-purple-extralight hover:text-bisu-purple-deep transition-colors"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}

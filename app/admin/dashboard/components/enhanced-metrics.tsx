@@ -55,7 +55,7 @@ export default function EnhancedMetrics({ dashboardData, isLoading }: EnhancedMe
       value: "83%",
       subtitle: "Avg. Completed",
       connections: dashboardData.overview.totalEmployees,
-      gradient: "from-purple-500 via-purple-400 to-pink-400",
+      gradient: "from-bisu-purple-deep via-bisu-purple-medium to-bisu-purple-light",
       icon: Target,
       badge: "Priority"
     },
@@ -64,7 +64,7 @@ export default function EnhancedMetrics({ dashboardData, isLoading }: EnhancedMe
       value: "56%",
       subtitle: "Avg. Completed",
       connections: dashboardData.overview.unpaidPayroll,
-      gradient: "from-blue-500 via-blue-400 to-cyan-400",
+      gradient: "from-bisu-yellow-600 via-bisu-yellow-500 to-bisu-yellow-400",
       icon: CheckCircle,
       badge: "Progress"
     }
@@ -79,7 +79,7 @@ export default function EnhancedMetrics({ dashboardData, isLoading }: EnhancedMe
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3, delay: index * 0.1 }}
         >
-          <Card className={`relative overflow-hidden bg-gradient-to-br ${task.gradient} text-white border-0`}>
+          <Card className={`relative overflow-hidden bg-gradient-to-br ${task.gradient} text-white border-0 hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="p-2 bg-white/20 rounded-lg">

@@ -60,6 +60,10 @@ export default function EmployeeDashboard() {
   // Earnings modal states
   const [isEarningsModalOpen, setIsEarningsModalOpen] = useState(false)
   const [timeoutEarningsData, setTimeoutEarningsData] = useState<any>(null)
+  
+  // Time window validation states
+  const [isWithinTimeWindow, setIsWithinTimeWindow] = useState(true)
+  const [timeWindowMessage, setTimeWindowMessage] = useState("")
 
   // Fetch dashboard data
   useEffect(() => {
@@ -94,7 +98,54 @@ export default function EmployeeDashboard() {
     fetchDashboardData()
   }, [])
 
-  // Update current time every second
+  // Check time window status
+  const checkTimeWindow = () => {
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const currentTime = currentHour * 60 + currentMinute
+    
+    const morningStartTime = 6 * 60 // 6:00 AM
+    const morningEndTime = 12 * 60 + 59 // 12:59 PM
+    
+    const formatTime = (minutes: number) => {
+      const hours = Math.floor(minutes / 60)
+      const mins = minutes % 60
+      const period = hours >= 12 ? 'PM' : 'AM'
+      const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours
+      return `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`
+    }
+    
+    if (currentTime < morningStartTime) {
+      // Too early
+      const minutesUntilStart = morningStartTime - currentTime
+      const hoursUntil = Math.floor(minutesUntilStart / 60)
+      const minsUntil = minutesUntilStart % 60
+      
+      setIsWithinTimeWindow(false)
+      setTimeWindowMessage(
+        `Time-in opens at 6:00 AM. ${hoursUntil > 0 ? `${hoursUntil}h ` : ''}${minsUntil}m remaining.`
+      )
+    } else if (currentTime > morningEndTime) {
+      // Too late
+      setIsWithinTimeWindow(false)
+      setTimeWindowMessage(
+        `Time-in window closed at 12:59 PM. Please contact your supervisor if you need to record attendance.`
+      )
+    } else {
+      // Within allowed time
+      const minutesRemaining = morningEndTime - currentTime
+      const hoursRemaining = Math.floor(minutesRemaining / 60)
+      const minsRemaining = minutesRemaining % 60
+      
+      setIsWithinTimeWindow(true)
+      setTimeWindowMessage(
+        `Time-in available until 12:59 PM. ${hoursRemaining > 0 ? `${hoursRemaining}h ` : ''}${minsRemaining}m remaining.`
+      )
+    }
+  }
+
+  // Update current time every second and check time window
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date()
@@ -107,7 +158,14 @@ export default function EmployeeDashboard() {
           hour12: true,
         }),
       )
+      
+      // Check time window status every second
+      checkTimeWindow()
     }, 1000)
+    
+    // Initial check
+    checkTimeWindow()
+    
     return () => clearInterval(timer)
   }, [])
 
@@ -116,19 +174,34 @@ export default function EmployeeDashboard() {
     
     // Check time restrictions for time-in
     if (action === 'time-in') {
-      const now = new Date()
-      const currentHour = now.getHours()
-      const currentMinute = now.getMinutes()
-      const currentTime = currentHour * 60 + currentMinute
-      
-      const morningStartTime = 6 * 60 // 6:00 AM
-      const morningEndTime = 12 * 60 + 59 // 12:59 PM
-      
-      if (currentTime < morningStartTime || currentTime > morningEndTime) {
+      if (!isWithinTimeWindow) {
+        const now = new Date()
+        const currentHour = now.getHours()
+        const currentMinute = now.getMinutes()
+        const currentTime = currentHour * 60 + currentMinute
+        const morningStartTime = 6 * 60 // 6:00 AM
+        const morningEndTime = 12 * 60 + 59 // 12:59 PM
+        
+        let detailedMessage = ""
+        let title = ""
+        
+        if (currentTime < morningStartTime) {
+          const minutesUntilStart = morningStartTime - currentTime
+          const hoursUntil = Math.floor(minutesUntilStart / 60)
+          const minsUntil = minutesUntilStart % 60
+          
+          title = "Time-in Not Available Yet"
+          detailedMessage = `Time-in opens at 6:00 AM. Please wait ${hoursUntil > 0 ? `${hoursUntil} hour${hoursUntil > 1 ? 's' : ''} and ` : ''}${minsUntil} minute${minsUntil > 1 ? 's' : ''}.`
+        } else {
+          title = "Time-in Window Closed"
+          detailedMessage = "Time-in is only allowed between 6:00 AM and 12:59 PM (PHT). The window has closed for today. Please contact your supervisor if you need to record your attendance."
+        }
+        
         toast({
-          title: "Time Restriction",
-          description: "Time-in is only allowed between 6:00 AM and 12:59 PM (PHT)",
-          variant: "destructive"
+          title: title,
+          description: detailedMessage,
+          variant: "destructive",
+          duration: 6000
         })
         return
       }
@@ -397,7 +470,9 @@ export default function EmployeeDashboard() {
           ) : (
             <>
               {/* Time Clock */}
-              <Card className="border-l-4 border-l-bisu-yellow shadow-md hover:shadow-lg transition-all duration-300">
+              <Card className={`border-l-4 shadow-md hover:shadow-lg transition-all duration-300 ${
+                isWithinTimeWindow || isTimedIn ? 'border-l-bisu-yellow-500' : 'border-l-red-500'
+              }`}>
                 <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
                   <CardTitle className="text-bisu-purple-deep flex items-center">
                     <Clock className="mr-2 h-5 w-5" />
@@ -405,24 +480,52 @@ export default function EmployeeDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 p-4">
+                  {/* Time Window Status */}
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className={`flex items-center space-x-2 text-sm p-3 rounded-md ${
+                      isWithinTimeWindow 
+                        ? "bg-green-100 text-green-700 border border-green-200" 
+                        : "bg-red-100 text-red-700 border border-red-200"
+                    }`}
+                  >
+                    {isWithinTimeWindow ? (
+                      <CheckCircle size={16} className="text-green-600" />
+                    ) : (
+                      <AlertTriangle size={16} className="text-red-600" />
+                    )}
+                    <span className="flex-1">{timeWindowMessage}</span>
+                  </motion.div>
+
                   <Button
                     onClick={handleTimeLogClick}
-                    disabled={isTimeActionLoading}
-                    className={`w-full py-6 text-lg font-semibold ${
+                    disabled={isTimeActionLoading || (!isWithinTimeWindow && !isTimedIn)}
+                    className={`w-full py-6 text-lg font-semibold transition-all ${
                       isTimedIn
                         ? "bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep"
-                        : "bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
+                        : isWithinTimeWindow
+                        ? "bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
+                        : "bg-gray-400 text-gray-600 cursor-not-allowed opacity-60"
                     }`}
                   >
                     {isTimeActionLoading ? (
                       <Spinner size="sm" className="mr-2" />
                     ) : isTimedIn ? (
                       <LogOut className="mr-2 h-5 w-5" />
+                    ) : !isWithinTimeWindow ? (
+                      <Clock className="mr-2 h-5 w-5" />
                     ) : (
                       <LogIn className="mr-2 h-5 w-5" />
                     )}
-                    {isTimedIn ? "Time Out" : "Time In"}
+                    {isTimedIn 
+                      ? "Time Out" 
+                      : !isWithinTimeWindow 
+                      ? "Time-in Restricted" 
+                      : "Time In"
+                    }
                   </Button>
+                  
                   {lastActionTime && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -435,7 +538,21 @@ export default function EmployeeDashboard() {
                       <span>{lastActionTime}</span>
                     </motion.div>
                   )}
-                  {!lastActionTime && <p className="text-sm text-gray-500 text-center">No activity yet today</p>}
+                  
+                  {!lastActionTime && !isWithinTimeWindow && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="text-sm text-center p-3 bg-blue-50 text-blue-700 rounded-md border border-blue-200"
+                    >
+                      <p>📋 Time-in Hours: 6:00 AM - 12:59 PM (PHT)</p>
+                      <p className="text-xs mt-1 text-blue-600">Please ensure you're within the allowed time window to record attendance.</p>
+                    </motion.div>
+                  )}
+                  
+                  {!lastActionTime && isWithinTimeWindow && (
+                    <p className="text-sm text-gray-500 text-center">No activity yet today</p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -479,7 +596,7 @@ export default function EmployeeDashboard() {
             <>
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border-l-4 border-l-red-500 card-hover">
+                <Card className="border-l-4 border-l-red-500 card-hover hover:bg-red-50 hover:text-red-700 transition-colors duration-300">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-600">Lates This Month</CardTitle>
                     <AlertTriangle
@@ -496,7 +613,7 @@ export default function EmployeeDashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-green-500 card-hover">
+                <Card className="border-l-4 border-l-green-500 card-hover hover:bg-green-50 hover:text-green-700 transition-colors duration-300">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-600">Absences This Month</CardTitle>
                     <AlertTriangle
@@ -514,7 +631,7 @@ export default function EmployeeDashboard() {
 
               {/* Salary Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border-l-4 border-l-bisu-yellow card-hover">
+                <Card className="border-l-4 border-l-bisu-yellow-500 card-hover hover:bg-bisu-yellow-extralight hover:text-bisu-yellow-dark transition-colors duration-300">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-600">Current Salary Rate</CardTitle>
                     <DollarSign className="h-4 w-4 text-bisu-yellow-dark" />
@@ -525,7 +642,7 @@ export default function EmployeeDashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-l-4 border-l-bisu-purple-deep card-hover">
+                <Card className="border-l-4 border-l-bisu-purple-deep card-hover hover:bg-bisu-purple-extralight hover:text-bisu-purple-deep transition-colors duration-300">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-gray-600">Prospected Salary</CardTitle>
                     <DollarSign className="h-4 w-4 text-bisu-purple-deep" />
@@ -538,9 +655,9 @@ export default function EmployeeDashboard() {
               </div>
 
               {/* Quick Actions */}
-              <Card className="shadow-md hover:shadow-lg transition-all duration-300">
+              <Card className="shadow-md hover:shadow-lg hover:bg-bisu-purple-extralight transition-all duration-300">
                 <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg">
-                  <CardTitle className="text-bisu-yellow">Quick Actions</CardTitle>
+                  <CardTitle className="text-bisu-yellow-300">Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                   <Button 

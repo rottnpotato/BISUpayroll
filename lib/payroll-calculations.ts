@@ -267,6 +267,21 @@ export function applyPayrollRules(
   return { total, breakdown }
 }
 
+// Function to calculate base salary from payroll rules
+export function calculateBaseSalaryFromRules(appliedRules: any[]): number {
+  const baseSalaryRule = appliedRules.find(rule => 
+    rule.isActive && 
+    (rule.type === 'base' || rule.category === 'base_pay')
+  )
+  
+  if (baseSalaryRule) {
+    return Number(baseSalaryRule.amount)
+  }
+  
+  // Default fallback - could be configured in system settings
+  return 25000 // Default base salary if no rule is found
+}
+
 export function calculateCompletePayroll(data: PayrollCalculationData): PayrollCalculationResult {
   const {
     baseSalary,

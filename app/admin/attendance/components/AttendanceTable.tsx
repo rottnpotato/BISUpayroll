@@ -65,6 +65,13 @@ export default function AttendanceTable({ records, onApprovalAction }: Attendanc
   const [rejectionReason, setRejectionReason] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Debug logging
+  console.log('AttendanceTable received records:', {
+    count: records.length,
+    firstRecord: records[0] || null,
+    allRecords: records
+  })
+
   const handleApprove = async (record: AttendanceRecord) => {
     try {
       await onApprovalAction(record.id, { action: "approve" })

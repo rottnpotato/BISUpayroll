@@ -34,32 +34,32 @@ export default function QuickStats({ dashboardData }: QuickStatsProps) {
     {
       label: "On-Time Rate",
       value: `${dashboardData.quickStats.onTimeRate}%`,
-      icon: <Clock className="h-4 w-4" />,
-      color: "green"
+      icon: <Clock className="h-4 w-4 text-bisu-purple-medium" />,
+      bgColor: "bg-bisu-purple-extralight"
     },
     {
       label: "Late Today",
       value: dashboardData.quickStats.lateEmployees,
-      icon: <AlertTriangle className="h-4 w-4" />,
-      color: "orange"
+      icon: <AlertTriangle className="h-4 w-4 text-bisu-yellow-dark" />,
+      bgColor: "bg-bisu-yellow-extralight"
     },
     {
       label: "Absent Today",
       value: dashboardData.quickStats.absentToday,
-      icon: <AlertTriangle className="h-4 w-4" />,
-      color: "red"
+      icon: <AlertTriangle className="h-4 w-4 text-red-600" />,
+      bgColor: "bg-red-50"
     },
     {
       label: "Upcoming Holidays",
       value: dashboardData.quickStats.upcomingHolidays,
-      icon: <Calendar className="h-4 w-4" />,
-      color: "blue"
+      icon: <Calendar className="h-4 w-4 text-bisu-purple-light" />,
+      bgColor: "bg-bisu-purple-extralight"
     },
     {
       label: "Pending Reports",
       value: dashboardData.quickStats.pendingReports,
-      icon: <FileText className="h-4 w-4" />,
-      color: "purple"
+      icon: <FileText className="h-4 w-4 text-bisu-yellow-600" />,
+      bgColor: "bg-bisu-yellow-extralight"
     }
   ]
 
@@ -79,10 +79,10 @@ export default function QuickStats({ dashboardData }: QuickStatsProps) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-bisu-purple-extralight hover:text-bisu-purple-deep transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg bg-${stat.color}-100`}>
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                   {stat.icon}
                 </div>
                 <span className="text-sm font-medium text-bisu-purple-deep">

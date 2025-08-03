@@ -61,6 +61,9 @@ export default function EmployeeAttendancePage() {
   const [isClockingOut, setIsClockingOut] = useState(false)
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null)
   
+  // Testing state - disable time restrictions
+  const [restrictionsDisabled, setRestrictionsDisabled] = useState(false)
+  
   // Confirmation dialog states
   const [isTimeActionDialogOpen, setIsTimeActionDialogOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState<'time-in' | 'time-out' | null>(null)
@@ -90,6 +93,14 @@ export default function EmployeeAttendancePage() {
         // Find today's record
         const today = format(new Date(), 'yyyy-MM-dd')
         const todayRec = result.data.records.find((record: AttendanceRecord) => record.date === today)
+        
+        // Debug logging for testing
+        if (restrictionsDisabled) {
+          console.log('🔍 Debug - Today date:', today)
+          console.log('🔍 Debug - Available records:', result.data.records.map((r: AttendanceRecord) => ({ date: r.date, timeIn: r.timeIn, timeOut: r.timeOut })))
+          console.log('🔍 Debug - Found today record:', todayRec)
+        }
+        
         setTodayRecord(todayRec || null)
       } else {
         throw new Error(result.message || 'Failed to fetch attendance data')
@@ -107,18 +118,32 @@ export default function EmployeeAttendancePage() {
   }, [selectedMonth, selectedYear])
 
   const handleTimeIn = async () => {
-    // Check time restrictions
-    const now = new Date()
-    const currentHour = now.getHours()
-    const currentMinute = now.getMinutes()
-    const currentTime = currentHour * 60 + currentMinute
-    
-    const morningStartTime = 6 * 60 // 6:00 AM
-    const morningEndTime = 12 * 60 + 59 // 12:59 PM
-    
-    if (currentTime < morningStartTime || currentTime > morningEndTime) {
-      toast.error('Time-in is only allowed between 6:00 AM and 12:59 PM (PHT)')
-      return
+    // Check time restrictions (skip if disabled for testing)
+    if (!restrictionsDisabled) {
+      const now = new Date()
+      const currentHour = now.getHours()
+      const currentMinute = now.getMinutes()
+      const currentTime = currentHour * 60 + currentMinute
+      
+      const morningStartTime = 6 * 60 // 6:00 AM
+      const morningEndTime = 12 * 60 + 59 // 12:59 PM
+      
+      if (currentTime < morningStartTime || currentTime > morningEndTime) {
+        let errorMessage = ""
+        
+        if (currentTime < morningStartTime) {
+          const minutesUntilStart = morningStartTime - currentTime
+          const hoursUntil = Math.floor(minutesUntilStart / 60)
+          const minsUntil = minutesUntilStart % 60
+          
+          errorMessage = `Time-in opens at 6:00 AM. Please wait ${hoursUntil > 0 ? `${hoursUntil} hour${hoursUntil > 1 ? 's' : ''} and ` : ''}${minsUntil} minute${minsUntil > 1 ? 's' : ''}.`
+        } else {
+          errorMessage = "Time-in window closed at 12:59 PM. Please contact your supervisor if you need to record attendance."
+        }
+        
+        toast.error(errorMessage)
+        return
+      }
     }
 
     // Check if already timed in
@@ -165,7 +190,10 @@ export default function EmployeeAttendancePage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ action: pendingAction })
+        body: JSON.stringify({ 
+          action: pendingAction,
+          skipTimeRestrictions: restrictionsDisabled
+        })
       })
 
       const result = await response.json()
@@ -260,6 +288,11 @@ export default function EmployeeAttendancePage() {
   }
 
   const canClockIn = () => {
+    // If restrictions are disabled for testing, only check if not already timed in
+    if (restrictionsDisabled) {
+      return !todayRecord || !todayRecord.timeIn
+    }
+    
     const now = new Date()
     const currentHour = now.getHours()
     const currentMinute = now.getMinutes()
@@ -273,7 +306,19 @@ export default function EmployeeAttendancePage() {
   }
 
   const canClockOut = () => {
-    return todayRecord && todayRecord.timeIn && !todayRecord.timeOut
+    const result = todayRecord && todayRecord.timeIn && !todayRecord.timeOut
+    
+    // Debug logging for testing
+    if (restrictionsDisabled) {
+      console.log('🔍 Debug - canClockOut check:')
+      console.log('  - todayRecord exists:', !!todayRecord)
+      console.log('  - todayRecord.timeIn exists:', !!todayRecord?.timeIn)
+      console.log('  - todayRecord.timeOut exists:', !!todayRecord?.timeOut)
+      console.log('  - Final result:', result)
+      console.log('  - todayRecord data:', todayRecord)
+    }
+    
+    return result
   }
 
   // Generate month/year options
@@ -410,6 +455,11 @@ export default function EmployeeAttendancePage() {
                 </div>
                 <div className="text-sm text-bisu-yellow-light mt-2">
                   Time-in allowed: 6:00 AM - 12:59 PM (PHT)
+                  {restrictionsDisabled && (
+                    <div className="text-red-200 text-xs mt-1 font-semibold">
+                      ⚠️ TIME RESTRICTIONS DISABLED (TESTING MODE)
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -441,7 +491,7 @@ export default function EmployeeAttendancePage() {
                   onClick={handleTimeIn}
                   disabled={!canClockIn() || isClockingIn}
                   className="bg-green-600 hover:bg-green-700 text-white px-8"
-                  title={!canClockIn() && !todayRecord?.timeIn ? 'Time-in only allowed between 6:00 AM - 12:59 PM' : ''}
+                  title={!canClockIn() && !todayRecord?.timeIn && !restrictionsDisabled ? 'Time-in only allowed between 6:00 AM - 12:59 PM' : ''}
                 >
                   {isClockingIn ? 'Clocking In...' : 'Clock In'}
                 </Button>
@@ -451,6 +501,24 @@ export default function EmployeeAttendancePage() {
                   className="bg-red-600 hover:bg-red-700 text-white px-8"
                 >
                   {isClockingOut ? 'Clocking Out...' : 'Clock Out'}
+                </Button>
+              </div>
+              
+              {/* Testing Controls */}
+              <div className="flex justify-center">
+                <Button
+                  onClick={() => {
+                    setRestrictionsDisabled(!restrictionsDisabled)
+                    toast.info(restrictionsDisabled ? 'Time restrictions enabled' : 'Time restrictions disabled for testing')
+                  }}
+                  variant="outline"
+                  className={`text-xs px-4 py-2 border-2 ${
+                    restrictionsDisabled 
+                      ? 'bg-red-600 text-white border-red-400 hover:bg-red-700' 
+                      : 'bg-orange-600 text-white border-orange-400 hover:bg-orange-700'
+                  }`}
+                >
+                  {restrictionsDisabled ? '🔓 Enable Time Restrictions' : '🔒 Disable Time Restrictions (Testing)'}
                 </Button>
               </div>
             </CardContent>

@@ -27,7 +27,7 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
   const activeEmployees = data?.overview?.activeEmployees || 0
   const newEmployeesThisMonth = data?.overview?.newEmployeesThisMonth || 0
   
-  // Calculate timeline dates based on actual payroll period
+  // Calculate timeline dates based on actual payroll schedule and current status
   const getTimelineData = () => {
     if (!payrollPeriod?.start || !payrollPeriod?.end) {
       return {
@@ -40,28 +40,55 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
     const start = new Date(payrollPeriod.start)
     const end = new Date(payrollPeriod.end)
     const today = new Date()
+    const schedule = data?.payrollDetails?.schedule
     
-    // Calculate process date (midpoint between start and end)
-    const processDate = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2)
+    // Calculate process date based on schedule or use midpoint
+    let processDate: Date
+    if (schedule?.cutoffDays && schedule.cutoffDays.length > 0) {
+      // Use cutoff day as process date
+      const cutoffDay = schedule.cutoffDays[0]
+      processDate = new Date(start.getFullYear(), start.getMonth(), cutoffDay)
+    } else {
+      // Fallback to midpoint
+      processDate = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2)
+    }
+    
+    // Calculate payment date
+    let paymentDate: Date
+    if (schedule?.payrollReleaseDay) {
+      paymentDate = new Date(end.getFullYear(), end.getMonth(), schedule.payrollReleaseDay)
+    } else {
+      // Use end date as payment date
+      paymentDate = end
+    }
+    
+    // Determine status-based descriptions
+    const status = data?.payrollDetails?.status || "Processing"
+    const isGenerated = status.includes("Generated")
+    const isApproved = status.includes("Approved")
+    const isPaid = status.includes("Paid")
     
     return {
       startDate: {
         day: start.getDate().toString().padStart(2, '0'),
         month: start.toLocaleDateString('en-US', { month: 'short' }),
         label: start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        description: "Payroll period start"
+        description: "Payroll period start",
+        completed: true
       },
       processDate: {
         day: processDate.getDate().toString().padStart(2, '0'),
         month: processDate.toLocaleDateString('en-US', { month: 'short' }),
         label: processDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        description: today >= processDate ? "Processing completed" : "Processing"
+        description: isGenerated ? "Payroll generated" : (today >= processDate ? "Processing due" : "Processing"),
+        completed: isGenerated || isApproved || isPaid
       },
       endDate: {
-        day: end.getDate().toString().padStart(2, '0'),
-        month: end.toLocaleDateString('en-US', { month: 'short' }),
-        label: end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        description: today >= end ? "Period completed" : "Period end"
+        day: paymentDate.getDate().toString().padStart(2, '0'),
+        month: paymentDate.toLocaleDateString('en-US', { month: 'short' }),
+        label: paymentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        description: isPaid ? "Payment completed" : (isApproved ? "Ready for payment" : "Payment due"),
+        completed: isPaid
       }
     }
   }
@@ -156,11 +183,33 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Status Badge */}
-          <Badge className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1 px-3 py-1 text-sm font-medium">
-            <CircleCheck className="h-3 w-3" />
-            <span>{data?.payrollDetails?.status || "Processing"}</span>
-          </Badge>
+          {/* Status Badge with dynamic styling */}
+          {(() => {
+            const status = data?.payrollDetails?.status || "Processing"
+            const isPaid = status.includes("Paid")
+            const isApproved = status.includes("Approved")
+            const isGenerated = status.includes("Generated")
+            
+            let badgeClasses = "flex items-center gap-1 px-3 py-1 text-sm font-medium"
+            let iconComponent = <CircleCheck className="h-3 w-3" />
+            
+            if (isPaid) {
+              badgeClasses += " bg-green-50 text-green-700 border-green-200"
+            } else if (isApproved) {
+              badgeClasses += " bg-blue-50 text-blue-700 border-blue-200"
+            } else if (isGenerated) {
+              badgeClasses += " bg-amber-50 text-amber-700 border-amber-200"
+            } else {
+              badgeClasses += " bg-gray-50 text-gray-700 border-gray-200"
+            }
+            
+            return (
+              <Badge className={badgeClasses}>
+                {iconComponent}
+                <span>{status}</span>
+              </Badge>
+            )
+          })()}
           
           {/* Action Button */}
           <button className="text-sm text-bisu-purple-deep hover:text-bisu-purple-medium font-medium flex items-center gap-1 transition-colors">
@@ -192,15 +241,35 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
         ))}
       </div>
       
-      {/* Timeline section */}
+      {/* Timeline section with progress indication */}
       <div className="my-6 relative">
+        {/* Progress bar background */}
         <div className="h-1 bg-gray-200 w-full rounded-full absolute top-1/2 -translate-y-1/2"></div>
+        
+        {/* Progress bar fill based on completion */}
+        <div 
+          className="h-1 bg-bisu-purple-deep rounded-full absolute top-1/2 -translate-y-1/2 transition-all duration-500"
+          style={{
+            width: timelineData.endDate.completed ? '100%' : 
+                   timelineData.processDate.completed ? '66%' : 
+                   timelineData.startDate.completed ? '33%' : '0%'
+          }}
+        ></div>
+        
         <div className="flex justify-between relative z-10">
           <div className="flex flex-col items-center">
-            <div className="w-8 h-8 rounded-lg bg-bisu-purple-deep border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold text-white mb-1">
+            <div className={`w-8 h-8 rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold mb-1 ${
+              timelineData.startDate.completed 
+                ? 'bg-bisu-purple-deep text-white' 
+                : 'bg-gray-300 text-gray-600'
+            }`}>
               {timelineData.startDate.day}
             </div>
-            <div className="text-xs font-medium text-bisu-purple-deep">{timelineData.startDate.month}</div>
+            <div className={`text-xs font-medium ${
+              timelineData.startDate.completed ? 'text-bisu-purple-deep' : 'text-gray-500'
+            }`}>
+              {timelineData.startDate.month}
+            </div>
             <div className="mt-3 bg-white p-2 rounded border border-gray-100 shadow-sm min-w-[100px]">
               <div className="text-xs font-medium text-gray-900 text-center">{timelineData.startDate.label}</div>
               <div className="text-xs text-gray-500 text-center">{timelineData.startDate.description}</div>
@@ -208,10 +277,18 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
           </div>
           
           <div className="flex flex-col items-center">
-            <div className="w-8 h-8 rounded-lg bg-bisu-yellow border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold text-gray-800 mb-1">
+            <div className={`w-8 h-8 rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold mb-1 ${
+              timelineData.processDate.completed 
+                ? 'bg-bisu-yellow text-gray-800' 
+                : 'bg-gray-300 text-gray-600'
+            }`}>
               {timelineData.processDate.day}
             </div>
-            <div className="text-xs font-medium text-yellow-700">{timelineData.processDate.month}</div>
+            <div className={`text-xs font-medium ${
+              timelineData.processDate.completed ? 'text-yellow-700' : 'text-gray-500'
+            }`}>
+              {timelineData.processDate.month}
+            </div>
             <div className="mt-3 bg-white p-2 rounded border border-gray-100 shadow-sm min-w-[100px]">
               <div className="text-xs font-medium text-gray-900 text-center">{timelineData.processDate.label}</div>
               <div className="text-xs text-gray-500 text-center">{timelineData.processDate.description}</div>
@@ -219,10 +296,18 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
           </div>
           
           <div className="flex flex-col items-center">
-            <div className="w-8 h-8 rounded-lg bg-bisu-purple-medium border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold text-white mb-1">
+            <div className={`w-8 h-8 rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold mb-1 ${
+              timelineData.endDate.completed 
+                ? 'bg-green-500 text-white' 
+                : 'bg-gray-300 text-gray-600'
+            }`}>
               {timelineData.endDate.day}
             </div>
-            <div className="text-xs font-medium text-bisu-purple-medium">{timelineData.endDate.month}</div>
+            <div className={`text-xs font-medium ${
+              timelineData.endDate.completed ? 'text-green-600' : 'text-gray-500'
+            }`}>
+              {timelineData.endDate.month}
+            </div>
             <div className="mt-3 bg-white p-2 rounded border border-gray-100 shadow-sm min-w-[100px]">
               <div className="text-xs font-medium text-gray-900 text-center">{timelineData.endDate.label}</div>
               <div className="text-xs text-gray-500 text-center">{timelineData.endDate.description}</div>
@@ -238,8 +323,11 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
             <PhilippinePeso className="h-5 w-5 text-white" />
           </div>
           <div>
-            <div className="text-sm text-bisu-purple-medium font-medium">Total Monthly Payroll</div>
+            <div className="text-sm text-bisu-purple-medium font-medium">Total Employee Salaries</div>
             <div className="text-2xl font-bold text-bisu-purple-deep">{totalAmount}</div>
+            <div className="text-xs text-gray-500">
+              {employeeCount > 0 ? `${employeeCount} employees` : 'No employees processed'}
+            </div>
           </div>
         </div>
         

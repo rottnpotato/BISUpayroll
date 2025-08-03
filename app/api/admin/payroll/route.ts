@@ -50,8 +50,7 @@ export async function GET(request: NextRequest) {
               lastName: true,
               employeeId: true,
               department: true,
-              position: true,
-              salary: true
+              position: true
             }
           }
         },

@@ -46,7 +46,7 @@ export const filterAttendanceRecords = (
   searchTerm: string,
   selectedStatus: string
 ): AttendanceRecord[] => {
-  return records.filter(record => {
+  const filtered = records.filter(record => {
     const matchesSearch = 
       `${record.user.firstName} ${record.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
       record.user.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,22 +55,54 @@ export const filterAttendanceRecords = (
     const recordStatus = getRecordStatus(record)
     const matchesStatus = selectedStatus === "all" || recordStatus === selectedStatus
     
-    return matchesSearch && matchesStatus
+    const result = matchesSearch && matchesStatus
+    
+    // Debug logging for first few records
+    if (records.indexOf(record) < 3) {
+      console.log('Filter debug for record:', {
+        name: `${record.user.firstName} ${record.user.lastName}`,
+        searchTerm,
+        selectedStatus,
+        recordStatus,
+        matchesSearch,
+        matchesStatus,
+        result
+      })
+    }
+    
+    return result
   })
+  
+  console.log('filterAttendanceRecords:', {
+    input: records.length,
+    output: filtered.length,
+    searchTerm,
+    selectedStatus
+  })
+  
+  return filtered
 }
 
 export const buildApiParams = (
   currentPage: number,
   selectedDate: Date | undefined,
   selectedDepartment: string,
-  limit: number = 10
+  limit: number = 10,
+  startDate?: Date | undefined,
+  endDate?: Date | undefined
 ): URLSearchParams => {
   const params = new URLSearchParams({
     page: currentPage.toString(),
     limit: limit.toString()
   })
 
-  if (selectedDate) {
+  // Handle date range filtering
+  if (startDate && endDate) {
+    // Use date range
+    params.append('startDate', format(startDate, 'yyyy-MM-dd'))
+    params.append('endDate', format(endDate, 'yyyy-MM-dd'))
+  } else if (selectedDate) {
+    // Use single date - set both start and end to same date for full day coverage
     const dateStr = format(selectedDate, 'yyyy-MM-dd')
     params.append('startDate', dateStr)
     params.append('endDate', dateStr)

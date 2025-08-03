@@ -159,7 +159,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
         <EmptyState
           icon={Users}
           title="No Employee Payroll Data"
-          description="No employees have been processed for payroll yet. Employee payroll records will appear here once they are generated."
+          description="No payroll has been generated for this period yet. Generate payroll to see employee salary details and take-home pay calculations."
           variant="default"
         />
       </div>
@@ -222,7 +222,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                 onClick={() => handleSort('grossPay')}
               >
                 <div className="flex items-center">
-                  Gross Pay {getSortIcon('grossPay')}
+                  Total Earnings {getSortIcon('grossPay')}
                 </div>
               </TableCell>
               <TableCell 
@@ -230,7 +230,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                 onClick={() => handleSort('netPay')}
               >
                 <div className="flex items-center">
-                  Net Pay {getSortIcon('netPay')}
+                  Salary to Receive {getSortIcon('netPay')}
                 </div>
               </TableCell>
               <TableCell className="font-medium">Department</TableCell>
@@ -275,9 +275,11 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-gray-900">{formatCurrency(employee.grossPay || 0)}</div>
+                    <div className="text-xs text-gray-500">Before deductions</div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-gray-900">{formatCurrency(employee.netPay || 0)}</div>
+                    <div className="font-medium text-green-700">{formatCurrency(employee.netPay || 0)}</div>
+                    <div className="text-xs text-gray-500">Take-home pay</div>
                   </TableCell>
                   <TableCell>
                     <div className="px-2 py-1 rounded-md bg-purple-50 text-purple-800 text-sm inline-block">

@@ -19,7 +19,6 @@ model User {
   department                   String?
   position                     String?
   hireDate                     DateTime?
-  salary                       Decimal?                @db.Decimal(10, 2)
   phone                        String?
   address                      String?
   emergencyContactName         String?

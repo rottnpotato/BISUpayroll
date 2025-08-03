@@ -5,16 +5,24 @@ import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   DollarSign, 
   Calendar, 
   FileText, 
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Calculator,
+  TrendingUp,
+  TrendingDown,
+  User,
+  Building,
+  Briefcase
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/use-auth"
+import { PayrollRulesBreakdown } from "./components"
 
 interface PayrollRecord {
   id: string
@@ -33,23 +41,116 @@ interface PayrollRecord {
   createdAt: string
 }
 
+interface PayrollRule {
+  id: string
+  name: string
+  type: string
+  amount: number
+  isPercentage: boolean
+  description: string | null
+  calculatedAmount: number
+}
+
+interface DeductionDetail {
+  name: string
+  amount: number
+  isPercentage?: boolean
+  percentage?: number | null
+  description?: string
+}
+
+interface DeductionBreakdown {
+  government: {
+    total: number
+    details: DeductionDetail[]
+  }
+  loans: {
+    total: number
+    details: DeductionDetail[]
+  }
+  other: {
+    total: number
+    details: DeductionDetail[]
+  }
+}
+
+interface EmployeeInfo {
+  id: string
+  name: string
+  employeeId: string
+  department: string
+  position: string
+  hireDate: string
+}
+
+interface CurrentMonthData {
+  year: number
+  month: number
+  workingDays: number
+  totalHoursWorked: number
+  regularHours: number
+  overtimeHours: number
+  lateCount: number
+  absentCount: number
+  expectedDailyHours: number
+  expectedTotalHours: number
+}
+
+interface PayrollCalculations {
+  dailyRate: number
+  hourlyRate: number
+  basePay: number
+  overtimePay: number
+  bonuses: number
+  governmentDeductions: number
+  loanDeductions: number
+  otherDeductions: number
+  lateDeductions: number
+  totalDeductions: number
+  grossPay: number
+  netPay: number
+}
+
+interface PayrollSummary {
+  currentSalaryRate: number
+  prospectedSalary: number
+  ytdEarnings: number
+  latesThisMonth: number
+  absencesThisMonth: number
+  hoursWorkedToday: number
+}
+
+interface DetailedPayrollData {
+  employee: EmployeeInfo
+  currentMonth: CurrentMonthData
+  calculations: PayrollCalculations
+  summary: PayrollSummary
+  payrollHistory: PayrollRecord[]
+  deductionBreakdown: DeductionBreakdown
+  appliedRules: PayrollRule[]
+}
+
 export default function EmployeePayrollPage() {
-  const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([])
+  const [payrollData, setPayrollData] = useState<DetailedPayrollData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
 
-  const fetchPayrollRecords = async () => {
+  const fetchPayrollData = async () => {
     try {
       setIsLoading(true)
       const response = await fetch('/api/employee/payroll')
       
-      if (!response.ok) throw new Error('Failed to fetch payroll records')
+      if (!response.ok) throw new Error('Failed to fetch payroll data')
       
-      const data = await response.json()
-      setPayrollRecords(data.payrollRecords || [])
+      const result = await response.json()
+      if (result.success) {
+        setPayrollData(result.data)
+      } else {
+        throw new Error(result.message || 'Failed to fetch payroll data')
+      }
     } catch (error) {
-      console.error('Error fetching payroll records:', error)
-      toast.error('Failed to load payroll records')
+      console.error('Error fetching payroll data:', error)
+      toast.error('Failed to load payroll data')
     } finally {
       setIsLoading(false)
     }
@@ -77,7 +178,7 @@ export default function EmployeePayrollPage() {
   }
 
   useEffect(() => {
-    fetchPayrollRecords()
+    fetchPayrollData()
   }, [])
 
   if (isLoading) {
@@ -85,7 +186,7 @@ export default function EmployeePayrollPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">My Payroll</h1>
-          <p className="text-muted-foreground">View and manage your payroll records</p>
+          <p className="text-muted-foreground">View your payroll records and payment details</p>
         </div>
         <div className="grid gap-4">
           {[...Array(3)].map((_, i) => (
@@ -101,6 +202,26 @@ export default function EmployeePayrollPage() {
     )
   }
 
+  if (!payrollData) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">My Payroll</h1>
+          <p className="text-muted-foreground">View your payroll records and payment details</p>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Payroll Data Available</h3>
+            <p className="text-gray-500 text-center">
+              Unable to load your payroll information. Please try again later.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <motion.div 
       className="space-y-6"
@@ -111,126 +232,294 @@ export default function EmployeePayrollPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">My Payroll</h1>
         <p className="text-muted-foreground">
-          View your payroll records and payment details.
+          View your current payroll calculation, applied rules, and payment history.
         </p>
       </div>
 
-      {payrollRecords.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileText className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Payroll Records</h3>
-            <p className="text-gray-500 text-center">
-              You don't have any payroll records yet. Your payroll will appear here once it's generated.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {payrollRecords.map((record, index) => {
-            const status = getPayrollStatus(record)
-            const StatusIcon = status.icon
-            
-            return (
-              <motion.div
-                key={record.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                          <Calendar className="h-5 w-5" />
-                          Pay Period: {formatDate(record.payPeriodStart)} - {formatDate(record.payPeriodEnd)}
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Generated on {record.generatedAt ? formatDate(record.generatedAt) : 'Pending'}
-                        </p>
-                      </div>
-                      <Badge className={status.color}>
-                        <StatusIcon className="h-3 w-3 mr-1" />
-                        {status.label}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Payroll Details */}
-                    <div className="grid md:grid-cols-2 gap-6">
-                      {/* Earnings Section */}
-                      <div className="space-y-4">
-                        <h4 className="font-medium text-bisu-purple-deep flex items-center gap-2">
-                          <DollarSign className="h-4 w-4" />
-                          Earnings
-                        </h4>
-                        <div className="space-y-2 pl-6">
-                          <div className="flex justify-between">
-                            <span className="text-sm">Base Salary:</span>
-                            <span className="font-medium">{formatCurrency(record.baseSalary)}</span>
-                          </div>
-                          {record.overtime > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-sm">Overtime:</span>
-                              <span className="font-medium text-green-600">{formatCurrency(record.overtime)}</span>
-                            </div>
-                          )}
-                          {record.bonuses > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-sm">Bonuses:</span>
-                              <span className="font-medium text-green-600">{formatCurrency(record.bonuses)}</span>
-                            </div>
-                          )}
-                          <Separator />
-                          <div className="flex justify-between font-medium">
-                            <span>Gross Pay:</span>
-                            <span className="text-green-600">{formatCurrency(record.grossPay)}</span>
-                          </div>
-                        </div>
-                      </div>
+      {/* Employee Information Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+            <User className="h-5 w-5" />
+            Employee Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Name</p>
+                <p className="font-medium">{payrollData.employee.name}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Position</p>
+                <p className="font-medium">{payrollData.employee.position || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Building className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Department</p>
+                <p className="font-medium">{payrollData.employee.department || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Employee ID</p>
+                <p className="font-medium">{payrollData.employee.employeeId || 'N/A'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Base Salary</p>
+                <p className="font-medium">{formatCurrency(payrollData.baseSalary)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm text-muted-foreground">Hire Date</p>
+                <p className="font-medium">{formatDate(payrollData.employee.hireDate)}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-                      {/* Deductions & Net Pay Section */}
-                      <div className="space-y-4">
-                        <h4 className="font-medium text-bisu-purple-deep">Deductions & Net Pay</h4>
-                        <div className="space-y-2 pl-6">
-                          {record.deductions > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-sm">Total Deductions:</span>
-                              <span className="font-medium text-red-600">-{formatCurrency(record.deductions)}</span>
-                            </div>
-                          )}
-                          <Separator />
-                          <div className="flex justify-between font-bold text-lg">
-                            <span>Net Pay:</span>
-                            <span className="text-bisu-purple-deep">{formatCurrency(record.netPay)}</span>
+      {/* Main Payroll Tabs */}
+      <Tabs defaultValue="current" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="current" className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            Current Payroll
+          </TabsTrigger>
+          <TabsTrigger value="rules" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Payroll Rules
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Payment History
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="current" className="space-y-6">
+          {/* Current Month Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                <TrendingUp className="h-5 w-5" />
+                Current Period Summary - {new Date().toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-4 gap-4">
+                <div className="text-center p-4 rounded-lg bg-blue-50">
+                  <p className="text-2xl font-bold text-blue-600">{payrollData.currentMonth.workingDays}</p>
+                  <p className="text-sm text-muted-foreground">Working Days</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-green-50">
+                  <p className="text-2xl font-bold text-green-600">{payrollData.currentMonth.totalHoursWorked.toFixed(1)}</p>
+                  <p className="text-sm text-muted-foreground">Hours Worked</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-orange-50">
+                  <p className="text-2xl font-bold text-orange-600">{payrollData.currentMonth.overtimeHours.toFixed(1)}</p>
+                  <p className="text-sm text-muted-foreground">Overtime Hours</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-red-50">
+                  <p className="text-2xl font-bold text-red-600">{payrollData.currentMonth.lateCount}</p>
+                  <p className="text-sm text-muted-foreground">Late Count</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Current Payroll Calculation */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Earnings */}
+            <Card className="border-green-200 bg-green-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-700">
+                  <TrendingUp className="h-5 w-5" />
+                  Current Earnings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span>Base Pay:</span>
+                  <span className="font-medium">{formatCurrency(payrollData.calculations.basePay)}</span>
+                </div>
+                {payrollData.calculations.overtimePay > 0 && (
+                  <div className="flex justify-between">
+                    <span>Overtime Pay:</span>
+                    <span className="font-medium text-green-600">{formatCurrency(payrollData.calculations.overtimePay)}</span>
+                  </div>
+                )}
+                {payrollData.calculations.bonuses > 0 && (
+                  <div className="flex justify-between">
+                    <span>Bonuses & Allowances:</span>
+                    <span className="font-medium text-green-600">{formatCurrency(payrollData.calculations.bonuses)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Gross Pay:</span>
+                  <span className="text-green-600">{formatCurrency(payrollData.calculations.grossPay)}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Deductions */}
+            <Card className="border-red-200 bg-red-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-700">
+                  <TrendingDown className="h-5 w-5" />
+                  Current Deductions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {payrollData.calculations.governmentDeductions > 0 && (
+                  <div className="flex justify-between">
+                    <span>Government Contributions:</span>
+                    <span className="font-medium">{formatCurrency(payrollData.calculations.governmentDeductions)}</span>
+                  </div>
+                )}
+                {payrollData.calculations.loanDeductions > 0 && (
+                  <div className="flex justify-between">
+                    <span>Loan Deductions:</span>
+                    <span className="font-medium">{formatCurrency(payrollData.calculations.loanDeductions)}</span>
+                  </div>
+                )}
+                {payrollData.calculations.lateDeductions > 0 && (
+                  <div className="flex justify-between">
+                    <span>Late Deductions:</span>
+                    <span className="font-medium">{formatCurrency(payrollData.calculations.lateDeductions)}</span>
+                  </div>
+                )}
+                {payrollData.calculations.otherDeductions > 0 && (
+                  <div className="flex justify-between">
+                    <span>Other Deductions:</span>
+                    <span className="font-medium">{formatCurrency(payrollData.calculations.otherDeductions)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total Deductions:</span>
+                  <span className="text-red-600">{formatCurrency(payrollData.calculations.totalDeductions)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Net Pay */}
+          <Card className="border-bisu-purple-deep bg-gradient-to-r from-bisu-purple-deep/10 to-blue-500/10">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-lg font-medium text-muted-foreground mb-2">Your Projected Net Pay</p>
+                <p className="text-4xl font-bold text-bisu-purple-deep">{formatCurrency(payrollData.calculations.netPay)}</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Based on current month attendance and applicable payroll rules
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="rules">
+          <PayrollRulesBreakdown 
+            appliedRules={payrollData.appliedRules}
+            deductionBreakdown={payrollData.deductionBreakdown}
+            calculations={payrollData.calculations}
+          />
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-6">
+          {payrollData.payrollHistory.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <FileText className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Payment History</h3>
+                <p className="text-gray-500 text-center">
+                  You don't have any payment history yet. Your payroll records will appear here once payments are processed.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {payrollData.payrollHistory.map((record, index) => {
+                const status = getPayrollStatus(record)
+                const StatusIcon = status.icon
+                
+                return (
+                  <motion.div
+                    key={record.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                              <Calendar className="h-5 w-5" />
+                              Pay Period: {formatDate(record.payPeriodStart)} - {formatDate(record.payPeriodEnd)}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Generated on {record.generatedAt ? formatDate(record.generatedAt) : 'Pending'}
+                            </p>
+                          </div>
+                          <Badge className={status.color}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {status.label}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div className="text-center p-3 rounded-lg bg-green-50">
+                            <p className="text-lg font-bold text-green-600">{formatCurrency(record.grossPay)}</p>
+                            <p className="text-sm text-muted-foreground">Gross Pay</p>
+                          </div>
+                          <div className="text-center p-3 rounded-lg bg-red-50">
+                            <p className="text-lg font-bold text-red-600">{formatCurrency(record.deductions)}</p>
+                            <p className="text-sm text-muted-foreground">Deductions</p>
+                          </div>
+                          <div className="text-center p-3 rounded-lg bg-blue-50">
+                            <p className="text-lg font-bold text-bisu-purple-deep">{formatCurrency(record.netPay)}</p>
+                            <p className="text-sm text-muted-foreground">Net Pay</p>
                           </div>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Payment Status */}
-                    <div className="mt-6 pt-4 border-t">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Payment Status:</span>
-                        <div className="flex items-center gap-2">
-                          <StatusIcon className="h-4 w-4" />
-                          <span className="font-medium">{status.label}</span>
-                          {record.isPaid && record.paidAt && (
-                            <span className="text-sm text-muted-foreground ml-2">
-                              on {formatDate(record.paidAt)}
-                            </span>
-                          )}
+                        
+                        <div className="mt-4 pt-4 border-t">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Payment Status:</span>
+                            <div className="flex items-center gap-2">
+                              <StatusIcon className="h-4 w-4" />
+                              <span className="font-medium">{status.label}</span>
+                              {record.isPaid && record.paidAt && (
+                                <span className="text-sm text-muted-foreground ml-2">
+                                  on {formatDate(record.paidAt)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )
-          })}
-        </div>
-      )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )
+              })}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </motion.div>
   )
 } 

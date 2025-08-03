@@ -8,12 +8,16 @@ import { PAGINATION_LIMITS } from "../constants"
 interface UseAttendanceActionsProps {
   selectedDate: Date | undefined
   selectedDepartment: string
+  startDate?: Date | undefined
+  endDate?: Date | undefined
   onRefetch: () => void
 }
 
 export default function useAttendanceActions({
   selectedDate,
   selectedDepartment,
+  startDate,
+  endDate,
   onRefetch
 }: UseAttendanceActionsProps) {
   const [isProcessing, setIsProcessing] = useState(false)
@@ -49,11 +53,20 @@ export default function useAttendanceActions({
 
   const exportAttendance = async () => {
     try {
-      const params = buildApiParams(1, selectedDate, selectedDepartment, PAGINATION_LIMITS.EXPORT)
+      const params = buildApiParams(1, selectedDate, selectedDepartment, PAGINATION_LIMITS.EXPORT, startDate, endDate)
       const response = await fetch(`/api/admin/attendance?${params}`)
       const data = await response.json()
       
-      const exportFileDefaultName = `attendance-${selectedDate ? format(selectedDate, 'yyyy-MM-dd') : 'all'}.json`
+      // Generate appropriate filename based on date filtering
+      let exportFileDefaultName = 'attendance'
+      if (startDate && endDate) {
+        exportFileDefaultName = `attendance-${format(startDate, 'yyyy-MM-dd')}-to-${format(endDate, 'yyyy-MM-dd')}.json`
+      } else if (selectedDate) {
+        exportFileDefaultName = `attendance-${format(selectedDate, 'yyyy-MM-dd')}.json`
+      } else {
+        exportFileDefaultName = 'attendance-all.json'
+      }
+      
       exportToJson(data.records, exportFileDefaultName)
       
       toast.success('Attendance data exported successfully')
