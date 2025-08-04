@@ -200,9 +200,24 @@ export default function EmployeeAttendancePage() {
 
       if (result.success) {
         toast.success(result.message)
+        
+        // Show additional information based on the response
         if (isTimeIn && result.data?.isLate) {
           toast.warning('You are late for work today')
         }
+        
+        if (!isTimeIn && result.data?.isEarlyOut) {
+          toast.warning(`Early timeout detected. Expected end time: ${result.data.expectedEndTime}`)
+        }
+        
+        if (!isTimeIn && result.data?.isHalfDay && !result.data?.isAttendanceComplete) {
+          if (result.data?.hasCompletedMorning && !result.data?.hasCompletedAfternoon) {
+            toast.info('Half-day complete. Afternoon session still needed for full attendance.')
+          } else if (!result.data?.hasCompletedMorning && result.data?.hasCompletedAfternoon) {
+            toast.info('Half-day complete. Morning session still needed for full attendance.')
+          }
+        }
+        
         fetchAttendanceData() // Refresh data
       } else {
         toast.error(result.message || `Failed to record ${pendingAction}`)
@@ -282,8 +297,29 @@ export default function EmployeeAttendancePage() {
 
   const getTodayStatus = () => {
     if (!todayRecord) return 'Not clocked in'
-    if (todayRecord.timeOut) return 'Completed'
-    if (todayRecord.timeIn) return 'Clocked in'
+
+    // Check session-based status
+    const hasMorningIn = todayRecord.morningTimeIn
+    const hasMorningOut = todayRecord.morningTimeOut
+    const hasAfternoonIn = todayRecord.afternoonTimeIn
+    const hasAfternoonOut = todayRecord.afternoonTimeOut
+    
+    if (hasMorningIn && hasMorningOut && hasAfternoonIn && hasAfternoonOut) {
+      return 'Full Day Complete'
+    } else if (hasMorningIn && hasMorningOut && !hasAfternoonIn) {
+      return 'Morning Complete - Afternoon Pending'
+    } else if (hasMorningIn && !hasMorningOut) {
+      return 'Morning Session Active'
+    } else if (hasAfternoonIn && !hasAfternoonOut) {
+      return 'Afternoon Session Active'
+    } else if (hasAfternoonIn && hasAfternoonOut && !hasMorningIn) {
+      return 'Afternoon Only Complete'
+    } else if (todayRecord.timeOut) {
+      return 'Completed'
+    } else if (todayRecord.timeIn) {
+      return 'Clocked in'
+    }
+    
     return 'Absent'
   }
 
@@ -454,7 +490,8 @@ export default function EmployeeAttendancePage() {
                   {format(currentTime, 'EEEE, MMMM d, yyyy')}
                 </div>
                 <div className="text-sm text-bisu-yellow-light mt-2">
-                  Time-in allowed: 6:00 AM - 12:59 PM (PHT)
+                  <div>Morning: 8:00 AM - 12:00 PM | Afternoon: 1:00 PM - 5:00 PM</div>
+                  <div className="text-xs mt-1">Time-in allowed during session times</div>
                   {restrictionsDisabled && (
                     <div className="text-red-200 text-xs mt-1 font-semibold">
                       ⚠️ TIME RESTRICTIONS DISABLED (TESTING MODE)
@@ -463,13 +500,60 @@ export default function EmployeeAttendancePage() {
                 </div>
               </div>
 
-              <div className="flex justify-center items-center gap-4">
+              <div className="space-y-4">
                 <div className="text-center">
                   <div className="text-sm text-bisu-yellow-light">Today's Status</div>
                   <div className="text-lg font-semibold text-white">{getTodayStatus()}</div>
+                  {todayRecord?.isHalfDay && (
+                    <div className="text-sm text-yellow-300 mt-1">
+                      Half-day attendance ({todayRecord.hours?.toFixed(2) || '0'} hours)
+                    </div>
+                  )}
+                  {todayRecord?.isEarlyOut && (
+                    <div className="text-sm text-orange-300 mt-1">
+                      Early timeout - {todayRecord.earlyOutReason}
+                    </div>
+                  )}
                 </div>
+                
+                {/* Session-based time display */}
                 {todayRecord && (
-                  <>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Morning Session */}
+                    <div className="text-center border border-bisu-yellow-light/20 rounded-lg p-3">
+                      <div className="text-sm text-bisu-yellow-light font-medium mb-2">Morning Session</div>
+                      <div className="space-y-1">
+                        <div className="text-xs text-bisu-yellow-light">Time In</div>
+                        <div className="text-sm font-semibold text-white">
+                          {todayRecord.morningTimeIn || '-'}
+                        </div>
+                        <div className="text-xs text-bisu-yellow-light">Time Out</div>
+                        <div className="text-sm font-semibold text-white">
+                          {todayRecord.morningTimeOut || '-'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Afternoon Session */}
+                    <div className="text-center border border-bisu-yellow-light/20 rounded-lg p-3">
+                      <div className="text-sm text-bisu-yellow-light font-medium mb-2">Afternoon Session</div>
+                      <div className="space-y-1">
+                        <div className="text-xs text-bisu-yellow-light">Time In</div>
+                        <div className="text-sm font-semibold text-white">
+                          {todayRecord.afternoonTimeIn || '-'}
+                        </div>
+                        <div className="text-xs text-bisu-yellow-light">Time Out</div>
+                        <div className="text-sm font-semibold text-white">
+                          {todayRecord.afternoonTimeOut || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Legacy display for backwards compatibility */}
+                {todayRecord && !todayRecord.morningTimeIn && !todayRecord.afternoonTimeIn && (
+                  <div className="flex justify-center items-center gap-4">
                     <div className="text-center">
                       <div className="text-sm text-bisu-yellow-light">Time In</div>
                       <div className="text-lg font-semibold text-white">
@@ -482,7 +566,7 @@ export default function EmployeeAttendancePage() {
                         {todayRecord.timeOut || '-'}
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
 

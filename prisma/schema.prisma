@@ -36,27 +36,40 @@ model User {
   payrollResults               PayrollResult[]
   approvedPayrollResults       PayrollResult[]         @relation("PayrollResultApprovedBy")
   generatedPayrollFiles        PayrollFile[]            @relation("PayrollFileGeneratedBy")
+  payrollRoles                 UserPayrollRole[]
 
   @@map("users")
 }
 
 model AttendanceRecord {
-  id              String           @id @default(cuid())
-  userId          String
-  date            DateTime         @default(now())
-  timeIn          DateTime?
-  timeOut         DateTime?
-  hoursWorked     Decimal?         @db.Decimal(4, 2)
-  isLate          Boolean          @default(false)
-  isAbsent        Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  approvedAt      DateTime?
-  approvedById    String?
-  rejectionReason String?
-  status          AttendanceStatus @default(PENDING)
-  approvedBy      User?            @relation("AttendanceApprovedBy", fields: [approvedById], references: [id])
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String           @id @default(cuid())
+  userId            String
+  date              DateTime         @default(now())
+  timeIn            DateTime?
+  timeOut           DateTime?
+  hoursWorked       Decimal?         @db.Decimal(4, 2)
+  isLate            Boolean          @default(false)
+  isAbsent          Boolean          @default(false)
+  
+  // New fields for improved attendance tracking
+  sessionType       String?          // 'morning', 'afternoon', 'full_day'
+  isHalfDay         Boolean          @default(false)
+  isEarlyOut        Boolean          @default(false)
+  earlyOutReason    String?
+  morningTimeIn     DateTime?
+  morningTimeOut    DateTime?
+  afternoonTimeIn   DateTime?
+  afternoonTimeOut  DateTime?
+  totalSessions     Int              @default(0)
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  approvedAt        DateTime?
+  approvedById      String?
+  rejectionReason   String?
+  status            AttendanceStatus @default(PENDING)
+  approvedBy        User?            @relation("AttendanceApprovedBy", fields: [approvedById], references: [id])
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("attendance_records")
 }
@@ -225,13 +238,73 @@ model PayrollSchedule {
 }
 
 model SystemSettings {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String                @id @default(cuid())
+  key         String                @unique
+  value       String
+  description String?
+  category    String?               // e.g., 'payroll', 'system', 'security'
+  dataType    SettingsDataType      @default(STRING)
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  
+  // Configuration scope information
+  scopes      ConfigurationScope[]
 
   @@map("system_settings")
+}
+
+model ConfigurationScope {
+  id               String         @id @default(cuid())
+  settingsId       String
+  applicationType  ApplicationType @default(ALL)
+  targetId         String?        // Department ID, User ID, etc.
+  targetName       String?        // Department name, User name, etc.
+  priority         Int            @default(0) // Higher priority overrides lower
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  
+  settings         SystemSettings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+
+  @@map("configuration_scopes")
+}
+
+model ContributionBracket {
+  id                String   @id @default(cuid())
+  contributionType  String   // 'gsis', 'philhealth', 'pagibig'
+  salaryMin         Decimal  @db.Decimal(12, 2)
+  salaryMax         Decimal  @db.Decimal(12, 2)
+  employeeRate      Decimal  @db.Decimal(5, 4) // Percentage as decimal
+  employerRate      Decimal  @db.Decimal(5, 4) // Percentage as decimal
+  minContribution   Decimal? @db.Decimal(10, 2)
+  maxContribution   Decimal? @db.Decimal(10, 2)
+  description       String?
+  effectiveDate     DateTime @default(now())
+  isActive          Boolean  @default(true)
+  priority          Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("contribution_brackets")
+}
+
+model TaxBracketConfig {
+  id            String   @id @default(cuid())
+  salaryMin     Decimal  @db.Decimal(12, 2)
+  salaryMax     Decimal  @db.Decimal(12, 2)
+  taxRate       Decimal  @db.Decimal(5, 4) // Percentage as decimal
+  fixedAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  description   String
+  effectiveDate DateTime @default(now())
+  isActive      Boolean  @default(true)
+  priority      Int      @default(0)
+  source        String   @default("manual") // 'manual', 'api', 'bir'
+  apiReference  String?  // Reference to external API source
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("tax_bracket_configs")
 }
 
 model Holiday {
@@ -305,6 +378,43 @@ model PayrollFile {
   @@map("payroll_files")
 }
 
+model PayrollRole {
+  id                        String                @id @default(cuid())
+  name                      String                @unique
+  description               String?
+  department                String?
+  position                  String?
+  isActive                  Boolean               @default(true)
+  baseSalary                Decimal?              @db.Decimal(10, 2)
+  overtimeEligible          Boolean               @default(true)
+  nightDifferentialEligible Boolean               @default(true)
+  holidayPayEligible        Boolean               @default(true)
+  gsisEligible              Boolean               @default(true)
+  philHealthEligible        Boolean               @default(true)
+  pagibigEligible           Boolean               @default(true)
+  withholdingTaxEligible    Boolean               @default(true)
+  thirteenthMonthEligible   Boolean               @default(true)
+  leaveEligible             Boolean               @default(true)
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  userRoles                 UserPayrollRole[]
+
+  @@map("payroll_roles")
+}
+
+model UserPayrollRole {
+  id            String      @id @default(cuid())
+  userId        String
+  payrollRoleId String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payrollRole   PayrollRole @relation(fields: [payrollRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, payrollRoleId])
+  @@map("user_payroll_roles")
+}
+
 enum Role {
   ADMIN
   EMPLOYEE
@@ -354,4 +464,20 @@ enum PayrollFileStatus {
   APPROVED
   REJECTED
   ARCHIVED
+}
+
+enum SettingsDataType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  DECIMAL
+}
+
+enum ApplicationType {
+  ALL
+  DEPARTMENT
+  INDIVIDUAL
+  ROLE
+  POSITION
 }

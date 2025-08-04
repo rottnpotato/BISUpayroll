@@ -33,7 +33,7 @@ async function main() {
     },
   })
 
-  // Create Sample Employee Users
+  // Create Sample Employee User (Juan only)
   const employees = [
     {
       email: 'juan.delacruz@bisu.edu.ph',
@@ -42,38 +42,6 @@ async function main() {
       employeeId: 'EMP001',
       department: 'Faculty',
       position: 'Assistant Professor',
-    },
-    {
-      email: 'maria.santos@bisu.edu.ph',
-      firstName: 'Maria',
-      lastName: 'Santos',
-      employeeId: 'EMP002',
-      department: 'Administration',
-      position: 'Administrative Assistant',
-    },
-    {
-      email: 'jose.reyes@bisu.edu.ph',
-      firstName: 'Jose',
-      lastName: 'Reyes',
-      employeeId: 'EMP003',
-      department: 'Faculty',
-      position: 'Associate Professor',
-    },
-    {
-      email: 'ana.garcia@bisu.edu.ph',
-      firstName: 'Ana',
-      lastName: 'Garcia',
-      employeeId: 'EMP004',
-      department: 'Human Resources',
-      position: 'HR Specialist',
-    },
-    {
-      email: 'carlos.martinez@bisu.edu.ph',
-      firstName: 'Carlos',
-      lastName: 'Martinez',
-      employeeId: 'EMP005',
-      department: 'Maintenance',
-      position: 'Facilities Manager',
     },
   ]
 
@@ -126,10 +94,6 @@ async function main() {
   console.log('📋 Default credentials created:')
   console.log('   👤 Admin: admin@bisu.edu.ph / password123')
   console.log('   👤 Employee: juan.delacruz@bisu.edu.ph / password123')
-  console.log('   👤 Employee: maria.santos@bisu.edu.ph / password123')
-  console.log('   👤 Employee: jose.reyes@bisu.edu.ph / password123')
-  console.log('   👤 Employee: ana.garcia@bisu.edu.ph / password123')
-  console.log('   👤 Employee: carlos.martinez@bisu.edu.ph / password123')
   console.log('')
   console.log('🔑 All users have the default password: password123')
   console.log('⚠️  Please change these passwords in production!')

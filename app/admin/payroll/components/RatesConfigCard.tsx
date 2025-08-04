@@ -5,32 +5,28 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { TrendingUp, Clock, Moon, Calendar, Save, Check } from "lucide-react"
-import { motion } from "framer-motion"
-import { RatesConfig } from "../types"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { TrendingUp, Clock, Moon, Calendar, Save, Settings, RefreshCw, Check } from "lucide-react"
+
+import { RatesConfig, ConfigurationScope, ConfigurationSaveResponse } from "../types"
+import { ConfigurationScopeSelector } from "./ConfigurationScopeSelector"
 import { toast } from "sonner"
 
 interface RatesConfigCardProps {
   config: RatesConfig
   onConfigChange: (config: RatesConfig) => void
+  onSave?: (config?: RatesConfig, scope?: ConfigurationScope) => Promise<ConfigurationSaveResponse>
+  hasUnsavedChanges?: boolean
 }
 
-export function RatesConfigCard({ config, onConfigChange }: RatesConfigCardProps) {
+export function RatesConfigCard({ config, onConfigChange, onSave, hasUnsavedChanges = false }: RatesConfigCardProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-      },
-    },
-  }
+  const [showScopeSelector, setShowScopeSelector] = useState(false)
+  const [currentScope, setCurrentScope] = useState<ConfigurationScope>({
+    applicationType: 'ALL',
+    isActive: true
+  })
 
   const handleInputChange = (field: keyof RatesConfig, value: number) => {
     const newConfig = {
@@ -39,36 +35,13 @@ export function RatesConfigCard({ config, onConfigChange }: RatesConfigCardProps
       currency: 'PHP' as const
     }
     onConfigChange(newConfig)
-    setHasUnsavedChanges(true)
   }
 
   const handleSave = async () => {
+    if (!onSave) return
     setIsLoading(true)
     try {
-      const response = await fetch('/api/admin/payroll/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'rates',
-          config: {
-            ...config,
-            currency: 'PHP',
-            isActive: true
-          }
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to save configuration')
-      }
-
-      toast.success('Rate configuration saved successfully')
-      setHasUnsavedChanges(false)
-    } catch (error) {
-      console.error('Error saving configuration:', error)
-      toast.error('Failed to save rate configuration')
+      await onSave(config, currentScope)
     } finally {
       setIsLoading(false)
     }
@@ -77,18 +50,46 @@ export function RatesConfigCard({ config, onConfigChange }: RatesConfigCardProps
   const formatPercentage = (rate: number) => `${(rate * 100).toFixed(0)}%`
 
   return (
-    <motion.div variants={itemVariants} className="h-full">
+    <div className="h-full">
       <Card className="shadow-lg border-2 h-full flex flex-col">
         <CardHeader className="bg-gradient-to-r from-bisu-yellow to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp size={20} />
-            Rates & Differentials Configuration
-          </CardTitle>
-          <CardDescription className="text-bisu-purple-medium">
-            Configure overtime rates, night differentials, and holiday pay rates (PHP)
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp size={20} />
+                Rates & Differentials Configuration
+              </CardTitle>
+              <CardDescription className="text-bisu-purple-medium">
+                Configure overtime rates, night differentials, and holiday pay rates (PHP)
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasUnsavedChanges && (
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                  Unsaved
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowScopeSelector(!showScopeSelector)}
+                className="text-bisu-purple-deep hover:bg-white/20"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-6 flex-1 flex flex-col">
+          {showScopeSelector && (
+            <>
+              <ConfigurationScopeSelector
+                currentScope={currentScope}
+                onScopeChange={setCurrentScope}
+              />
+              <Separator />
+            </>
+          )}
           <div className="space-y-4">
             <h4 className="font-medium text-bisu-purple-deep flex items-center gap-2">
               <Clock size={16} />
@@ -234,6 +235,6 @@ export function RatesConfigCard({ config, onConfigChange }: RatesConfigCardProps
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   )
 }

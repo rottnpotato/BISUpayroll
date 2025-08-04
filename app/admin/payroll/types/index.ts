@@ -84,6 +84,7 @@ export interface WorkingHoursConfig {
   lateGraceMinutes: number
   lateDeductionBasis: 'per_minute' | 'per_hour' | 'fixed_amount'
   lateDeductionAmount: number
+  applicationScope?: ConfigurationScope
   isActive?: boolean
 }
 
@@ -95,6 +96,7 @@ export interface RatesConfig {
   regularHolidayRate: number
   specialHolidayRate: number
   currency: 'PHP'
+  applicationScope?: ConfigurationScope
   isActive?: boolean
 }
 
@@ -105,14 +107,81 @@ export interface LeaveBenefitsConfig {
   serviceIncentiveLeave: number
   maternityLeave?: number
   paternityLeave?: number
+  applicationScope?: ConfigurationScope
   isActive?: boolean
 }
 
+export interface ContributionsConfig {
+  id?: string
+  gsis: {
+    employeeRate: number
+    employerRate: number
+    minSalary: number
+    maxSalary: number
+    brackets?: ContributionBracket[]
+  }
+  philHealth: {
+    employeeRate: number
+    employerRate: number
+    minContribution: number
+    maxContribution: number
+    minSalary: number
+    maxSalary: number
+    brackets?: ContributionBracket[]
+  }
+  pagibig: {
+    employeeRate: number
+    employerRate: number
+    minContribution: number
+    maxContribution: number
+    minSalary: number
+    maxSalary: number
+    brackets?: ContributionBracket[]
+  }
+  applicationScope?: ConfigurationScope
+  isActive?: boolean
+}
+
+export interface ContributionBracket {
+  id?: string
+  contributionType: 'gsis' | 'philhealth' | 'pagibig'
+  salaryMin: number
+  salaryMax: number
+  employeeRate: number
+  employerRate: number
+  minContribution?: number
+  maxContribution?: number
+  description?: string
+  effectiveDate?: Date | string
+  isActive?: boolean
+  priority?: number
+}
+
 export interface TaxBracket {
+  id?: string
   min: number
   max: number
   rate: number
+  fixedAmount?: number
   description: string
+  effectiveDate?: Date | string
+  isActive?: boolean
+  priority?: number
+  source?: 'manual' | 'api' | 'bir'
+  apiReference?: string
+}
+
+export interface TaxBracketsConfig {
+  id?: string
+  brackets: TaxBracket[]
+  withholdingEnabled: boolean
+  showBreakdownOnPayslip: boolean
+  autoComputeTax: boolean
+  applicationScope?: ConfigurationScope
+  isActive?: boolean
+  canSyncFromAPI?: boolean
+  lastSyncDate?: Date | string
+  apiSource?: string
 }
 
 export interface PayrollFormData {
@@ -160,6 +229,62 @@ export interface Report {
   generatedOn: string
   status: string
   downloadUrl: string
+}
+
+export interface PayrollRole {
+  id: string
+  name: string
+  description: string | null
+  department: string | null
+  position: string | null
+  isActive: boolean
+  baseSalary: number | null
+  overtimeEligible: boolean
+  nightDifferentialEligible: boolean
+  holidayPayEligible: boolean
+  gsisEligible: boolean
+  philHealthEligible: boolean
+  pagibigEligible: boolean
+  withholdingTaxEligible: boolean
+  thirteenthMonthEligible: boolean
+  leaveEligible: boolean
+  createdAt: Date
+  updatedAt: Date
+  userRoles?: UserPayrollRole[]
+}
+
+export interface UserPayrollRole {
+  id: string
+  userId: string
+  payrollRoleId: string
+  createdAt: Date
+  updatedAt: Date
+  user?: {
+    id: string
+    firstName: string
+    lastName: string
+    employeeId: string | null
+    department: string | null
+    position: string | null
+  }
+  payrollRole?: PayrollRole
+}
+
+export interface PayrollRoleFormData {
+  name: string
+  description: string
+  department: string
+  position: string
+  baseSalary: string
+  overtimeEligible: boolean
+  nightDifferentialEligible: boolean
+  holidayPayEligible: boolean
+  gsisEligible: boolean
+  philHealthEligible: boolean
+  pagibigEligible: boolean
+  withholdingTaxEligible: boolean
+  thirteenthMonthEligible: boolean
+  leaveEligible: boolean
 }
 
 export interface PayrollData {
@@ -364,4 +489,48 @@ export interface PayrollOverviewSummary {
   completedPayrolls: number
   upcomingPayDate: string | null
   totalPayrollFiles: number
+}
+
+// Configuration Scope Types
+export interface ConfigurationScope {
+  id?: string
+  applicationType: ApplicationType
+  targetId?: string
+  targetName?: string
+  priority?: number
+  isActive?: boolean
+}
+
+export type ApplicationType = 'ALL' | 'DEPARTMENT' | 'INDIVIDUAL' | 'ROLE' | 'POSITION'
+
+export type SettingsDataType = 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON' | 'DECIMAL'
+
+// Enhanced System Settings
+export interface EnhancedSystemSettings {
+  id?: string
+  key: string
+  value: string
+  description?: string
+  category?: string
+  dataType?: SettingsDataType
+  isActive?: boolean
+  scopes?: ConfigurationScope[]
+}
+
+// Configuration Save Response
+export interface ConfigurationSaveResponse {
+  success: boolean
+  message: string
+  configId?: string
+  errors?: string[]
+}
+
+// API Data Source Configuration
+export interface APIDataSourceConfig {
+  enabled: boolean
+  endpoint?: string
+  apiKey?: string
+  refreshInterval?: number // in hours
+  lastSync?: Date | string
+  autoSync?: boolean
 }

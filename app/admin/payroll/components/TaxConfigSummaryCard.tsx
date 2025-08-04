@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Calculator, FileText, DollarSign, Clock, Calendar, Save } from "lucide-react"
-import { motion } from "framer-motion"
+
 import { RatesConfig, LeaveBenefitsConfig } from "../types"
 import { taxBrackets } from "../constants"
 
@@ -20,21 +20,8 @@ export function TaxConfigSummaryCard({
   leaveBenefitsConfig,
   onSave 
 }: TaxConfigSummaryCardProps) {
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-      },
-    },
-  }
-
   return (
-    <motion.div variants={itemVariants} className="w-full">
+    <div className="w-full">
       <Card className="shadow-lg border-2">
         <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
           <div className="flex justify-between items-center">
@@ -186,6 +173,6 @@ export function TaxConfigSummaryCard({
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   )
 }

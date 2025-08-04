@@ -6,6 +6,18 @@ export interface AttendanceRecord {
   timeOut: string | null
   status: string
   hours: number
+  
+  // New fields for improved attendance tracking
+  sessionType?: string | null // 'morning', 'afternoon', 'full_day'
+  isHalfDay?: boolean
+  isEarlyOut?: boolean
+  earlyOutReason?: string | null
+  morningTimeIn?: string | null
+  morningTimeOut?: string | null
+  afternoonTimeIn?: string | null
+  afternoonTimeOut?: string | null
+  totalSessions?: number
+  isLate?: boolean
 }
 
 export interface AttendanceSummary {

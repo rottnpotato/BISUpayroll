@@ -27,11 +27,14 @@ import {
   LeaveBenefitsCard,
   HolidayConfigCard,
   TaxConfigSummaryCard,
+  ContributionsConfigCard,
+  TaxBracketsConfigCard,
   PayrollOverview,
   ReportsHeader,
   RecentReportsTable,
   PayrollGenerationCard,
-  PayrollPreviewDialog
+  PayrollPreviewDialog,
+  ConfigurationLayout
 } from './components'
 
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
@@ -135,11 +138,21 @@ export default function PayrollPage() {
     workingHoursConfig,
     ratesConfig,
     leaveBenefitsConfig,
+    contributionsConfig,
+    taxBracketsConfig,
     setWorkingHoursConfig,
     setRatesConfig,
     setLeaveBenefitsConfig,
+    setContributionsConfig,
+    setTaxBracketsConfig,
     loadConfigurations,
     saveAllConfigurations,
+    saveWorkingHoursConfig,
+    saveRatesConfig,
+    saveLeaveBenefitsConfig,
+    saveContributionsConfig,
+    saveTaxBracketsConfig,
+    fetchExternalData,
     unsavedChanges,
     hasUnsavedChanges,
     isAutoSaving
@@ -188,7 +201,7 @@ export default function PayrollPage() {
 
   // Handle manual save all configurations
   const handleSaveAll = async () => {
-    await saveAllConfigurations()
+    return await saveAllConfigurations()
   }
 
   // Test beforeunload dialog (for debugging)
@@ -395,43 +408,29 @@ export default function PayrollPage() {
           </motion.div>
         </TabsContent>
 
-        <TabsContent value="configuration" className="space-y-6 mb-10">
-          <motion.div 
-            className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
-            variants={containerVariants}
-          >
-            <motion.div variants={itemVariants} className="min-h-[600px]">
-              <WorkingHoursCard
-                config={workingHoursConfig}
-                onConfigChange={setWorkingHoursConfig}
-              />
-            </motion.div>
-
-            <motion.div variants={itemVariants} className="min-h-[600px]">
-              <RatesConfigCard
-                config={ratesConfig}
-                onConfigChange={setRatesConfig}
-              />
-            </motion.div>
-
-            <motion.div variants={itemVariants} className="min-h-[600px]">
-              <LeaveBenefitsCard
-                config={leaveBenefitsConfig}
-                onConfigChange={setLeaveBenefitsConfig}
-              />
-            </motion.div>
-
-            <motion.div variants={itemVariants} className="min-h-[600px]">
-              <HolidayConfigCard />
-            </motion.div>
-
-            <motion.div className="lg:col-span-2" variants={itemVariants}>
-              <TaxConfigSummaryCard
-                ratesConfig={ratesConfig}
-                leaveBenefitsConfig={leaveBenefitsConfig}
-              />
-            </motion.div>
-          </motion.div>
+        <TabsContent value="configuration" className="p-0">
+          <ConfigurationLayout
+            workingHoursConfig={workingHoursConfig}
+            ratesConfig={ratesConfig}
+            leaveBenefitsConfig={leaveBenefitsConfig}
+            contributionsConfig={contributionsConfig}
+            taxBracketsConfig={taxBracketsConfig}
+            setWorkingHoursConfig={setWorkingHoursConfig}
+            setRatesConfig={setRatesConfig}
+            setLeaveBenefitsConfig={setLeaveBenefitsConfig}
+            setContributionsConfig={setContributionsConfig}
+            setTaxBracketsConfig={setTaxBracketsConfig}
+            saveWorkingHoursConfig={saveWorkingHoursConfig}
+            saveRatesConfig={saveRatesConfig}
+            saveLeaveBenefitsConfig={saveLeaveBenefitsConfig}
+            saveContributionsConfig={saveContributionsConfig}
+            saveTaxBracketsConfig={saveTaxBracketsConfig}
+            fetchExternalData={fetchExternalData}
+            unsavedChanges={unsavedChanges}
+            hasUnsavedChanges={hasUnsavedChanges}
+            isAutoSaving={isAutoSaving}
+            saveAllConfigurations={saveAllConfigurations}
+          />
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-6">

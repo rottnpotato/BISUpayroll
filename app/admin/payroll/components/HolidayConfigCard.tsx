@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, Plus } from "lucide-react"
-import { motion } from "framer-motion"
+
 import { HolidayType } from "../types"
 import { philippineHolidays } from "../constants"
 
@@ -21,19 +21,6 @@ export function HolidayConfigCard({
   onToggleHoliday,
   onAddHoliday 
 }: HolidayConfigCardProps) {
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-      },
-    },
-  }
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', { 
@@ -49,7 +36,7 @@ export function HolidayConfigCard({
   }
 
   return (
-    <motion.div variants={itemVariants}>
+    <div>
       <Card className="shadow-lg border-2 h-full">
         <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
           <div className="flex justify-between items-center">
@@ -105,6 +92,6 @@ export function HolidayConfigCard({
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   )
 }

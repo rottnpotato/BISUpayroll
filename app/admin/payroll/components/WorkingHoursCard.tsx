@@ -1,32 +1,33 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Timer, Moon, AlertTriangle } from "lucide-react"
-import { motion } from "framer-motion"
-import { WorkingHoursConfig } from "../types"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Timer, Moon, AlertTriangle, Save, RefreshCw, Settings } from "lucide-react"
+
+import { WorkingHoursConfig, ConfigurationScope, ConfigurationSaveResponse } from "../types"
+import { ConfigurationScopeSelector } from "./ConfigurationScopeSelector"
 
 interface WorkingHoursCardProps {
   config: WorkingHoursConfig
   onConfigChange: (config: WorkingHoursConfig) => void
+  onSave: (config?: WorkingHoursConfig, scope?: ConfigurationScope) => Promise<ConfigurationSaveResponse>
+  hasUnsavedChanges?: boolean
 }
 
-export function WorkingHoursCard({ config, onConfigChange }: WorkingHoursCardProps) {
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 12,
-      },
-    },
-  }
+export function WorkingHoursCard({ config, onConfigChange, onSave, hasUnsavedChanges = false }: WorkingHoursCardProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [showScopeSelector, setShowScopeSelector] = useState(false)
+  const [currentScope, setCurrentScope] = useState<ConfigurationScope>({
+    applicationType: 'ALL',
+    isActive: true
+  })
 
   const handleInputChange = (field: keyof WorkingHoursConfig, value: number | boolean | string) => {
     const newConfig = {
@@ -36,19 +37,56 @@ export function WorkingHoursCard({ config, onConfigChange }: WorkingHoursCardPro
     onConfigChange(newConfig)
   }
 
+  const handleSave = async () => {
+    setIsLoading(true)
+    try {
+      await onSave(config, currentScope)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
-    <motion.div variants={itemVariants} className="h-full">
+    <div className="h-full">
       <Card className="shadow-lg border-2 h-full flex flex-col">
         <CardHeader className="bg-gradient-to-r from-bisu-purple-light to-bisu-purple-medium text-white rounded-t-lg">
-          <CardTitle className="text-bisu-yellow-300 flex items-center gap-2">
-            <Timer size={20} />
-            Working Hours & Attendance
-          </CardTitle>
-          <CardDescription className="text-bisu-yellow-100">
-            Configure work schedules and attendance policies
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-bisu-yellow-300 flex items-center gap-2">
+                <Timer size={20} />
+                Working Hours & Attendance
+              </CardTitle>
+              <CardDescription className="text-bisu-yellow-100">
+                Configure work schedules and attendance policies
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasUnsavedChanges && (
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                  Unsaved
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowScopeSelector(!showScopeSelector)}
+                className="text-white hover:bg-white/20"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-6 flex-1">
+          {showScopeSelector && (
+            <>
+              <ConfigurationScopeSelector
+                currentScope={currentScope}
+                onScopeChange={setCurrentScope}
+              />
+              <Separator />
+            </>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Daily Hours</Label>
@@ -155,14 +193,28 @@ export function WorkingHoursCard({ config, onConfigChange }: WorkingHoursCardPro
             </div>
           </div>
 
-          <div className="bg-bisu-yellow-extralight p-4 rounded-lg">
-            <h5 className="font-medium text-bisu-purple-deep mb-2">Auto-Save Information</h5>
-            <p className="text-sm text-bisu-purple-medium">
-              All changes are automatically saved to the database. Configuration changes are applied system-wide.
-            </p>
+          {/* Save Button */}
+          <div className="flex gap-3 pt-4 border-t">
+            <Button
+              onClick={handleSave}
+              disabled={isLoading || !hasUnsavedChanges}
+              className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
+            >
+              {isLoading ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Save Configuration
+            </Button>
+            {hasUnsavedChanges && (
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 self-center">
+                Unsaved changes
+              </Badge>
+            )}
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   )
 }

@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     const endOfDay = new Date(now)
     endOfDay.setHours(23, 59, 59, 999)
 
-    // Get system configurations for working hours
+    // Get system configurations for working hours and attendance policies
     let systemConfigs: Array<{key: string, value: string}> = []
     try {
       systemConfigs = await prisma.systemSettings.findMany({
@@ -152,7 +152,17 @@ export async function POST(request: NextRequest) {
           key: {
             in: [
               'working_hours_dailyHours',
-              'working_hours_lateGraceMinutes'
+              'working_hours_lateGraceMinutes',
+              'attendance_morning_start',
+              'attendance_morning_end',
+              'attendance_afternoon_start',
+              'attendance_afternoon_end',
+              'attendance_allow_half_day',
+              'attendance_allow_early_out',
+              'attendance_early_out_threshold_minutes',
+              'attendance_half_day_minimum_hours',
+              'attendance_prevent_duplicate_entries',
+              'attendance_duplicate_range_hours'
             ]
           }
         }
@@ -170,6 +180,39 @@ export async function POST(request: NextRequest) {
 
     const dailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
     const lateGraceMinutes = parseInt(configs['working_hours_lateGraceMinutes'] || '15')
+    
+    // New attendance policy configurations
+    const morningStart = configs['attendance_morning_start'] || '08:00'
+    const morningEnd = configs['attendance_morning_end'] || '12:00'
+    const afternoonStart = configs['attendance_afternoon_start'] || '13:00'
+    const afternoonEnd = configs['attendance_afternoon_end'] || '17:00'
+    const allowHalfDay = configs['attendance_allow_half_day'] === 'true'
+    const allowEarlyOut = configs['attendance_allow_early_out'] === 'true'
+    const earlyOutThresholdMinutes = parseInt(configs['attendance_early_out_threshold_minutes'] || '60')
+    const halfDayMinimumHours = parseFloat(configs['attendance_half_day_minimum_hours'] || '4')
+    const preventDuplicateEntries = configs['attendance_prevent_duplicate_entries'] === 'true'
+    const duplicateRangeHours = parseInt(configs['attendance_duplicate_range_hours'] || '2')
+    
+    // Helper function to parse time string (HH:MM) to minutes from midnight
+    const timeToMinutes = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      return hours * 60 + minutes
+    }
+    
+    // Helper function to get current session type based on time
+    const getCurrentSessionType = (currentTimeMinutes: number): 'morning' | 'afternoon' | null => {
+      const morningStartMinutes = timeToMinutes(morningStart)
+      const morningEndMinutes = timeToMinutes(morningEnd)
+      const afternoonStartMinutes = timeToMinutes(afternoonStart)
+      const afternoonEndMinutes = timeToMinutes(afternoonEnd)
+      
+      if (currentTimeMinutes >= morningStartMinutes && currentTimeMinutes <= morningEndMinutes) {
+        return 'morning'
+      } else if (currentTimeMinutes >= afternoonStartMinutes && currentTimeMinutes <= afternoonEndMinutes) {
+        return 'afternoon'
+      }
+      return null
+    }
 
     // Define standard work hours (8:00 AM)
     const workStartHour = 8
@@ -192,31 +235,83 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to fetch attendance record from database')
     }
 
+    // Check for duplicate entries within acceptable range if prevention is enabled
+    if (preventDuplicateEntries && action === 'time-in') {
+      const rangeStart = new Date(now.getTime() - (duplicateRangeHours * 60 * 60 * 1000))
+      const rangeEnd = new Date(now.getTime() + (duplicateRangeHours * 60 * 60 * 1000))
+      
+      const duplicateEntries = await prisma.attendanceRecord.findMany({
+        where: {
+          userId: user.id,
+          timeIn: {
+            gte: rangeStart,
+            lte: rangeEnd
+          },
+          NOT: {
+            id: attendanceRecord?.id || ''
+          }
+        }
+      })
+      
+      if (duplicateEntries.length > 0) {
+        const existingEntry = duplicateEntries[0]
+        return NextResponse.json({
+          success: false,
+          message: `You already have an attendance entry within the last ${duplicateRangeHours} hours at ${formatTime(existingEntry.timeIn!)}. Multiple entries in a short time range are not allowed.`,
+          data: {
+            existingTimeIn: formatTime(existingEntry.timeIn!),
+            rangeHours: duplicateRangeHours
+          }
+        }, { status: 400 })
+      }
+    }
+
     // Handle time-in action
     if (action === 'time-in') {
       const currentHour = now.getHours()
       const currentMinute = now.getMinutes()
       const currentTime = currentHour * 60 + currentMinute // Convert to minutes for easier comparison
       
-      // Time restrictions: Allow time-in only between 6:00 AM and 12:59 PM (PHT)
+      // Determine current session type
+      const sessionType = getCurrentSessionType(currentTime)
+      
+      // Time restrictions: Allow time-in during morning or afternoon sessions
       // Skip restrictions if testing mode is enabled
       if (!skipTimeRestrictions) {
-        const morningStartTime = 6 * 60 // 6:00 AM in minutes
-        const morningEndTime = 12 * 60 + 59 // 12:59 PM in minutes
-        
-        if (currentTime < morningStartTime || currentTime > morningEndTime) {
+        if (!sessionType) {
+          const morningStartMinutes = timeToMinutes(morningStart)
+          const morningEndMinutes = timeToMinutes(morningEnd)
+          const afternoonStartMinutes = timeToMinutes(afternoonStart)
+          const afternoonEndMinutes = timeToMinutes(afternoonEnd)
+          
           return NextResponse.json({
             success: false,
-            message: 'Time-in is only allowed between 6:00 AM and 12:59 PM (PHT)'
+            message: `Time-in is only allowed during work sessions: ${morningStart}-${morningEnd} (Morning) or ${afternoonStart}-${afternoonEnd} (Afternoon)`
           }, { status: 400 })
+        }
+        
+        // Check if trying to time-in for a session that already has an entry
+        if (attendanceRecord) {
+          if (sessionType === 'morning' && attendanceRecord.morningTimeIn) {
+            return NextResponse.json({
+              success: false,
+              message: `Already timed in for morning session at ${formatTime(attendanceRecord.morningTimeIn)}`
+            }, { status: 400 })
+          }
+          if (sessionType === 'afternoon' && attendanceRecord.afternoonTimeIn) {
+            return NextResponse.json({
+              success: false,
+              message: `Already timed in for afternoon session at ${formatTime(attendanceRecord.afternoonTimeIn)}`
+            }, { status: 400 })
+          }
         }
       }
 
       // If no record exists for today, create one
       if (!attendanceRecord) {
-        // Check if the employee is late
-        const isLate = now.getHours() > workStartHour || 
-          (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes))
+        // Check if the employee is late (only for morning session)
+        const isLate = sessionType === 'morning' && (now.getHours() > workStartHour || 
+          (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes)))
 
         // Auto-approve time-in if not excessively late (more than 2 hours)
         const shouldAutoApproveTimeIn = (() => {
@@ -232,23 +327,37 @@ export async function POST(request: NextRequest) {
           return lateMinutes <= 120
         })()
 
+        // Create session-based attendance data
+        const sessionData: any = {
+          userId: user.id,
+          date: now,
+          sessionType: sessionType,
+          isLate: isLate,
+          status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
+          totalSessions: 1
+        }
+
+        // Set session-specific time fields
+        if (sessionType === 'morning') {
+          sessionData.morningTimeIn = now
+          sessionData.timeIn = now // Keep backward compatibility
+        } else if (sessionType === 'afternoon') {
+          sessionData.afternoonTimeIn = now
+          sessionData.timeIn = now // Keep backward compatibility
+        }
+
         attendanceRecord = await prisma.attendanceRecord.create({
-          data: {
-            userId: user.id,
-            date: now,
-            timeIn: now,
-            isLate: isLate,
-            status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING'
-          } as any
+          data: sessionData
         })
 
         return NextResponse.json({
           success: true,
           message: shouldAutoApproveTimeIn 
-            ? 'Time-in recorded and automatically approved'
-            : 'Time-in recorded - pending approval by supervisor',
+            ? `${sessionType?.charAt(0).toUpperCase()}${sessionType?.slice(1)} time-in recorded and automatically approved`
+            : `${sessionType?.charAt(0).toUpperCase()}${sessionType?.slice(1)} time-in recorded - pending approval by supervisor`,
           data: {
             time: formatTime(now),
+            sessionType: sessionType,
             isLate: attendanceRecord.isLate,
             expectedWorkHours: dailyHours,
             status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
@@ -256,20 +365,24 @@ export async function POST(request: NextRequest) {
           }
         })
       } 
-      // If record exists but already timed in
-      else if (attendanceRecord.timeIn) {
-        return NextResponse.json({
-          success: false,
-          message: 'Already timed in for today',
-          data: {
-            time: formatTime(attendanceRecord.timeIn)
-          }
-        }, { status: 400 })
-      } 
-      // If record exists but no time-in (unlikely scenario but handled for completeness)
+      // If record exists, update it for the new session
       else {
-        const isLate = now.getHours() > workStartHour || 
-          (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes))
+        // Check if this is a new session for an existing record
+        const canAddSession = sessionType === 'afternoon' && !attendanceRecord.afternoonTimeIn
+        
+        if (!canAddSession) {
+          // This means they're trying to time-in for a session they already have
+          return NextResponse.json({
+            success: false,
+            message: sessionType === 'morning' 
+              ? `Already timed in for morning session at ${formatTime(attendanceRecord.morningTimeIn!)}`
+              : `Already timed in for afternoon session at ${formatTime(attendanceRecord.afternoonTimeIn!)}`
+          }, { status: 400 })
+        }
+
+        // Check if the employee is late (only for morning session)
+        const isLate = sessionType === 'morning' && (now.getHours() > workStartHour || 
+          (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes)))
 
         // Auto-approve time-in if not excessively late (more than 2 hours)
         const shouldAutoApproveTimeIn = (() => {
@@ -285,23 +398,37 @@ export async function POST(request: NextRequest) {
           return lateMinutes <= 120
         })()
 
+        // Update data for the new session
+        const updateData: any = {
+          sessionType: 'full_day', // Now both sessions
+          totalSessions: attendanceRecord.totalSessions + 1,
+          status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING'
+        }
+
+        if (sessionType === 'afternoon') {
+          updateData.afternoonTimeIn = now
+        }
+
+        // Update late status if this is morning session
+        if (sessionType === 'morning') {
+          updateData.isLate = isLate
+        }
+
         attendanceRecord = await prisma.attendanceRecord.update({
           where: { id: attendanceRecord.id },
-          data: {
-            timeIn: now,
-            isLate: isLate,
-            status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING'
-          } as any
+          data: updateData
         })
 
         return NextResponse.json({
           success: true,
           message: shouldAutoApproveTimeIn 
-            ? 'Time-in recorded and automatically approved'
-            : 'Time-in recorded - pending approval by supervisor',
+            ? `${sessionType?.charAt(0).toUpperCase()}${sessionType?.slice(1)} time-in recorded and automatically approved`
+            : `${sessionType?.charAt(0).toUpperCase()}${sessionType?.slice(1)} time-in recorded - pending approval by supervisor`,
           data: {
             time: formatTime(now),
-            isLate: attendanceRecord.isLate,
+            sessionType: sessionType,
+            totalSessions: attendanceRecord.totalSessions,
+            isLate: sessionType === 'morning' ? isLate : attendanceRecord.isLate,
             expectedWorkHours: dailyHours,
             status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
             approvalStatus: shouldAutoApproveTimeIn ? 'Auto-approved' : 'Pending supervisor approval'
@@ -311,28 +438,99 @@ export async function POST(request: NextRequest) {
     } 
     // Handle time-out action
     else if (action === 'time-out') {
-      // If no record exists for today or no time-in
-      if (!attendanceRecord || !attendanceRecord.timeIn) {
+      const currentTime = now.getHours() * 60 + now.getMinutes()
+      const sessionType = getCurrentSessionType(currentTime)
+      
+      // Check if there's any active session to time-out from
+      const hasMorningTimeIn = attendanceRecord?.morningTimeIn && !attendanceRecord?.morningTimeOut
+      const hasAfternoonTimeIn = attendanceRecord?.afternoonTimeIn && !attendanceRecord?.afternoonTimeOut
+      const hasTimeIn = attendanceRecord?.timeIn && !attendanceRecord?.timeOut
+      
+      if (!attendanceRecord || (!hasMorningTimeIn && !hasAfternoonTimeIn && !hasTimeIn)) {
         return NextResponse.json({
           success: false,
           message: 'Cannot time-out without first timing in'
         }, { status: 400 })
-      } 
-      // If already timed out
-      else if (attendanceRecord.timeOut) {
+      }
+      
+      // Determine which session to time-out from
+      let timeOutSession: 'morning' | 'afternoon' | 'general' = 'general'
+      
+      if (sessionType === 'morning' && hasMorningTimeIn) {
+        timeOutSession = 'morning'
+      } else if (sessionType === 'afternoon' && hasAfternoonTimeIn) {
+        timeOutSession = 'afternoon'
+      } else if (hasMorningTimeIn && !hasAfternoonTimeIn) {
+        timeOutSession = 'morning'
+      } else if (hasAfternoonTimeIn) {
+        timeOutSession = 'afternoon'
+      }
+      
+      // Check for early timeout
+      let isEarlyOut = false
+      let earlyOutMessage = ''
+      
+      if (timeOutSession === 'morning') {
+        const morningEndMinutes = timeToMinutes(morningEnd)
+        if (currentTime < (morningEndMinutes - earlyOutThresholdMinutes)) {
+          isEarlyOut = true
+          earlyOutMessage = `Early timeout detected. Morning session typically ends at ${morningEnd}. `
+        }
+      } else if (timeOutSession === 'afternoon') {
+        const afternoonEndMinutes = timeToMinutes(afternoonEnd)
+        if (currentTime < (afternoonEndMinutes - earlyOutThresholdMinutes)) {
+          isEarlyOut = true
+          earlyOutMessage = `Early timeout detected. Afternoon session typically ends at ${afternoonEnd}. `
+        }
+      }
+      
+      // If early out is not allowed and this is an early timeout
+      if (isEarlyOut && !allowEarlyOut) {
         return NextResponse.json({
           success: false,
-          message: 'Already timed out for today',
+          message: `${earlyOutMessage}Early timeout is not allowed by company policy. Please contact your supervisor for approval.`,
           data: {
-            time: formatTime(attendanceRecord.timeOut)
+            isEarlyOut: true,
+            expectedEndTime: timeOutSession === 'morning' ? morningEnd : afternoonEnd
           }
         }, { status: 400 })
       } 
       // Record time-out and calculate hours worked
       else {
-        const timeIn = attendanceRecord.timeIn.getTime()
-        const timeOut = now.getTime()
-        const hoursWorked = parseFloat(((timeOut - timeIn) / (1000 * 60 * 60)).toFixed(2))
+        // Calculate session-specific hours
+        let sessionHours = 0
+        let timeInForSession: Date | null = null
+        
+        if (timeOutSession === 'morning' && attendanceRecord.morningTimeIn) {
+          timeInForSession = attendanceRecord.morningTimeIn
+          sessionHours = parseFloat(((now.getTime() - timeInForSession.getTime()) / (1000 * 60 * 60)).toFixed(2))
+        } else if (timeOutSession === 'afternoon' && attendanceRecord.afternoonTimeIn) {
+          timeInForSession = attendanceRecord.afternoonTimeIn
+          sessionHours = parseFloat(((now.getTime() - timeInForSession.getTime()) / (1000 * 60 * 60)).toFixed(2))
+        } else if (attendanceRecord.timeIn) {
+          timeInForSession = attendanceRecord.timeIn
+          sessionHours = parseFloat(((now.getTime() - timeInForSession.getTime()) / (1000 * 60 * 60)).toFixed(2))
+        }
+        
+        // Calculate total hours worked for the day
+        let totalHoursWorked = sessionHours
+        
+        // Add existing session hours if this is a second session
+        if (timeOutSession === 'afternoon' && attendanceRecord.morningTimeIn && attendanceRecord.morningTimeOut) {
+          const morningHours = parseFloat(((attendanceRecord.morningTimeOut.getTime() - attendanceRecord.morningTimeIn.getTime()) / (1000 * 60 * 60)).toFixed(2))
+          totalHoursWorked += morningHours
+        } else if (timeOutSession === 'morning' && attendanceRecord.afternoonTimeIn && attendanceRecord.afternoonTimeOut) {
+          const afternoonHours = parseFloat(((attendanceRecord.afternoonTimeOut.getTime() - attendanceRecord.afternoonTimeIn.getTime()) / (1000 * 60 * 60)).toFixed(2))
+          totalHoursWorked += afternoonHours
+        }
+        
+        // Check if this constitutes a half-day
+        const isHalfDay = totalHoursWorked >= halfDayMinimumHours && totalHoursWorked < dailyHours
+        
+        // Determine if attendance is complete for the day
+        const hasCompletedMorning = attendanceRecord.morningTimeIn && (timeOutSession === 'morning' || attendanceRecord.morningTimeOut)
+        const hasCompletedAfternoon = attendanceRecord.afternoonTimeIn && (timeOutSession === 'afternoon' || attendanceRecord.afternoonTimeOut)
+        const isAttendanceComplete = hasCompletedMorning && hasCompletedAfternoon
 
         // Check if it's a holiday (simplified - you can enhance this with a holidays table)
         const today = new Date(now)
@@ -392,18 +590,37 @@ export async function POST(request: NextRequest) {
           return true
         })()
 
+        // Prepare update data for session-based time-out
+        const updateData: any = {
+          hoursWorked: totalHoursWorked,
+          status: shouldAutoApprove ? 'APPROVED' : 'PENDING',
+          isHalfDay: isHalfDay,
+          isEarlyOut: isEarlyOut
+        }
+
+        // Set session-specific time-out fields
+        if (timeOutSession === 'morning') {
+          updateData.morningTimeOut = now
+        } else if (timeOutSession === 'afternoon') {
+          updateData.afternoonTimeOut = now
+        }
+
+        // Update general timeOut for backward compatibility
+        updateData.timeOut = now
+
+        // Add early out reason if applicable
+        if (isEarlyOut) {
+          updateData.earlyOutReason = earlyOutMessage.trim()
+        }
+
         attendanceRecord = await prisma.attendanceRecord.update({
           where: { id: attendanceRecord.id },
-          data: {
-            timeOut: now,
-            hoursWorked,
-            status: shouldAutoApprove ? 'APPROVED' : 'PENDING'
-          }
+          data: updateData
         })
 
         // Calculate earnings for the day
-        const regularHours = Math.min(hoursWorked, dailyHours)
-        const overtimeHours = Math.max(0, hoursWorked - dailyHours)
+        const regularHours = Math.min(totalHoursWorked, dailyHours)
+        const overtimeHours = Math.max(0, totalHoursWorked - dailyHours)
         
         // Get payroll rules to calculate rates
         const payrollRules = await prisma.payrollRule.findMany({
@@ -471,16 +688,34 @@ export async function POST(request: NextRequest) {
         
         const totalEarnings = regularPay + overtimePay + holidayPay + weekendPay + nightDifferentialPay
 
+        // Compose response message
+        let responseMessage = shouldAutoApprove 
+          ? `${timeOutSession?.charAt(0).toUpperCase()}${timeOutSession?.slice(1)} time-out recorded and automatically approved`
+          : `${timeOutSession?.charAt(0).toUpperCase()}${timeOutSession?.slice(1)} time-out recorded - pending approval by supervisor`
+        
+        if (isEarlyOut) {
+          responseMessage += `. ${earlyOutMessage}`
+        }
+        
+        if (isHalfDay && !isAttendanceComplete) {
+          responseMessage += ` This is a half-day attendance (${totalHoursWorked.toFixed(2)} hours). ${hasCompletedMorning && !hasCompletedAfternoon ? 'Afternoon session still needed for full day.' : 'Morning session still needed for full day.'}`
+        }
+
         return NextResponse.json({
           success: true,
-          message: shouldAutoApprove 
-            ? 'Time-out recorded and automatically approved'
-            : 'Time-out recorded - pending approval by supervisor',
+          message: responseMessage,
           data: {
             time: formatTime(now),
-            hoursWorked,
+            sessionType: timeOutSession,
+            sessionHours: sessionHours,
+            totalHoursWorked: totalHoursWorked,
             regularHours,
             overtimeHours,
+            isHalfDay,
+            isEarlyOut,
+            isAttendanceComplete,
+            hasCompletedMorning,
+            hasCompletedAfternoon,
             isHoliday,
             holidayType,
             holidayName: todayHoliday?.name || null,
