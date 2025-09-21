@@ -6,7 +6,6 @@ export interface RoleBasedPayrollContext {
   baseSalary: number
   hoursWorked: number
   overtimeHours: number
-  nightHours: number
   holidayHours: number
   isHoliday: boolean
   holidayType: 'regular' | 'special'
@@ -108,10 +107,7 @@ function checkRoleBasedEligibility(rule: PayrollRule, userRoles: PayrollRole[]):
         break
       
       case 'differential':
-        if (rule.name.toLowerCase().includes('night') && !role.nightDifferentialEligible) {
-          isRoleEligible = false
-          roleRestrictions.push(`${role.name}: Night differential not eligible`)
-        }
+        // Night differential removed
         break
       
       case 'holiday_pay':
@@ -212,7 +208,6 @@ export function getRoleEligibilityMatrix(userRoles: PayrollRole[]): Record<strin
   
   return {
     overtime: activeRoles.some(role => role.overtimeEligible),
-    nightDifferential: activeRoles.some(role => role.nightDifferentialEligible),
     holidayPay: activeRoles.some(role => role.holidayPayEligible),
     gsis: activeRoles.some(role => role.gsisEligible),
     philHealth: activeRoles.some(role => role.philHealthEligible),
@@ -264,7 +259,6 @@ export function validateRoleConfiguration(roles: PayrollRole[]): {
   const restrictiveRoles = roles.filter(role => {
     const eligibilityCount = [
       role.overtimeEligible,
-      role.nightDifferentialEligible,
       role.holidayPayEligible,
       role.gsisEligible,
       role.philHealthEligible,

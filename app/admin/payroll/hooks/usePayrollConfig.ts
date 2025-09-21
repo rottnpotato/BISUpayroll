@@ -23,9 +23,6 @@ export const usePayrollConfig = () => {
     dailyHours: 8,
     weeklyHours: 40,
     overtimeThreshold: 8,
-    nightShiftStart: 22,
-    nightShiftEnd: 6,
-    nightShiftEnabled: false,
     lateGraceMinutes: 15,
     lateDeductionBasis: "per_minute",
     lateDeductionAmount: 0
@@ -34,7 +31,6 @@ export const usePayrollConfig = () => {
   const [ratesConfig, setRatesConfig] = useState<RatesConfig>({
     overtimeRate1: 1.25,
     overtimeRate2: 1.5,
-    nightDifferential: 10,
     regularHolidayRate: 200,
     specialHolidayRate: 130,
     currency: 'PHP'
@@ -144,7 +140,7 @@ export const usePayrollConfig = () => {
   }, [])
 
   // Auto-save function with debouncing
-  const autoSave = useCallback((type: 'workingHours' | 'rates' | 'leaveBenefits', config: any) => {
+  const autoSave = useCallback((type: 'workingHours' | 'rates' | 'leaveBenefits' | 'contributions' | 'taxBrackets', config: any) => {
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current)
     }
@@ -264,7 +260,9 @@ export const usePayrollConfig = () => {
           originalConfigsRef.current = {
             workingHours: { ...workingHoursConfig, ...data.configurations.workingHours },
             rates: { ...ratesConfig, ...data.configurations.rates },
-            leaveBenefits: { ...leaveBenefitsConfig, ...data.configurations.leaveBenefits }
+            leaveBenefits: { ...leaveBenefitsConfig, ...data.configurations.leaveBenefits },
+            contributions: { ...contributionsConfig },
+            taxBrackets: { ...taxBracketsConfig }
           }
         }
       }
@@ -351,12 +349,12 @@ export const usePayrollConfig = () => {
 
   const saveTaxBracketsConfig = useCallback(async (config?: TaxBracketsConfig, scope?: ConfigurationScope): Promise<ConfigurationSaveResponse> => {
     const configToSave = config || taxBracketsConfig
-    return await saveConfigurationWithScope('tax_brackets', configToSave, scope)
+    return await saveConfigurationWithScope('taxBrackets', configToSave, scope)
   }, [taxBracketsConfig])
 
   // Enhanced save function with scope support
   const saveConfigurationWithScope = useCallback(async (
-    type: 'workingHours' | 'rates' | 'leaveBenefits' | 'contributions' | 'tax_brackets', 
+  type: 'workingHours' | 'rates' | 'leaveBenefits' | 'contributions' | 'taxBrackets', 
     config: any, 
     scope?: ConfigurationScope
   ): Promise<ConfigurationSaveResponse> => {
@@ -380,11 +378,11 @@ export const usePayrollConfig = () => {
       }
 
       // Update unsaved changes state
-      setUnsavedChanges(prev => ({ ...prev, [type]: false }))
+  setUnsavedChanges(prev => ({ ...prev, [type]: false }))
       
       // Update original config reference
       if (originalConfigsRef.current) {
-        originalConfigsRef.current[type] = { ...config }
+        (originalConfigsRef.current as any)[type] = { ...config }
       }
 
       toast.success(result.message || `${type} configuration saved successfully`)

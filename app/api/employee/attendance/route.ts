@@ -380,9 +380,8 @@ export async function POST(request: NextRequest) {
           }, { status: 400 })
         }
 
-        // Check if the employee is late (only for morning session)
-        const isLate = sessionType === 'morning' && (now.getHours() > workStartHour || 
-          (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes)))
+        // For additional sessions (afternoon), late flag does not apply
+        const isLate = false
 
         // Auto-approve time-in if not excessively late (more than 2 hours)
         const shouldAutoApproveTimeIn = (() => {
@@ -409,10 +408,7 @@ export async function POST(request: NextRequest) {
           updateData.afternoonTimeIn = now
         }
 
-        // Update late status if this is morning session
-        if (sessionType === 'morning') {
-          updateData.isLate = isLate
-        }
+        // Late status not updated on second session
 
         attendanceRecord = await prisma.attendanceRecord.update({
           where: { id: attendanceRecord.id },
@@ -428,7 +424,7 @@ export async function POST(request: NextRequest) {
             time: formatTime(now),
             sessionType: sessionType,
             totalSessions: attendanceRecord.totalSessions,
-            isLate: sessionType === 'morning' ? isLate : attendanceRecord.isLate,
+            isLate: attendanceRecord.isLate,
             expectedWorkHours: dailyHours,
             status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
             approvalStatus: shouldAutoApproveTimeIn ? 'Auto-approved' : 'Pending supervisor approval'
@@ -573,7 +569,7 @@ export async function POST(request: NextRequest) {
         // 3. Has both time-in and time-out
         const shouldAutoApprove = (() => {
           // Check reasonable working hours (4-12 hours)
-          if (hoursWorked < 4 || hoursWorked > 12) return false
+          if (totalHoursWorked < 4 || totalHoursWorked > 12) return false
           
           // Check if excessively late (more than 2 hours)
           if (attendanceRecord.isLate) {
@@ -662,10 +658,10 @@ export async function POST(request: NextRequest) {
         if (isHoliday) {
           if (todayHoliday?.type === 'REGULAR') {
             // Regular holiday: 200% of regular rate (100% additional)
-            holidayPay = hoursWorked * hourlyRate * (holidayRate - 1)
+            holidayPay = totalHoursWorked * hourlyRate * (holidayRate - 1)
           } else if (todayHoliday?.type === 'SPECIAL') {
             // Special holiday: 130% of regular rate (30% additional)
-            holidayPay = hoursWorked * hourlyRate * (holidayRate - 1)
+            holidayPay = totalHoursWorked * hourlyRate * (holidayRate - 1)
           }
         }
         
@@ -673,20 +669,11 @@ export async function POST(request: NextRequest) {
         let weekendPay = 0
         if (isWeekend && !isHoliday) {
           // Weekend work gets 130% rate (30% additional)
-          weekendPay = hoursWorked * hourlyRate * 0.3
+          weekendPay = totalHoursWorked * hourlyRate * 0.3
         }
         
-        // Calculate night differential (assuming 10PM-6AM shift detection would be needed)
-        const nightDifferentialRate = parseFloat(configs['rates_nightDifferential'] || '0.10')
-        let nightDifferentialPay = 0
-        // For simplicity, we'll calculate this if time-out is after 10PM or time-in is before 6AM
-        const timeInHour = attendanceRecord.timeIn?.getHours() || 0
-        const timeOutHour = now.getHours()
-        if (timeInHour < 6 || timeOutHour >= 22) {
-          nightDifferentialPay = hoursWorked * hourlyRate * nightDifferentialRate
-        }
-        
-        const totalEarnings = regularPay + overtimePay + holidayPay + weekendPay + nightDifferentialPay
+        // Night differential removed from calculations
+        const totalEarnings = regularPay + overtimePay + holidayPay + weekendPay
 
         // Compose response message
         let responseMessage = shouldAutoApprove 
@@ -731,14 +718,12 @@ export async function POST(request: NextRequest) {
               overtimePay,
               holidayPay,
               weekendPay,
-              nightDifferentialPay,
               totalEarnings,
               breakdown: {
                 regularHours: { hours: regularHours, rate: hourlyRate, amount: regularPay },
                 overtime: { hours: overtimeHours, rate: hourlyRate * overtimeRate, amount: overtimePay },
                 holiday: isHoliday ? { multiplier: holidayRate, amount: holidayPay, type: todayHoliday?.type } : null,
-                weekend: isWeekend && !isHoliday ? { multiplier: 1.3, amount: weekendPay } : null,
-                nightDifferential: nightDifferentialPay > 0 ? { rate: nightDifferentialRate, amount: nightDifferentialPay } : null
+                weekend: isWeekend && !isHoliday ? { multiplier: 1.3, amount: weekendPay } : null
               }
             }
           }

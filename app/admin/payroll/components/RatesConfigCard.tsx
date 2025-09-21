@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { TrendingUp, Clock, Moon, Calendar, Save, Settings, RefreshCw, Check } from "lucide-react"
+import { TrendingUp, Clock, Calendar, Save, Settings, RefreshCw, Check } from "lucide-react"
 
 import { RatesConfig, ConfigurationScope, ConfigurationSaveResponse } from "../types"
 import { ConfigurationScopeSelector } from "./ConfigurationScopeSelector"
@@ -60,7 +60,7 @@ export function RatesConfigCard({ config, onConfigChange, onSave, hasUnsavedChan
                 Rates & Differentials Configuration
               </CardTitle>
               <CardDescription className="text-bisu-purple-medium">
-                Configure overtime rates, night differentials, and holiday pay rates (PHP)
+                Configure overtime and holiday pay rates (PHP)
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -135,29 +135,7 @@ export function RatesConfigCard({ config, onConfigChange, onSave, hasUnsavedChan
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h4 className="font-medium text-bisu-purple-deep flex items-center gap-2">
-              <Moon size={16} />
-              Night Differential
-            </h4>
-            <div>
-              <Label className="text-sm font-medium">Night Differential (%)</Label>
-              <div className="relative">
-                <Input 
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={config.nightDifferential.toString()}
-                  onChange={(e) => handleInputChange('nightDifferential', Math.max(0, parseFloat(e.target.value) || 10))}
-                  className="mt-1"
-                />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500">
-                  %
-                </span>
-              </div>
-              <p className="text-xs text-gray-600 mt-1">Additional pay for night shifts (10PM-6AM)</p>
-            </div>
-          </div>
+          {/* Night differential removed */}
 
           <div className="space-y-4">
             <h4 className="font-medium text-bisu-purple-deep flex items-center gap-2">

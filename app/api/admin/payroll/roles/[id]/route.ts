@@ -45,7 +45,7 @@ export async function PUT(
         isActive: body.isActive ?? existingRole.isActive,
         baseSalary: body.baseSalary ? parseFloat(body.baseSalary) : existingRole.baseSalary,
         overtimeEligible: body.overtimeEligible ?? existingRole.overtimeEligible,
-        nightDifferentialEligible: body.nightDifferentialEligible ?? existingRole.nightDifferentialEligible,
+  // Night differential removed; keep existing value or set false if needed
         holidayPayEligible: body.holidayPayEligible ?? existingRole.holidayPayEligible,
         gsisEligible: body.gsisEligible ?? existingRole.gsisEligible,
         philHealthEligible: body.philHealthEligible ?? existingRole.philHealthEligible,

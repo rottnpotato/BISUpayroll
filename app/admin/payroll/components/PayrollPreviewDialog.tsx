@@ -122,13 +122,12 @@ export const PayrollPreviewDialog = ({
       payrollData
         .sort((a, b) => `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`))
         .map((employee, index) => {
-          const salary = parseFloat(employee.user.salary?.toString() || '0')
+          const salary = parseFloat(employee.baseSalary?.toString() || '0')
           
           // Use the detailed data from PayrollResult if available
           const regularPay = parseFloat(employee.earningsBreakdown?.regularPay?.toString() || employee.baseSalary?.toString() || '0')
           const overtimePay = parseFloat(employee.earningsBreakdown?.overtimePay?.toString() || employee.overtime?.toString() || '0')
           const holidayPay = parseFloat(employee.earningsBreakdown?.holidayPay?.toString() || '0')
-          const nightDifferential = parseFloat(employee.earningsBreakdown?.nightDifferential?.toString() || '0')
           const allowances = parseFloat(employee.earningsBreakdown?.allowances?.toString() || '0')
           const bonuses = parseFloat(employee.earningsBreakdown?.bonuses?.toString() || employee.bonuses?.toString() || '0')
           const thirteenthMonthPay = parseFloat(employee.earningsBreakdown?.thirteenthMonthPay?.toString() || '0')
@@ -152,11 +151,11 @@ export const PayrollPreviewDialog = ({
           const lateHours = parseFloat(employee.attendanceData?.lateHours?.toString() || '0')
           
           // Calculate rates for display
-          const dailyRate = salary > 0 ? salary / 22 : 0 // 22 working days standard
-          const hourlyRate = salary > 0 ? salary / (22 * 8) : 0
+          const dailyRate = employee.dailyRate ? parseFloat(employee.dailyRate.toString()) : (salary > 0 ? salary / 22 : 0)
+          const hourlyRate = employee.hourlyRate ? parseFloat(employee.hourlyRate.toString()) : (salary > 0 ? salary / (22 * 8) : 0)
           
           // Total earnings and deductions
-          const totalEarnings = regularPay + overtimePay + holidayPay + nightDifferential + 
+          const totalEarnings = regularPay + overtimePay + holidayPay + 
                                allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave
           const totalDeductions = gsisContribution + philHealthContribution + pagibigContribution + 
                                  withholdingTax + lateDeductions + loanDeductions + otherDeductions
@@ -239,7 +238,7 @@ export const PayrollPreviewDialog = ({
       payrollData
         .sort((a, b) => `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`))
         .map((employee, index) => {
-          const salary = parseFloat(employee.user.salary?.toString() || '0')
+          const salary = parseFloat(employee.baseSalary?.toString() || '0')
           const grossPay = parseFloat(employee.grossPay?.toString() || '0')
           const deductions = parseFloat(employee.deductions?.toString() || '0')
           const netPay = parseFloat(employee.netPay?.toString() || '0')

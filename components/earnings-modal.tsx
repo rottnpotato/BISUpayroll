@@ -7,7 +7,6 @@ import {
   DollarSign, 
   TrendingUp, 
   Calendar, 
-  Moon, 
   CheckCircle,
   Banknote
 } from "lucide-react"
@@ -19,14 +18,12 @@ interface EarningsData {
   overtimePay: number
   holidayPay: number
   weekendPay: number
-  nightDifferentialPay: number
   totalEarnings: number
   breakdown: {
     regularHours: { hours: number; rate: number; amount: number }
     overtime: { hours: number; rate: number; amount: number }
     holiday?: { multiplier: number; amount: number; type: string } | null
     weekend?: { multiplier: number; amount: number } | null
-    nightDifferential?: { rate: number; amount: number } | null
   }
 }
 
@@ -207,20 +204,7 @@ export function EarningsModal({ isOpen, onClose, timeoutData }: EarningsModalPro
                   </div>
                 )}
 
-                {/* Night Differential */}
-                {timeoutData.earnings.breakdown.nightDifferential && (
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <div className="flex items-center space-x-2">
-                      <Moon className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm">
-                        Night Differential ({(timeoutData.earnings.breakdown.nightDifferential.rate * 100).toFixed(1)}%)
-                      </span>
-                    </div>
-                    <span className="font-medium text-purple-600">
-                      {formatCurrency(timeoutData.earnings.breakdown.nightDifferential.amount)}
-                    </span>
-                  </div>
-                )}
+                {/* Night shift removed */}
 
                 {/* Total */}
                 <div className="flex justify-between items-center py-3 border-t-2 border-bisu-purple-light bg-bisu-purple-light/10 px-3 rounded-lg">

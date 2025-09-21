@@ -46,14 +46,12 @@ export interface PayrollCalculationData {
   lateHours: number
   undertimeHours: number
   holidayHours: number
-  nightShiftHours: number
   holidayType?: 'REGULAR' | 'SPECIAL'
   appliedRules: any[]
   configurations: {
     dailyHours: number
     overtimeRate1: number
     overtimeRate2: number
-    nightDifferential: number
     regularHolidayRate: number
     specialHolidayRate: number
     lateDeductionAmount: number
@@ -70,7 +68,6 @@ export interface PayrollCalculationResult {
   regularPay: number
   overtimePay: number
   holidayPay: number
-  nightDifferential: number
   allowances: number
   bonuses: number
   thirteenthMonthPay: number
@@ -184,14 +181,7 @@ export function calculateHolidayPay(
   return holidayHours * hourlyRate * (rate - 1) // Additional pay only
 }
 
-export function calculateNightDifferential(
-  nightShiftHours: number,
-  hourlyRate: number,
-  nightDifferentialRate: number = 0.10
-): number {
-  if (nightShiftHours <= 0) return 0
-  return nightShiftHours * hourlyRate * nightDifferentialRate
-}
+// Night differential removed
 
 export function calculateLateDeductions(
   lateHours: number,
@@ -291,7 +281,6 @@ export function calculateCompletePayroll(data: PayrollCalculationData): PayrollC
     lateHours,
     undertimeHours,
     holidayHours,
-    nightShiftHours,
     holidayType,
     appliedRules,
     configurations
@@ -302,10 +291,10 @@ export function calculateCompletePayroll(data: PayrollCalculationData): PayrollC
   const hourlyRate = calculateHourlyRate(baseSalary, configurations.dailyHours)
   
   // Calculate earnings
-  const regularPay = (hoursWorked - overtimeHours - holidayHours - nightShiftHours) * hourlyRate
+  const regularPay = (hoursWorked - overtimeHours - holidayHours) * hourlyRate
   const overtimePay = calculateOvertimePay(overtimeHours, hourlyRate, configurations.overtimeRate1, configurations.overtimeRate2)
   const holidayPay = calculateHolidayPay(holidayHours, hourlyRate, holidayType, configurations.regularHolidayRate, configurations.specialHolidayRate)
-  const nightDifferential = calculateNightDifferential(nightShiftHours, hourlyRate, configurations.nightDifferential / 100)
+  // Night differential removed
   
   // Apply payroll rules for earnings
   const earningsRules = applyPayrollRules(appliedRules, baseSalary, 0, 'earnings')
@@ -315,7 +304,7 @@ export function calculateCompletePayroll(data: PayrollCalculationData): PayrollC
   const serviceIncentiveLeave = earningsRules.breakdown.filter(r => r.category === 'leave_benefit').reduce((sum, r) => sum + r.amount, 0)
   const otherEarnings = earningsRules.breakdown.filter(r => !['allowance', 'bonus', 'mandatory_benefit', 'leave_benefit'].includes(r.category)).reduce((sum, r) => sum + r.amount, 0)
   
-  const totalEarnings = regularPay + overtimePay + holidayPay + nightDifferential + allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave + otherEarnings
+  const totalEarnings = regularPay + overtimePay + holidayPay + allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave + otherEarnings
   const grossPay = totalEarnings
   
   // Calculate mandatory contributions
@@ -351,7 +340,6 @@ export function calculateCompletePayroll(data: PayrollCalculationData): PayrollC
     regularPay,
     overtimePay,
     holidayPay,
-    nightDifferential,
     allowances,
     bonuses,
     thirteenthMonthPay,

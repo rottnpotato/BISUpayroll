@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Timer, Moon, AlertTriangle, Save, RefreshCw, Settings } from "lucide-react"
+import { Timer, AlertTriangle, Save, RefreshCw, Settings } from "lucide-react"
 
 import { WorkingHoursConfig, ConfigurationScope, ConfigurationSaveResponse } from "../types"
 import { ConfigurationScopeSelector } from "./ConfigurationScopeSelector"
@@ -108,48 +108,7 @@ export function WorkingHoursCard({ config, onConfigChange, onSave, hasUnsavedCha
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium text-bisu-purple-deep flex items-center gap-2">
-                <Moon size={16} />
-                Night Shift Settings
-              </h4>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm">Enable Night Shift</Label>
-                <Switch
-                  checked={config.nightShiftEnabled}
-                  onCheckedChange={(checked) => handleInputChange('nightShiftEnabled', checked)}
-                />
-              </div>
-            </div>
-            
-            {config.nightShiftEnabled && (
-              <div className="grid grid-cols-2 gap-4 pl-6 border-l-2 border-bisu-purple-light">
-                <div>
-                  <Label className="text-sm">Start Time (24h)</Label>
-                  <Input 
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={config.nightShiftStart.toString()}
-                    onChange={(e) => handleInputChange('nightShiftStart', Math.min(23, Math.max(0, parseInt(e.target.value) || 22)))}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">End Time (24h)</Label>
-                  <Input 
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={config.nightShiftEnd.toString()}
-                    onChange={(e) => handleInputChange('nightShiftEnd', Math.min(23, Math.max(0, parseInt(e.target.value) || 6)))}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Night shift settings removed */}
 
           <div className="space-y-4">
             <h4 className="font-medium text-bisu-purple-deep flex items-center gap-2">

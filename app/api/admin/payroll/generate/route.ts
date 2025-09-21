@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
             'working_hours_lateDeductionAmount',
             'rates_overtimeRate1',
             'rates_overtimeRate2',
-            'rates_nightDifferential',
             'rates_regularHolidayRate',
             'rates_specialHolidayRate',
             'rates_currency'
@@ -134,7 +133,6 @@ export async function POST(request: NextRequest) {
       dailyHours: parseFloat(configs['working_hours_dailyHours'] || '8'),
       overtimeRate1: parseFloat(configs['rates_overtimeRate1'] || '1.25'),
       overtimeRate2: parseFloat(configs['rates_overtimeRate2'] || '1.5'),
-      nightDifferential: parseFloat(configs['rates_nightDifferential'] || '10'),
       regularHolidayRate: parseFloat(configs['rates_regularHolidayRate'] || '2.0'),
       specialHolidayRate: parseFloat(configs['rates_specialHolidayRate'] || '1.3'),
       lateDeductionAmount: parseFloat(configs['working_hours_lateDeductionAmount'] || '0'),
@@ -143,9 +141,11 @@ export async function POST(request: NextRequest) {
 
     for (const user of users) {
       try {
-        // Get user-specific payroll rules and combine with global rules
-        const userRules = [...user.payrollRules.map(ur => ur.payrollRule), ...globalRules]
-        const baseSalary = calculateBaseSalaryFromRules(userRules)
+        // Determine base salary from applicable rules
+        const baseSalary = calculateBaseSalaryFromRules([
+          ...user.payrollRules.map(ur => ur.payrollRule),
+          ...globalRules
+        ])
         
         // Calculate attendance data from records
         let totalHoursWorked = 0
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
         let lateHours = 0
         let undertimeHours = 0
         let holidayHours = 0
-        let nightShiftHours = 0
+  // Night shift removed
         let daysWorked = 0
 
         user.attendanceRecords.forEach((record: any) => {
@@ -187,18 +187,13 @@ export async function POST(request: NextRequest) {
               holidayHours += hoursWorked
             }
             
-            // Check for night shift (simplified - you may want to improve this logic)
-            const timeIn = new Date(record.timeIn)
-            const timeOut = new Date(record.timeOut)
-            if (timeIn.getHours() >= 22 || timeIn.getHours() <= 6) {
-              nightShiftHours += Math.min(hoursWorked, 8) // Max 8 hours night differential
-            }
+            // Night shift removed
           }
         })
 
         // Combine user-specific and global rules
-        const userRules = user.payrollRules.map((ur: any) => ur.payrollRule).filter((rule: any) => rule.isActive)
-        const allApplicableRules = [...userRules, ...globalRules]
+  const userSpecificRules = user.payrollRules.map((ur: any) => ur.payrollRule).filter((rule: any) => rule.isActive)
+  const allApplicableRules = [...userSpecificRules, ...globalRules]
 
         // Prepare calculation data
         const calculationData: PayrollCalculationData = {
@@ -209,7 +204,7 @@ export async function POST(request: NextRequest) {
           lateHours,
           undertimeHours,
           holidayHours,
-          nightShiftHours,
+          // Night shift removed from calculation input
           holidayType: 'REGULAR', // Default, could be enhanced
           appliedRules: allApplicableRules,
           configurations
@@ -237,13 +232,13 @@ export async function POST(request: NextRequest) {
             undertimeHours,
             lateHours,
             holidayHours,
-            nightShiftHours,
+            nightShiftHours: 0,
             
             // Earnings breakdown
             regularPay: result.regularPay,
             overtimePay: result.overtimePay,
             holidayPay: result.holidayPay,
-            nightDifferential: result.nightDifferential,
+            nightDifferential: 0,
             allowances: result.allowances,
             bonuses: result.bonuses,
             thirteenthMonthPay: result.thirteenthMonthPay,
@@ -286,8 +281,7 @@ export async function POST(request: NextRequest) {
                 lastName: true,
                 employeeId: true,
                 department: true,
-                position: true,
-                salary: true
+                position: true
               }
             }
           }
@@ -357,7 +351,7 @@ export async function POST(request: NextRequest) {
           payPeriodEnd: endDate.toISOString(),
           generatedAt: new Date().toISOString(),
           department: department || 'All Departments',
-          employees: payrollResults.map(result => ({
+          employees: payrollResults.map((result: any) => ({
             employeeId: result.user?.employeeId || 'N/A',
             name: `${result.user?.firstName || ''} ${result.user?.lastName || ''}`.trim(),
             department: result.user?.department || 'Unassigned',

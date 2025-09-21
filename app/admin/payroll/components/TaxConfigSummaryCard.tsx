@@ -106,10 +106,7 @@ export function TaxConfigSummaryCard({
                   <span>Overtime ({'>'}2h):</span>
                   <span className="font-mono">{ratesConfig.overtimeRate2}x</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Night Diff:</span>
-                  <span className="font-mono">{ratesConfig.nightDifferential}%</span>
-                </div>
+                {/* Night differential removed */}
                 <div className="flex justify-between">
                   <span>Holiday (Reg):</span>
                   <span className="font-mono">{ratesConfig.regularHolidayRate}%</span>

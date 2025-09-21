@@ -111,7 +111,6 @@ export async function GET(request: NextRequest) {
             'working_hours_lateDeductionAmount',
             'rates_overtimeRate1',
             'rates_overtimeRate2',
-            'rates_nightDifferential',
             'rates_regularHolidayRate',
             'rates_specialHolidayRate',
             'rates_currency'

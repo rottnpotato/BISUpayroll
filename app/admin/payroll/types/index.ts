@@ -78,9 +78,6 @@ export interface WorkingHoursConfig {
   dailyHours: number
   weeklyHours: number
   overtimeThreshold: number
-  nightShiftStart: number
-  nightShiftEnd: number
-  nightShiftEnabled: boolean
   lateGraceMinutes: number
   lateDeductionBasis: 'per_minute' | 'per_hour' | 'fixed_amount'
   lateDeductionAmount: number
@@ -92,7 +89,6 @@ export interface RatesConfig {
   id?: string
   overtimeRate1: number
   overtimeRate2: number
-  nightDifferential: number
   regularHolidayRate: number
   specialHolidayRate: number
   currency: 'PHP'
@@ -240,7 +236,6 @@ export interface PayrollRole {
   isActive: boolean
   baseSalary: number | null
   overtimeEligible: boolean
-  nightDifferentialEligible: boolean
   holidayPayEligible: boolean
   gsisEligible: boolean
   philHealthEligible: boolean
@@ -277,7 +272,6 @@ export interface PayrollRoleFormData {
   position: string
   baseSalary: string
   overtimeEligible: boolean
-  nightDifferentialEligible: boolean
   holidayPayEligible: boolean
   gsisEligible: boolean
   philHealthEligible: boolean
@@ -312,7 +306,6 @@ export interface PayrollData {
     regularPay: number
     overtimePay: number
     holidayPay: number
-    nightDifferential: number
     allowances: number
     bonuses: number
     thirteenthMonthPay: number

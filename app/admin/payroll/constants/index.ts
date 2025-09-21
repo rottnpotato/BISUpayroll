@@ -34,17 +34,7 @@ export const payrollRules: PayrollRule[] = [
     applyToAll: true,
     category: "overtime"
   },
-  { 
-    id: "4", 
-    name: "Night Differential", 
-    type: "additional",
-    amount: 10, 
-    isPercentage: true,
-    isActive: true,
-    description: "Additional 10% for work between 10PM and 6AM (Government rate)",
-    applyToAll: true,
-    category: "differential"
-  },
+  
   { 
     id: "5", 
     name: "Holiday Differential (Regular)", 

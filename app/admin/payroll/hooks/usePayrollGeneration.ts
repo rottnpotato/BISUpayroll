@@ -199,7 +199,6 @@ export const usePayrollGeneration = () => {
               regularPay: record.regularPay || 0,
               overtimePay: record.overtimePay || 0,
               holidayPay: record.holidayPay || 0,
-              nightDifferential: record.nightDifferential || 0,
               allowances: record.allowances || 0,
               bonuses: record.bonuses || 0,
               thirteenthMonthPay: record.thirteenthMonthPay || 0,

@@ -66,8 +66,7 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
     department: "",
     position: "",
     baseSalary: "",
-    overtimeEligible: true,
-    nightDifferentialEligible: true,
+  overtimeEligible: true,
     holidayPayEligible: true,
     gsisEligible: true,
     philHealthEligible: true,
@@ -197,7 +196,6 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
       position: role.position || "",
       baseSalary: role.baseSalary?.toString() || "",
       overtimeEligible: role.overtimeEligible,
-      nightDifferentialEligible: role.nightDifferentialEligible,
       holidayPayEligible: role.holidayPayEligible,
       gsisEligible: role.gsisEligible,
       philHealthEligible: role.philHealthEligible,
@@ -216,8 +214,7 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
       department: "",
       position: "",
       baseSalary: "",
-      overtimeEligible: true,
-      nightDifferentialEligible: true,
+  overtimeEligible: true,
       holidayPayEligible: true,
       gsisEligible: true,
       philHealthEligible: true,
@@ -368,12 +365,7 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
                             />
                           </div>
                           <div className="flex items-center justify-between">
-                            <Label htmlFor="nightDifferentialEligible" className="text-sm">Night Differential</Label>
-                            <Switch 
-                              id="nightDifferentialEligible"
-                              checked={formData.nightDifferentialEligible}
-                              onCheckedChange={(checked) => setFormData({...formData, nightDifferentialEligible: checked})}
-                            />
+                              {/* Night differential removed */}
                           </div>
                           <div className="flex items-center justify-between">
                             <Label htmlFor="holidayPayEligible" className="text-sm">Holiday Pay</Label>
@@ -522,7 +514,6 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
                         <Switch
                           checked={role.isActive}
                           onCheckedChange={(checked) => handleToggleRole(role.id, checked)}
-                          size="sm"
                         />
                       </div>
                       
@@ -557,25 +548,17 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
                           <Switch
                             checked={role.overtimeEligible}
                             onCheckedChange={(checked) => handleToggleEligibility(role.id, 'overtimeEligible', checked)}
-                            size="sm"
                             disabled={!role.isActive}
                           />
                           <span className={!role.isActive ? 'text-gray-400' : ''}>OT</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Switch
-                            checked={role.nightDifferentialEligible}
-                            onCheckedChange={(checked) => handleToggleEligibility(role.id, 'nightDifferentialEligible', checked)}
-                            size="sm"
-                            disabled={!role.isActive}
-                          />
-                          <span className={!role.isActive ? 'text-gray-400' : ''}>Night</span>
+                          {/* Night differential removed */}
                         </div>
                         <div className="flex items-center gap-1">
                           <Switch
                             checked={role.holidayPayEligible}
                             onCheckedChange={(checked) => handleToggleEligibility(role.id, 'holidayPayEligible', checked)}
-                            size="sm"
                             disabled={!role.isActive}
                           />
                           <span className={!role.isActive ? 'text-gray-400' : ''}>Holiday</span>
@@ -584,7 +567,6 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
                           <Switch
                             checked={role.gsisEligible}
                             onCheckedChange={(checked) => handleToggleEligibility(role.id, 'gsisEligible', checked)}
-                            size="sm"
                             disabled={!role.isActive}
                           />
                           <span className={!role.isActive ? 'text-gray-400' : ''}>GSIS</span>
@@ -593,7 +575,6 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
                           <Switch
                             checked={role.thirteenthMonthEligible}
                             onCheckedChange={(checked) => handleToggleEligibility(role.id, 'thirteenthMonthEligible', checked)}
-                            size="sm"
                             disabled={!role.isActive}
                           />
                           <span className={!role.isActive ? 'text-gray-400' : ''}>13th</span>
