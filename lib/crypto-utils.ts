@@ -57,8 +57,8 @@ export async function encryptPayrollFile(
     const iv = crypto.randomBytes(IV_LENGTH)
     const key = getEncryptionKey(salt)
 
-    // Create cipher
-    const cipher = crypto.createCipher(ALGORITHM, key)
+    // Create cipher (use createCipheriv for AES-GCM)
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv)
     cipher.setAAD(Buffer.from(originalFileName, 'utf8'))
 
     // Encrypt the file
@@ -135,8 +135,8 @@ export async function decryptPayrollFile(
     // Generate key
     const key = getEncryptionKey(salt)
 
-    // Create decipher
-    const decipher = crypto.createDecipher(ALGORITHM, key)
+    // Create decipher (use createDecipheriv for AES-GCM)
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv)
     decipher.setAAD(Buffer.from(originalFileName, 'utf8'))
     decipher.setAuthTag(tag)
 

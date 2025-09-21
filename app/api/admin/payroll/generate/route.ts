@@ -7,6 +7,8 @@ import {
   calculateBaseSalaryFromRules
 } from "@/lib/payroll-calculations"
 import { encryptPayrollFile, createSecureDirectory } from "@/lib/crypto-utils"
+import { cookies } from "next/headers"
+import { verifyToken } from "@/lib/auth"
 import fs from 'fs'
 import path from 'path'
 
@@ -400,12 +402,35 @@ export async function POST(request: NextRequest) {
           department
         )
 
-        // Get current user from request (you might need to implement authentication middleware)
-        const currentUserId = 'admin-user-id' // This should come from authentication
+        // Get current user from auth cookie; fallback to any ADMIN user
+        let currentUserId: string | null = null
+        try {
+          const cookieStore = await cookies()
+          const token = cookieStore.get('auth-token')?.value
+          if (token) {
+            const user = await verifyToken(token)
+            if (user?.id) currentUserId = user.id
+          }
+        } catch (e) {
+          console.warn('Could not resolve current user from token, will try fallback admin user')
+        }
+        if (!currentUserId) {
+          const fallbackAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } })
+          if (fallbackAdmin?.id) {
+            currentUserId = fallbackAdmin.id
+          } else if (users.length > 0) {
+            // last resort: use the first employee in this batch to satisfy FK constraint
+            currentUserId = users[0].id
+          } else {
+            // if still null, abort file record creation to avoid FK failure
+            console.warn('No user available to set as generatedBy; skipping PayrollFile record creation')
+          }
+        }
 
         // Create PayrollFile record
-        payrollFileRecord = await prisma.payrollFile.create({
-          data: {
+        if (currentUserId) {
+          payrollFileRecord = await prisma.payrollFile.create({
+            data: {
             fileName: encryptionResult.metadata.originalFileName,
             filePath: encryptionResult.encryptedFilePath,
             fileSize: encryptionResult.metadata.fileSize,
@@ -413,7 +438,7 @@ export async function POST(request: NextRequest) {
             reportType: 'monthly',
             payPeriodStart: startDate,
             payPeriodEnd: endDate,
-            generatedBy: currentUserId,
+              generatedBy: currentUserId,
             department: department || null,
             employeeCount: payrollResults.length,
             totalGrossPay: payrollSummary.totals.totalGrossPay,
@@ -426,8 +451,9 @@ export async function POST(request: NextRequest) {
               originalFileName: encryptionResult.metadata.originalFileName
             }),
             checksum: encryptionResult.metadata.checksum
-          }
-        })
+            }
+          })
+        }
 
         console.log(`Payroll file encrypted and stored: ${encryptionResult.encryptedFilePath}`)
       } catch (fileError) {

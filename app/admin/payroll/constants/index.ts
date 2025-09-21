@@ -284,32 +284,5 @@ export const reportTemplateData = [
     iconColor: "blue-500",
     category: "payroll",
     type: "monthly"
-  },
-  {
-    id: "template-002",
-    name: "Department Payroll Report",
-    description: "Generate payroll report filtered by specific department",
-    iconName: "Users",
-    iconColor: "green-500",
-    category: "payroll",
-    type: "department"
-  },
-  {
-    id: "template-003",
-    name: "Custom Period Payroll",
-    description: "Generate payroll for custom date range with detailed calculations",
-    iconName: "CalendarRange",
-    iconColor: "purple-500",
-    category: "payroll",
-    type: "custom"
-  },
-  {
-    id: "template-004",
-    name: "Tax Withholding Summary",
-    description: "Detailed breakdown of tax withholdings and contributions",
-    iconName: "BarChart",
-    iconColor: "orange-500",
-    category: "tax",
-    type: "tax"
   }
 ]

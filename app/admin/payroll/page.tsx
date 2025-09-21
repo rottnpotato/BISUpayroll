@@ -32,9 +32,9 @@ import {
   PayrollOverview,
   ReportsHeader,
   RecentReportsTable,
-  PayrollGenerationCard,
   PayrollPreviewDialog,
-  ConfigurationLayout
+  ConfigurationLayout,
+  MonthlyPayrollGenerator
 } from './components'
 
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
@@ -79,8 +79,9 @@ export default function PayrollPage() {
   // Handle URL hash for tab navigation
   useEffect(() => {
     const hash = window.location.hash.replace('#', '')
-    if (hash && ['overview', 'rules', 'schedules', 'configuration', 'reports'].includes(hash)) {
-      setActiveTab(hash)
+    const normalized = hash === 'reports' ? 'ledger' : hash
+    if (normalized && ['overview', 'rules', 'schedules', 'configuration', 'ledger'].includes(normalized)) {
+      setActiveTab(normalized)
     }
   }, [])
   
@@ -112,7 +113,6 @@ export default function PayrollPage() {
     payrollData,
     selectedTemplate,
     generatePayroll,
-    testUsers,
     clearPayrollData
   } = usePayrollGeneration()
 
@@ -228,17 +228,16 @@ export default function PayrollPage() {
   const filteredReports = filterReports(reports, searchTerm, selectedReportType)
 
   // Handle payroll generation for reports tab
-  const handleGeneratePayroll = async (templateData: any) => {
-    const templateDateRange = templateDateRanges[templateData.id]
+  const handleGenerateMonthlyPayroll = async () => {
+    const monthlyTemplate = reportTemplateData.find(t => t.type === 'monthly')
+    if (!monthlyTemplate) return
+    const templateDateRange = templateDateRanges[monthlyTemplate.id]
     const result = await generatePayroll(
-      { ...templateData, icon: null }, // Convert template data to ReportTemplate
+      { ...monthlyTemplate, icon: null } as any,
       templateDateRange!,
       selectedDepartment
     )
-    
-    if (result) {
-      setShowPreview(true)
-    }
+    if (result) setShowPreview(true)
   }
 
   // Handle print for reports tab
@@ -362,9 +361,9 @@ export default function PayrollPage() {
               <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse" />
             )}
           </TabsTrigger>
-          <TabsTrigger value="reports" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
+          <TabsTrigger value="ledger" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
             <FileText className="h-4 w-4" />
-            Reports
+            Ledger
           </TabsTrigger>
         </TabsList>
 
@@ -434,76 +433,57 @@ export default function PayrollPage() {
           />
         </TabsContent>
 
-        <TabsContent value="reports" className="space-y-6">
+        <TabsContent value="ledger" className="space-y-6">
           <motion.div variants={itemVariants}>
-            {/* <ReportsHeader 
-              title="Payroll Reports"
-              description="Generate comprehensive payroll reports with attendance integration"
-            /> */}
+            {reportsLoading ? (
+              <SkeletonCard lines={8} />
+            ) : (
+              <div className="grid grid-cols-1 gap-6">
+                <MonthlyPayrollGenerator
+                  dateRange={templateDateRanges[reportTemplateData.find(t => t.type === 'monthly')!.id]}
+                  onDateRangeChange={(range) => {
+                    const monthly = reportTemplateData.find(t => t.type === 'monthly')!
+                    updateTemplateDateRange(monthly.id, range)
+                  }}
+                  selectedDepartment={selectedDepartment}
+                  onDepartmentChange={setSelectedDepartment}
+                  onGenerate={handleGenerateMonthlyPayroll}
+                  isGenerating={isGenerating}
+                  schedules={schedules}
+                />
 
-            <Tabs value={reportsTab} onValueChange={setReportsTab} className="mb-6">
-              <TabsList className="text-white w-full bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium border border-bisu-yellow/20">
-                <TabsTrigger 
-                  value="recent" 
-                  className="flex-1 data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
                 >
-                  Recent Reports
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="generate" 
-                  className="flex-1 data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
-                >
-                  Generate Payroll
-                </TabsTrigger>
-              </TabsList>
-
-              {reportsLoading ? (
-                <SkeletonCard lines={8} />
-              ) : (
-                <>
-                  <TabsContent value="recent" className="mt-6">
-                    <motion.div
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate="visible"
-                    >
-                      <RecentReportsTable
-                        reports={filteredReports}
-                        searchTerm={searchTerm}
-                        setSearchTerm={setSearchTerm}
-                        selectedReportType={selectedReportType}
-                        setSelectedReportType={setSelectedReportType}
-                        dateRange={dateRange}
-                        setDateRange={setDateRange}
-                        onTestUsers={testUsers}
-                      />
-                    </motion.div>
-                  </TabsContent>
-
-                  <TabsContent value="generate" className="mt-6">
-                    <motion.div
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate={reportsTab === "generate" ? "visible" : "hidden"}
-                      className="grid grid-cols-1 md:grid-cols-2 gap-6"
-                    >
-                      {reportTemplateData.map((template) => (
-                        <PayrollGenerationCard
-                          key={template.id}
-                          template={template}
-                          templateDateRange={templateDateRanges[template.id]}
-                          onDateRangeChange={(range) => updateTemplateDateRange(template.id, range)}
-                          selectedDepartment={selectedDepartment}
-                          onDepartmentChange={setSelectedDepartment}
-                          onGenerate={() => handleGeneratePayroll(template)}
-                          isGenerating={isGenerating}
-                        />
-                      ))}
-                    </motion.div>
-                  </TabsContent>
-                </>
-              )}
-            </Tabs>
+                  <RecentReportsTable
+                    reports={filteredReports}
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    selectedReportType={selectedReportType}
+                    setSelectedReportType={setSelectedReportType}
+                    dateRange={dateRange}
+                    setDateRange={setDateRange}
+                    onOpenReport={(report) => {
+                      if (report.downloadUrl) {
+                        window.open(report.downloadUrl, '_blank', 'noopener,noreferrer')
+                      }
+                    }}
+                    onDownload={(report) => {
+                      if (report.downloadUrl) {
+                        window.open(report.downloadUrl, '_blank', 'noopener,noreferrer')
+                      }
+                    }}
+                    onPrint={(report) => {
+                      if (report.downloadUrl) {
+                        window.open(report.downloadUrl, '_blank', 'noopener,noreferrer')
+                      }
+                    }}
+                  />
+                </motion.div>
+              </div>
+            )}
           </motion.div>
         </TabsContent>
       </Tabs>

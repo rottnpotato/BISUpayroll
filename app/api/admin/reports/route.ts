@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
       id: file.id,
       name: file.fileName,
       type: file.reportType,
-      generatedBy: `${file.generatedByUser.firstName} ${file.generatedByUser.lastName}`,
-      generatedOn: file.generatedAt.toISOString(),
+      generatedBy: file.generatedByUser ? `${file.generatedByUser.firstName} ${file.generatedByUser.lastName}` : 'System',
+      generatedOn: file.generatedAt?.toISOString?.() || new Date(file.generatedAt).toISOString(),
       status: file.status,
       downloadUrl: `/api/admin/payroll/files/${file.id}/download`
     }))

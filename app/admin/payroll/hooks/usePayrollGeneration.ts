@@ -29,10 +29,16 @@ export const usePayrollGeneration = () => {
     setSelectedTemplate(template)
 
     try {
+      // Normalize to start-of-day and end-of-day to avoid off-by-one inclusions
+      const start = new Date(templateDateRange.from)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(templateDateRange.to)
+      end.setHours(23, 59, 59, 999)
+
       console.log("Generating report with params:", {
         template: template.type,
-        payPeriodStart: templateDateRange.from.toISOString(),
-        payPeriodEnd: templateDateRange.to.toISOString(),
+        payPeriodStart: start.toISOString(),
+        payPeriodEnd: end.toISOString(),
         department: selectedDepartment === "all" ? undefined : selectedDepartment,
         role: "EMPLOYEE"
       })
@@ -46,8 +52,8 @@ export const usePayrollGeneration = () => {
         case "custom":
           // Use existing payroll generation endpoint for monthly and custom period reports
           requestBody = {
-            payPeriodStart: templateDateRange.from.toISOString(),
-            payPeriodEnd: templateDateRange.to.toISOString(),
+            payPeriodStart: start.toISOString(),
+            payPeriodEnd: end.toISOString(),
             department: selectedDepartment === "all" ? undefined : selectedDepartment,
             role: "EMPLOYEE"
           }
@@ -71,8 +77,8 @@ export const usePayrollGeneration = () => {
           
           const deptUrl = new URL('/api/admin/reports', window.location.origin)
           deptUrl.searchParams.set('type', 'department-payroll')
-          deptUrl.searchParams.set('startDate', templateDateRange.from.toISOString())
-          deptUrl.searchParams.set('endDate', templateDateRange.to.toISOString())
+          deptUrl.searchParams.set('startDate', start.toISOString())
+          deptUrl.searchParams.set('endDate', end.toISOString())
           deptUrl.searchParams.set('department', selectedDepartment)
           
           response = await fetch(deptUrl.toString())
@@ -82,8 +88,8 @@ export const usePayrollGeneration = () => {
           // Use reports endpoint for tax withholding summary
           const taxUrl = new URL('/api/admin/reports', window.location.origin)
           taxUrl.searchParams.set('type', 'tax-withholding-summary')
-          taxUrl.searchParams.set('startDate', templateDateRange.from.toISOString())
-          taxUrl.searchParams.set('endDate', templateDateRange.to.toISOString())
+          taxUrl.searchParams.set('startDate', start.toISOString())
+          taxUrl.searchParams.set('endDate', end.toISOString())
           if (selectedDepartment !== "all") {
             taxUrl.searchParams.set('department', selectedDepartment)
           }
@@ -162,9 +168,7 @@ export const usePayrollGeneration = () => {
             } else {
               // Fallback: fetch attendance data if needed
               try {
-                const attendanceResponse = await fetch(
-                  `/api/admin/attendance?userId=${record.userId}&startDate=${templateDateRange.from?.toISOString()}&endDate=${templateDateRange.to?.toISOString()}`
-                )
+                const attendanceResponse = await fetch(`/api/admin/attendance?userId=${record.userId}&startDate=${start.toISOString()}&endDate=${end.toISOString()}`)
                 
                 if (attendanceResponse.ok) {
                   const attendance = await attendanceResponse.json()
