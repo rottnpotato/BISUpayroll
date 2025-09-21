@@ -70,9 +70,9 @@ export function PayrollRulesTable({
         <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <CardTitle className="text-bisu-yellow text-xl">Payroll Rules</CardTitle>
+              <CardTitle className="text-bisu-yellow text-xl">Payroll Calculations</CardTitle>
               <CardDescription className="text-bisu-yellow-light">
-                Manage salary computation rules and deductions
+                Manage salary calculation items and deductions
               </CardDescription>
             </div>
             <Button 
@@ -80,7 +80,7 @@ export function PayrollRulesTable({
               className="bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow-light hover:text-bisu-purple-medium border-2 border-bisu-yellow-light shadow-md"
             >
               <Plus size={16} className="mr-2" />
-              Add Rule
+              Add Calculation
             </Button>
           </div>
           
@@ -90,7 +90,7 @@ export function PayrollRulesTable({
                 value="all" 
                 className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
               >
-                All Rules
+                All Calculations
               </TabsTrigger>
               <TabsTrigger 
                 value="base" 
@@ -124,7 +124,7 @@ export function PayrollRulesTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="font-semibold">Rule Name</TableHead>
+                  <TableHead className="font-semibold">Calculation Name</TableHead>
                   <TableHead className="font-semibold">Type</TableHead>
                   <TableHead className="font-semibold">Amount</TableHead>
                   <TableHead className="font-semibold">Category</TableHead>
@@ -137,7 +137,7 @@ export function PayrollRulesTable({
                 {filteredRules.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                      No rules found for this category. Create your first rule to get started.
+                      No calculations found for this category. Create your first item to get started.
                     </TableCell>
                   </TableRow>
                 ) : (

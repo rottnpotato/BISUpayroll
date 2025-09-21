@@ -303,7 +303,7 @@ export function PayrollOverview({
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                 <BarChart3 className="h-5 w-5" />
-                Active Rules
+                Active Calculations
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
@@ -323,12 +323,12 @@ export function PayrollOverview({
                   ))
                 ) : (
                   <div className="flex items-center justify-center h-full text-center text-muted-foreground text-sm">
-                    No payroll rules configured
+                    No payroll calculations configured
                   </div>
                 )}
                 {rules.length > 3 && (
                   <div className="text-xs text-muted-foreground text-center pt-2">
-                    +{rules.length - 3} more rules
+                    +{rules.length - 3} more items
                   </div>
                 )}
               </div>

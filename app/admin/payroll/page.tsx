@@ -263,7 +263,7 @@ export default function PayrollPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Payroll Management Configuration</h1>
             <p className="text-muted-foreground">
-              Configure payroll rules, schedules, and processing parameters
+              Configure payroll calculations, schedules, and processing parameters
             </p>
           </div>
         </div>
@@ -293,7 +293,7 @@ export default function PayrollPage() {
             Payroll Management Configuration
           </h1>
           <p className="text-muted-foreground">
-            Configure payroll rules, schedules, and processing parameters for BISU
+            Configure payroll calculations, schedules, and processing parameters for BISU
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -345,7 +345,7 @@ export default function PayrollPage() {
           </TabsTrigger>
           <TabsTrigger value="rules" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
             <Calculator className="h-4 w-4" />
-            Payroll Rules
+            Payroll Calculations
           </TabsTrigger>
           <TabsTrigger value="schedules" className="flex items-center gap-2 text-bisu-purple-deep data-[state=active]:bg-bisu-purple-deep data-[state=active]:text-white">
             <CalendarDays className="h-4 w-4" />
@@ -383,7 +383,7 @@ export default function PayrollPage() {
               <CardHeader className="bg-bisu-purple-extralight">
                 <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                   <Calculator className="h-5 w-5" />
-                  Payroll Rules Management
+                  Payroll Calculations Management
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -507,7 +507,7 @@ export default function PayrollPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Payroll Rule Dialog */}
+      {/* Payroll Calculation Dialog */}
       <PayrollRuleDialog
         isOpen={isDialogOpen}
         onClose={() => {
@@ -525,7 +525,7 @@ export default function PayrollPage() {
         users={users}
         isUsersLoading={false}
         isEdit={!!editingRule}
-        title={editingRule ? "Edit Payroll Rule" : "Add New Payroll Rule"}
+        title={editingRule ? "Edit Payroll Calculation" : "Add New Payroll Calculation"}
       />
 
       {/* Unsaved Changes Dialog */}

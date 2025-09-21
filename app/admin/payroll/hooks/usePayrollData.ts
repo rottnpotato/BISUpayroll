@@ -18,7 +18,7 @@ export const usePayrollData = () => {
       }
     } catch (error) {
       console.error("Error fetching rules:", error)
-      toast.error("Failed to load payroll rules")
+      toast.error("Failed to load payroll calculations")
     }
   }
 

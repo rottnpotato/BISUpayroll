@@ -88,18 +88,18 @@ export const usePayrollRules = (refetch: () => Promise<void>) => {
       })
 
       if (response.ok) {
-        toast.success("Payroll rule added successfully")
+        toast.success("Payroll calculation added successfully")
         resetForm()
         await refetch()
         return true
       } else {
         const error = await response.json()
-        toast.error(error.error || "Failed to add payroll rule")
+        toast.error(error.error || "Failed to add payroll calculation")
         return false
       }
     } catch (error) {
-      console.error("Error adding payroll rule:", error)
-      toast.error("Failed to add payroll rule")
+      console.error("Error adding payroll calculation:", error)
+      toast.error("Failed to add payroll calculation")
       return false
     }
   }
@@ -146,24 +146,24 @@ export const usePayrollRules = (refetch: () => Promise<void>) => {
       })
 
       if (response.ok) {
-        toast.success("Payroll rule updated successfully")
+        toast.success("Payroll calculation updated successfully")
         resetForm()
         await refetch()
         return true
       } else {
         const error = await response.json()
-        toast.error(error.error || "Failed to update payroll rule")
+        toast.error(error.error || "Failed to update payroll calculation")
         return false
       }
     } catch (error) {
-      console.error("Error updating payroll rule:", error)
-      toast.error("Failed to update payroll rule")
+      console.error("Error updating payroll calculation:", error)
+      toast.error("Failed to update payroll calculation")
       return false
     }
   }
 
   const handleDeleteRule = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this rule?")) {
+    if (!window.confirm("Are you sure you want to delete this calculation?")) {
       return false
     }
 
@@ -173,17 +173,17 @@ export const usePayrollRules = (refetch: () => Promise<void>) => {
       })
 
       if (response.ok) {
-        toast.success("Payroll rule deleted successfully")
+        toast.success("Payroll calculation deleted successfully")
         await refetch()
         return true
       } else {
         const error = await response.json()
-        toast.error(error.error || "Failed to delete payroll rule")
+        toast.error(error.error || "Failed to delete payroll calculation")
         return false
       }
     } catch (error) {
-      console.error("Error deleting payroll rule:", error)
-      toast.error("Failed to delete payroll rule")
+      console.error("Error deleting payroll calculation:", error)
+      toast.error("Failed to delete payroll calculation")
       return false
     }
   }
@@ -202,17 +202,17 @@ export const usePayrollRules = (refetch: () => Promise<void>) => {
       })
 
       if (response.ok) {
-        toast.success(`Rule ${rule.isActive ? "disabled" : "enabled"} successfully`)
+        toast.success(`Calculation ${rule.isActive ? "disabled" : "enabled"} successfully`)
         await refetch()
         return true
       } else {
         const error = await response.json()
-        toast.error(error.error || "Failed to update rule status")
+        toast.error(error.error || "Failed to update calculation status")
         return false
       }
     } catch (error) {
-      console.error("Error updating rule status:", error)
-      toast.error("Failed to update rule status")
+      console.error("Error updating calculation status:", error)
+      toast.error("Failed to update calculation status")
       return false
     }
   }

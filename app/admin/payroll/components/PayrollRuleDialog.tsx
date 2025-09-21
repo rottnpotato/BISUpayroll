@@ -56,18 +56,18 @@ export function PayrollRuleDialog({
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {title || (isEdit ? "Edit Payroll Rule" : "Add New Payroll Rule")}
+            {title || (isEdit ? "Edit Payroll Calculation" : "Add New Payroll Calculation")}
           </DialogTitle>
           <DialogDescription>
             {isEdit 
-              ? "Update the payroll rule details below." 
-              : "Create a new payroll rule for salary calculations."}
+              ? "Update the payroll calculation details below." 
+              : "Create a new payroll calculation item for salary computations."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Rule Name *</Label>
+              <Label htmlFor="name">Calculation Name *</Label>
               <Input
                 id="name"
                 name="name"
@@ -78,7 +78,7 @@ export function PayrollRuleDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="type">Rule Type *</Label>
+              <Label htmlFor="type">Calculation Type *</Label>
               <Select value={formData.type} onValueChange={handleSelectChange("type")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
@@ -143,7 +143,7 @@ export function PayrollRuleDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
@@ -250,7 +250,7 @@ export function PayrollRuleDialog({
             Cancel
           </Button>
           <Button onClick={handleSubmit}>
-            {isEdit ? "Update Rule" : "Add Rule"}
+            {isEdit ? "Update Calculation" : "Add Calculation"}
           </Button>
         </DialogFooter>
       </DialogContent>
