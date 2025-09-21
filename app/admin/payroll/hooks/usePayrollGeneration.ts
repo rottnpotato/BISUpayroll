@@ -220,8 +220,29 @@ export const usePayrollGeneration = () => {
       }
 
       console.log("Detailed payroll data:", detailedPayroll)
+
+      // Guard: Block payroll generation when there is NO attendance in the selected range
+      // Applies to monthly/custom payroll ledger generation only (not tax reports)
+      if ((template.type === "monthly" || template.type === "custom") && Array.isArray(detailedPayroll)) {
+        const hasAnyAttendance = detailedPayroll.some((r: any) => {
+          const days = r?.attendanceData?.daysPresent ?? r?.daysWorked ?? 0
+          const hours = r?.attendanceData?.hoursWorked ?? r?.hoursWorked ?? 0
+          return (Number(days) > 0) || (Number(hours) > 0)
+        })
+
+        if (!hasAnyAttendance) {
+          toast({
+            title: "No Attendance Found",
+            description: "No attendance records were found within the selected date range. Please select a range with attendance before generating the payroll ledger.",
+            variant: "destructive"
+          })
+          // Do NOT set payroll data to avoid opening preview upstream
+          return
+        }
+      }
+
       setPayrollData(detailedPayroll)
-      
+
       toast({
         title: "Success",
         description: `${template.name} generated successfully for ${generatedCount} employees`,

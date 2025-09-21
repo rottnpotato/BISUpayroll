@@ -3,7 +3,10 @@
 import * as React from "react"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 5000
+// How long before the toast is removed from state after being dismissed (for exit animation)
+const TOAST_REMOVE_DELAY = 300
+// Default auto-dismiss duration (ms)
+const TOAST_DURATION_DEFAULT = 2500
 
 type ToasterToast = {
   id: string
@@ -11,6 +14,8 @@ type ToasterToast = {
   description?: React.ReactNode
   action?: React.ReactElement
   variant?: "default" | "destructive"
+  // Optional duration override (ms) before auto-dismiss
+  duration?: number
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
@@ -156,6 +161,14 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Schedule auto-dismiss after the configured duration (default 2.5s)
+  const autoDismissMs = props.duration ?? TOAST_DURATION_DEFAULT
+  if (autoDismissMs > 0) {
+    setTimeout(() => {
+      dismiss()
+    }, autoDismissMs)
+  }
 
   return {
     id: id,

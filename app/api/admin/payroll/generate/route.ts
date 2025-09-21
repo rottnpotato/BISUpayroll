@@ -11,6 +11,7 @@ import { cookies } from "next/headers"
 import { verifyToken } from "@/lib/auth"
 import fs from 'fs'
 import path from 'path'
+import { PayrollResultStatus } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -215,65 +216,78 @@ export async function POST(request: NextRequest) {
         // Calculate complete payroll using our new utility
         const result: PayrollCalculationResult = calculateCompletePayroll(calculationData)
 
-        // Create PayrollResult record
-        const payrollResult = await prisma.payrollResult.create({
-          data: {
+        // Upsert PayrollResult record (idempotent for repeated generations on the same period)
+        const updatableFields = {
+          // Basic salary information
+          baseSalary: baseSalary,
+          dailyRate: result.dailyRate,
+          hourlyRate: result.hourlyRate,
+
+          // Attendance data
+          daysWorked,
+          hoursWorked: totalHoursWorked,
+          overtimeHours,
+          undertimeHours,
+          lateHours,
+          holidayHours,
+          nightShiftHours: 0,
+
+          // Earnings breakdown
+          regularPay: result.regularPay,
+          overtimePay: result.overtimePay,
+          holidayPay: result.holidayPay,
+          nightDifferential: 0,
+          allowances: result.allowances,
+          bonuses: result.bonuses,
+          thirteenthMonthPay: result.thirteenthMonthPay,
+          serviceIncentiveLeave: result.serviceIncentiveLeave,
+          otherEarnings: result.otherEarnings,
+
+          // Gross pay
+          grossPay: result.grossPay,
+
+          // Mandatory contributions
+          gsisContribution: result.gsisContribution,
+          philHealthContribution: result.philHealthContribution,
+          pagibigContribution: result.pagibigContribution,
+
+          // Tax calculations
+          taxableIncome: result.taxableIncome,
+          withholdingTax: result.withholdingTax,
+
+          // Other deductions
+          lateDeductions: result.lateDeductions,
+          undertimeDeductions: result.undertimeDeductions,
+          loanDeductions: result.loanDeductions,
+          otherDeductions: result.otherDeductions,
+
+          // Totals
+          totalEarnings: result.totalEarnings,
+          totalDeductions: result.totalDeductions,
+          netPay: result.netPay,
+
+          // Applied rules as JSON
+          appliedRules: JSON.stringify(result.appliedRulesBreakdown)
+        }
+
+        const payrollResult = await prisma.payrollResult.upsert({
+          where: {
+            userId_payPeriodStart_payPeriodEnd: {
+              userId: user.id,
+              payPeriodStart: startDate,
+              payPeriodEnd: endDate
+            }
+          },
+          create: {
             userId: user.id,
             payPeriodStart: startDate,
             payPeriodEnd: endDate,
-            
-            // Basic salary information
-            baseSalary: baseSalary,
-            dailyRate: result.dailyRate,
-            hourlyRate: result.hourlyRate,
-            
-            // Attendance data
-            daysWorked,
-            hoursWorked: totalHoursWorked,
-            overtimeHours,
-            undertimeHours,
-            lateHours,
-            holidayHours,
-            nightShiftHours: 0,
-            
-            // Earnings breakdown
-            regularPay: result.regularPay,
-            overtimePay: result.overtimePay,
-            holidayPay: result.holidayPay,
-            nightDifferential: 0,
-            allowances: result.allowances,
-            bonuses: result.bonuses,
-            thirteenthMonthPay: result.thirteenthMonthPay,
-            serviceIncentiveLeave: result.serviceIncentiveLeave,
-            otherEarnings: result.otherEarnings,
-            
-            // Gross pay
-            grossPay: result.grossPay,
-            
-            // Mandatory contributions
-            gsisContribution: result.gsisContribution,
-            philHealthContribution: result.philHealthContribution,
-            pagibigContribution: result.pagibigContribution,
-            
-            // Tax calculations
-            taxableIncome: result.taxableIncome,
-            withholdingTax: result.withholdingTax,
-            
-            // Other deductions
-            lateDeductions: result.lateDeductions,
-            undertimeDeductions: result.undertimeDeductions,
-            loanDeductions: result.loanDeductions,
-            otherDeductions: result.otherDeductions,
-            
-            // Totals
-            totalEarnings: result.totalEarnings,
-            totalDeductions: result.totalDeductions,
-            netPay: result.netPay,
-            
-            // Applied rules as JSON
-            appliedRules: JSON.stringify(result.appliedRulesBreakdown),
-            
-            status: 'GENERATED'
+            ...updatableFields,
+            status: PayrollResultStatus.GENERATED
+          },
+          update: {
+            // Avoid changing keys; only update the computed fields
+            ...updatableFields
           },
           include: {
             user: {
