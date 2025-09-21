@@ -80,7 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="admin-light-scope flex h-screen bg-gray-50">
       <AnimatedSidebar
         items={adminNavItems}
         logo={<BisuLogo size="md" variant="light" showText={!sidebarCollapsed || !isMobile} />}

@@ -114,6 +114,29 @@ body {
     --radius: 0.5rem;
   }
 
+  /* Admin light scope: keep admin tokens light even in dark theme */
+  .admin-light-scope {
+    --background: 257 30% 96%;
+    --foreground: 258 35% 20%;
+    --card: 257 30% 100%;
+    --card-foreground: 258 35% 20%;
+    --popover: 257 30% 100%;
+    --popover-foreground: 258 35% 20%;
+    --primary: 258 35% 30%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 100% 51%;
+    --secondary-foreground: 258 35% 15%;
+    --muted: 257 30% 90%;
+    --muted-foreground: 258 25% 45%;
+    --accent: 257 30% 85%;
+    --accent-foreground: 258 35% 15%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 257 20% 80%;
+    --input: 257 20% 85%;
+    --ring: 258 35% 50%;
+  }
+
   .dark {
     --background: 258 35% 12%;
     --foreground: 257 30% 90%;
