@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback } from 'react'
-import { PayrollData } from '../types'
+import { PayrollData, ReportTemplate } from '../types'
 import { generatePrintHTML } from '../utils/reports'
 import { DateRange } from "react-day-picker"
 import { useToast } from "@/hooks/use-toast"
@@ -73,7 +73,8 @@ export const usePrintPayroll = () => {
     templateDateRange?: DateRange,
     reportType: string = 'custom',
     scheduleId?: string,
-    scheduleName?: string
+    scheduleName?: string,
+    selectedTemplate?: ReportTemplate | null
   ): Promise<boolean> => {
     try {
       if (!data || data.length === 0) {
@@ -95,7 +96,7 @@ export const usePrintPayroll = () => {
       }
 
       // Generate HTML content
-      const htmlContent = generatePrintHTML(data, templateDateRange)
+  const htmlContent = generatePrintHTML(data, templateDateRange, selectedTemplate || null)
       
       // Create a new window for printing
       const printWindow = window.open('', '_blank')
@@ -114,8 +115,9 @@ export const usePrintPayroll = () => {
       printWindow.document.close()
 
       // Generate file name
-      const dateStr = templateDateRange.from.toISOString().split('T')[0]
-      const fileName = `payroll_${reportType}_${dateStr}_${Date.now()}.pdf`
+  const dateStr = templateDateRange.from.toISOString().split('T')[0]
+  const suffix = selectedTemplate?.type ? selectedTemplate.type : reportType
+  const fileName = `payroll_${suffix}_${dateStr}_${Date.now()}.pdf`
 
       // Save file record to database
       try {

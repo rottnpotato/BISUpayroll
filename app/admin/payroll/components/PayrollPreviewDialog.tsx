@@ -46,7 +46,7 @@ export const PayrollPreviewDialog = ({
           <th rowSpan={2} className="border-r border-black p-1 w-24">Position</th>
           <th rowSpan={2} className="border-r border-black p-1 w-20">Employee No.</th>
           <th colSpan={7} className="border-r border-black p-1 text-center">Compensations</th>
-          <th colSpan={4} className="border-r border-black p-1 text-center">Deductions/Contributions</th>
+          <th colSpan={5} className="border-r border-black p-1 text-center">Deductions/Contributions</th>
           <th rowSpan={2} className="border-r border-black p-1 w-20">Net Amount Due</th>
           <th rowSpan={2} className="p-1 w-24">Signature</th>
         </tr>
@@ -59,7 +59,8 @@ export const PayrollPreviewDialog = ({
           <th className="border-r border-black p-1 w-16">Less: Undertime</th>
           <th className="border-r border-black p-1 w-20">Gross Amount Earned</th>
           <th className="border-r border-black p-1 w-16">Withholding Tax</th>
-          <th className="border-r border-black p-1 w-16">City Savings Loan</th>
+          <th className="border-r border-black p-1 w-16">GSIS Contribution</th>
+          <th className="border-r border-black p-1 w-16">PhilHealth Contribution</th>
           <th className="border-r border-black p-1 w-16">Pag-ibig Contribution</th>
           <th className="border-r border-black p-1 w-16">Total Deductions</th>
         </tr>
@@ -381,7 +382,7 @@ export const PayrollPreviewDialog = ({
             {(selectedTemplate?.type === "monthly" || selectedTemplate?.type === "custom" || !selectedTemplate?.type) && renderStandardPayrollTable()}
           </div>
 
-          {renderReportSummary()}
+          {/* {renderReportSummary()} */}
 
           {selectedTemplate?.type !== "tax" && (
             <div className="grid grid-cols-2 gap-4 mt-8 print:mt-4">

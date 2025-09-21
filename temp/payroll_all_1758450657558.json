@@ -1,0 +1,61 @@
+{
+  "payPeriodStart": "2025-09-01T16:00:00.000Z",
+  "payPeriodEnd": "2025-10-14T16:00:00.000Z",
+  "generatedAt": "2025-09-21T10:30:57.555Z",
+  "department": "All Departments",
+  "employees": [
+    {
+      "employeeId": "EMP001",
+      "name": "Juan Dela Cruz",
+      "department": "Faculty",
+      "position": "Assistant Professor",
+      "baseSalary": 1000,
+      "grossPay": 0,
+      "netPay": 0,
+      "totalDeductions": 674,
+      "regularPay": 0,
+      "overtimePay": 0,
+      "holidayPay": 0,
+      "allowances": 0,
+      "bonuses": 0,
+      "deductions": {
+        "gsisContribution": 450,
+        "philHealthContribution": 200,
+        "pagibigContribution": 24,
+        "withholdingTax": 0,
+        "lateDeductions": 0,
+        "loanDeductions": 0,
+        "otherDeductions": 0
+      }
+    },
+    {
+      "employeeId": "010101",
+      "name": "sjhjfkhasfjkhsdk sjfhsjdfhjk",
+      "department": "Faculty",
+      "position": "Instructor",
+      "baseSalary": 25000,
+      "grossPay": 0,
+      "netPay": 0,
+      "totalDeductions": 3075,
+      "regularPay": 0,
+      "overtimePay": 0,
+      "holidayPay": 0,
+      "allowances": 0,
+      "bonuses": 0,
+      "deductions": {
+        "gsisContribution": 2250,
+        "philHealthContribution": 625,
+        "pagibigContribution": 200,
+        "withholdingTax": 0,
+        "lateDeductions": 0,
+        "loanDeductions": 0,
+        "otherDeductions": 0
+      }
+    }
+  ],
+  "totals": {
+    "totalGrossPay": 0,
+    "totalNetPay": 0,
+    "totalDeductions": 3749
+  }
+}

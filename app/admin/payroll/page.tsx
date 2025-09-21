@@ -249,7 +249,8 @@ export default function PayrollPage() {
       templateDateRange, 
       selectedTemplate?.type || 'custom',
       undefined, // scheduleId - you can get this from the active schedule if needed
-      undefined  // scheduleName - you can get this from the active schedule if needed
+      undefined,  // scheduleName - you can get this from the active schedule if needed
+      selectedTemplate
     )
     if (success) {
       setShowPreview(false)
@@ -258,7 +259,7 @@ export default function PayrollPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 space-y-6 xl:ml-5">
+  <div className="space-y-6 xl:ml-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Payroll Management Configuration</h1>
