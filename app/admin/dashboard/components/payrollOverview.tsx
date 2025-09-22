@@ -42,24 +42,30 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
     const today = new Date()
     const schedule = data?.payrollDetails?.schedule
     
-    // Calculate process date based on schedule or use midpoint
+    // Calculate process date based on schedule cutoff days within the current period
     let processDate: Date
     if (schedule?.cutoffDays && schedule.cutoffDays.length > 0) {
-      // Use cutoff day as process date
-      const cutoffDay = schedule.cutoffDays[0]
-      processDate = new Date(start.getFullYear(), start.getMonth(), cutoffDay)
+      const sortedCutoffs = [...schedule.cutoffDays].sort((a: number, b: number) => a - b)
+      const clampDay = (year: number, month: number, day: number) => {
+        const lastDay = new Date(year, month + 1, 0).getDate()
+        return Math.min(day, lastDay)
+      }
+      const candidates: Date[] = []
+      let cursor = new Date(start.getFullYear(), start.getMonth(), 1)
+      while (cursor <= end) {
+        for (const d of sortedCutoffs) {
+          const cd = new Date(cursor.getFullYear(), cursor.getMonth(), clampDay(cursor.getFullYear(), cursor.getMonth(), d))
+          if (cd >= start && cd <= end) {
+            candidates.push(cd)
+          }
+        }
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
+      }
+      const afterStart = candidates.filter(d => d.getTime() > start.getTime()).sort((a, b) => a.getTime() - b.getTime())
+      processDate = afterStart[0] || new Date(start.getTime() + (end.getTime() - start.getTime()) / 2)
     } else {
       // Fallback to midpoint
       processDate = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2)
-    }
-    
-    // Calculate payment date
-    let paymentDate: Date
-    if (schedule?.payrollReleaseDay) {
-      paymentDate = new Date(end.getFullYear(), end.getMonth(), schedule.payrollReleaseDay)
-    } else {
-      // Use end date as payment date
-      paymentDate = end
     }
     
     // Determine status-based descriptions
@@ -68,32 +74,49 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
     const isApproved = status.includes("Approved")
     const isPaid = status.includes("Paid")
     
+    // Compute completion states based on time and status
+    const hasStarted = today.getTime() >= start.getTime()
+    const hasProcessed = today.getTime() >= processDate.getTime() || isGenerated || isApproved || isPaid
+    const hasEnded = today.getTime() >= end.getTime() || isPaid
+
     return {
       startDate: {
         day: start.getDate().toString().padStart(2, '0'),
         month: start.toLocaleDateString('en-US', { month: 'short' }),
         label: start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         description: "Payroll period start",
-        completed: true
+        completed: hasStarted
       },
       processDate: {
         day: processDate.getDate().toString().padStart(2, '0'),
         month: processDate.toLocaleDateString('en-US', { month: 'short' }),
         label: processDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         description: isGenerated ? "Payroll generated" : (today >= processDate ? "Processing due" : "Processing"),
-        completed: isGenerated || isApproved || isPaid
+        completed: hasProcessed
       },
       endDate: {
-        day: paymentDate.getDate().toString().padStart(2, '0'),
-        month: paymentDate.toLocaleDateString('en-US', { month: 'short' }),
-        label: paymentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        description: isPaid ? "Payment completed" : (isApproved ? "Ready for payment" : "Payment due"),
-        completed: isPaid
+        day: end.getDate().toString().padStart(2, '0'),
+        month: end.toLocaleDateString('en-US', { month: 'short' }),
+        label: end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        description: isPaid ? "Payment completed" : (isApproved ? "Ready for payment" : "Payroll period end"),
+        completed: hasEnded
       }
     }
   }
   
   const timelineData = getTimelineData()
+  
+  // Progress width based on proportional time between period start and end
+  const computeProgressWidth = () => {
+    if (!payrollPeriod?.start || !payrollPeriod?.end) return '0%'
+    const s = new Date(payrollPeriod.start).getTime()
+    const e = new Date(payrollPeriod.end).getTime()
+    if (e <= s) return '0%'
+    const t = Date.now()
+    const ratio = Math.max(0, Math.min(1, (t - s) / (e - s)))
+    return `${(ratio * 100).toFixed(2)}%`
+  }
+  const progressWidth = computeProgressWidth()
   
   // Calculate real percentage changes using available data
   const calculateEmployeeGrowth = () => {
@@ -246,14 +269,10 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
         {/* Progress bar background */}
         <div className="h-1 bg-gray-200 w-full rounded-full absolute top-1/2 -translate-y-1/2"></div>
         
-        {/* Progress bar fill based on completion using BISU purple */}
+        {/* Progress bar fill based on proportional time between start and end */}
         <div 
           className="h-1 bg-bisu-purple-deep rounded-full absolute top-1/2 -translate-y-1/2 transition-all duration-500"
-          style={{
-            width: timelineData.endDate.completed ? '100%' : 
-                   timelineData.processDate.completed ? '66%' : 
-                   timelineData.startDate.completed ? '33%' : '0%'
-          }}
+          style={{ width: progressWidth }}
         ></div>
         
         <div className="flex justify-between relative z-10">
