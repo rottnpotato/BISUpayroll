@@ -42,6 +42,10 @@ export function ScheduleDialog({
 }: ScheduleDialogProps) {
   const [formData, setFormData] = useState<ScheduleFormData>(defaultFormData)
 
+  const isEdit = Boolean(initialData)
+  const headerTitle = isEdit ? "Edit Payroll Schedule" : title
+  const primaryCta = isEdit ? (isLoading ? "Saving..." : "Save Changes") : (isLoading ? "Creating..." : "Create Schedule")
+
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       return
@@ -102,7 +106,7 @@ export function ScheduleDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-bisu-purple-deep">{title}</DialogTitle>
+          <DialogTitle className="text-bisu-purple-deep">{headerTitle}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
@@ -160,7 +164,7 @@ export function ScheduleDialog({
 
               {formData.cutoffType === 'bi-monthly' ? (
                 <div className="space-y-2">
-                  <Label>Bi-Monthly Processing Days</Label>
+                  <Label htmlFor="firstProcessingDay" className="text-xs">Bi-Monthly Processing Days</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label htmlFor="firstProcessingDay" className="text-xs">First Period (1st-15th)</Label>
@@ -293,7 +297,7 @@ export function ScheduleDialog({
             disabled={isLoading || !formData.name.trim()}
             className="bg-bisu-purple-deep hover:bg-bisu-purple-medium"
           >
-            {isLoading ? "Creating..." : "Create Schedule"}
+            {primaryCta}
           </Button>
         </DialogFooter>
       </DialogContent>

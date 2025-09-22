@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { CalendarDays, Plus, Save, Clock, Calendar, Edit, Trash2, MoreVertical } from "lucide-react"
+import { CalendarDays, Plus, Clock, Calendar, Edit, Trash2, MoreVertical, Search, LayoutGrid, List } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { motion } from "framer-motion"
 import { PayrollSchedule, ScheduleFormData } from "../types"
 import { ScheduleDialog } from "./ScheduleDialog"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
 
 interface PayrollScheduleCardProps {
   schedules: PayrollSchedule[]
@@ -28,6 +29,10 @@ export function PayrollScheduleCard({
   const [isEditScheduleDialogOpen, setIsEditScheduleDialogOpen] = useState(false)
   const [editingSchedule, setEditingSchedule] = useState<PayrollSchedule | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [cutoffFilter, setCutoffFilter] = useState<"all" | "bi-monthly" | "monthly" | "weekly">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -58,6 +63,75 @@ export function PayrollScheduleCard({
       default: return 'Bi-Monthly'
     }
   }
+
+  const toOrdinal = (n: number) => {
+    const s = ["th", "st", "nd", "rd"]
+    const v = n % 100
+    return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
+  }
+
+  const formatDateLabel = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+
+  const getNextEventDate = (schedule: PayrollSchedule): { label: string; date: Date | null } => {
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth()
+
+    if (schedule.cutoffType === "bi-monthly" && schedule.processingDays && schedule.processingDays.length >= 2) {
+      const first = schedule.processingDays[0]
+      const second = schedule.processingDays[1]
+
+      const candidates: Date[] = []
+      const monthsToCheck = [0, 1, 2]
+      monthsToCheck.forEach((offset) => {
+        const y = currentYear + Math.floor((currentMonth + offset) / 12)
+        const m = (currentMonth + offset) % 12
+        const lastDay = new Date(y, m + 1, 0).getDate()
+        const firstDay = Math.min(Math.max(first, 1), lastDay)
+        const secondDay = Math.min(Math.max(second, 1), lastDay)
+        candidates.push(new Date(y, m, firstDay))
+        candidates.push(new Date(y, m, secondDay))
+      })
+      const upcoming = candidates.filter(d => d.getTime() > now.getTime()).sort((a, b) => a.getTime() - b.getTime())[0] || null
+      return { label: "Next Processing", date: upcoming }
+    }
+
+    if (schedule.cutoffType === "monthly" && schedule.payrollReleaseDay) {
+      const monthsToCheck = [0, 1]
+      const candidates: Date[] = monthsToCheck.map((offset) => {
+        const y = currentYear + Math.floor((currentMonth + offset) / 12)
+        const m = (currentMonth + offset) % 12
+        const lastDay = new Date(y, m + 1, 0).getDate()
+        const day = Math.min(Math.max(schedule.payrollReleaseDay!, 1), lastDay)
+        return new Date(y, m, day)
+      })
+      const upcoming = candidates.filter(d => d.getTime() > now.getTime()).sort((a, b) => a.getTime() - b.getTime())[0] || null
+      return { label: "Next Generation", date: upcoming }
+    }
+
+    if (schedule.cutoffType === "weekly") {
+      return { label: "Weekly", date: null }
+    }
+
+    return { label: "Next", date: null }
+  }
+
+  const filteredSchedules = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    return schedules.filter((s) => {
+      const matchesSearch = term === "" || s.name.toLowerCase().includes(term)
+      const matchesCutoff = cutoffFilter === "all" || s.cutoffType === cutoffFilter
+      const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? s.isActive : !s.isActive)
+      return matchesSearch && matchesCutoff && matchesStatus
+    })
+  }, [schedules, searchTerm, cutoffFilter, statusFilter])
+
+  const stats = useMemo(() => {
+    const total = schedules.length
+    const active = schedules.filter(s => s.isActive).length
+    const inactive = total - active
+    return { total, active, inactive }
+  }, [schedules])
 
   const handleToggleStatus = async (schedule: PayrollSchedule) => {
     setIsLoading(true)
@@ -169,58 +243,137 @@ export function PayrollScheduleCard({
   }
 
   return (
-    <motion.div variants={itemVariants} className="h-full ">
+    <motion.div variants={itemVariants} className="h-full">
       <Card className="shadow-lg border-2 h-full flex flex-col">
-        <CardHeader className="bg-gradient-to-r from-bisu-yellow to-bisu-yellow-light text-bisu-purple-deep rounded-t-lg">
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarDays size={20} />
-                Payroll Schedules
-              </CardTitle>
-              <CardDescription className="text-bisu-purple-medium">
-                Configure payroll release dates and cutoff periods
-              </CardDescription>
+        <CardHeader className="rounded-t-lg bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays size={20} />
+                  Payroll Schedules
+                </CardTitle>
+                <CardDescription className="text-white/80">
+                  Configure release dates, processing days, and cutoff periods
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => setIsAddScheduleDialogOpen(true)}
+                size="sm"
+                className="bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow-light"
+                disabled={isLoading}
+              >
+                <Plus size={16} className="mr-2" />
+                Add Schedule
+              </Button>
             </div>
-            <Button
-              onClick={() => setIsAddScheduleDialogOpen(true)}
-              variant="outline"
-              size="sm"
-              className="border-bisu-purple-medium hover:bg-bisu-purple-light text-bisu-purple-deep"
-              disabled={isLoading}
-            >
-              <Plus size={16} className="mr-2" />
-              Add Schedule
-            </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex items-center gap-2 bg-white/10 rounded-md px-3 py-2">
+                <span className="text-xs text-white/70">Total</span>
+                <Badge className="bg-white text-bisu-purple-deep hover:bg-white">{stats.total}</Badge>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 rounded-md px-3 py-2">
+                <span className="text-xs text-white/70">Active</span>
+                <Badge className="bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow">{stats.active}</Badge>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 rounded-md px-3 py-2">
+                <span className="text-xs text-white/70">Inactive</span>
+                <Badge variant="secondary" className="bg-white/20 text-white">{stats.inactive}</Badge>
+              </div>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-6 flex-1 flex flex-col">
-          <div className="space-y-4 flex-1">
-            {schedules.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 flex-1 flex flex-col justify-center">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">No schedules configured</p>
-                <p className="text-sm mt-1">Create a new schedule to manage payroll releases</p>
+        <CardContent className="pt-6 flex-1 flex flex-col gap-4">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            <div className="flex-1 flex items-center gap-2">
+              <div className="relative w-full max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search schedules..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-            ) : (
-              <div className="space-y-3">
-                {schedules.map((schedule) => (
-                  <div 
-                    key={schedule.id} 
-                    className="p-4 rounded-lg border hover:bg-gray-50 transition-colors"
+              <div className="flex items-center gap-2">
+                <Select value={cutoffFilter} onValueChange={(v: any) => setCutoffFilter(v)}>
+                  <SelectTrigger className="w-[150px]"><SelectValue placeholder="Cutoff" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="bi-monthly">Bi-Monthly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                  <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 self-end lg:self-auto">
+              <Button
+                variant={viewMode === "grid" ? "default" : "outline"}
+                size="sm"
+                className={viewMode === "grid" ? "bg-bisu-purple-deep hover:bg-bisu-purple-medium" : ""}
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "outline"}
+                size="sm"
+                className={viewMode === "list" ? "bg-bisu-purple-deep hover:bg-bisu-purple-medium" : ""}
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {schedules.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground flex-1 flex flex-col justify-center items-center border border-dashed rounded-lg">
+              <Calendar className="h-12 w-12 mb-4 text-bisu-purple-light" />
+              <p className="font-medium text-bisu-purple-deep">No schedules configured</p>
+              <p className="text-sm mt-1">Create a schedule to manage payroll releases and processing</p>
+              <Button
+                onClick={() => setIsAddScheduleDialogOpen(true)}
+                className="mt-4 bg-bisu-purple-deep hover:bg-bisu-purple-medium"
+                disabled={isLoading}
+              >
+                <Plus className="h-4 w-4 mr-2" /> New Schedule
+              </Button>
+            </div>
+          ) : (
+            <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "flex flex-col gap-3"}>
+              {filteredSchedules.map((schedule) => {
+                const next = getNextEventDate(schedule)
+                return (
+                  <div
+                    key={schedule.id}
+                    className="group relative p-4 rounded-lg border bg-white hover:shadow-sm transition-all"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium text-bisu-purple-deep">{schedule.name}</h4>
-                        {schedule.isActive && (
-                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full font-medium">
-                            Active
-                          </span>
-                        )}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-bisu-purple-deep truncate">{schedule.name}</h4>
+                          {schedule.isActive ? (
+                            <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full font-medium">Active</span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded-full font-medium">Inactive</span>
+                          )}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {schedule.description || "No description"}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Switch 
-                          checked={schedule.isActive} 
+                        <Switch
+                          checked={schedule.isActive}
                           onCheckedChange={() => handleToggleStatus(schedule)}
                           disabled={isLoading}
                         />
@@ -251,7 +404,7 @@ export function PayrollScheduleCard({
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction 
+                                  <AlertDialogAction
                                     onClick={() => handleDeleteSchedule(schedule)}
                                     className="bg-red-600 hover:bg-red-700"
                                   >
@@ -264,69 +417,73 @@ export function PayrollScheduleCard({
                         </DropdownMenu>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3 text-bisu-purple-medium" />
-                          <span className="font-medium text-gray-700">Cutoff Type:</span>
+                          <span className="font-medium text-gray-700">Cutoff Type</span>
                         </div>
                         <p className="text-gray-600 ml-4">{formatCutoffType(schedule.cutoffType)}</p>
                       </div>
-                      
+
                       {schedule.paymentMethod && (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3 text-bisu-purple-medium" />
-                            <span className="font-medium text-gray-700">Payment Method:</span>
+                            <span className="font-medium text-gray-700">Payment Method</span>
                           </div>
                           <p className="text-gray-600 ml-4 capitalize">{schedule.paymentMethod.replace('_', ' ')}</p>
                         </div>
                       )}
-                      
-                      {/* Show processing days for bi-monthly or single day for other types */}
+
                       {schedule.cutoffType === 'bi-monthly' && schedule.processingDays && schedule.processingDays.length > 0 ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <CalendarDays className="h-3 w-3 text-bisu-purple-medium" />
-                            <span className="font-medium text-gray-700">Processing Days:</span>
+                            <span className="font-medium text-gray-700">Processing Days</span>
                           </div>
                           <div className="ml-4 space-y-1 text-gray-600">
-                            <p className="text-xs">1st-15th: {schedule.processingDays[0]}{schedule.processingDays[0] === 1 ? 'st' : schedule.processingDays[0] === 2 ? 'nd' : schedule.processingDays[0] === 3 ? 'rd' : 'th'}</p>
-                            <p className="text-xs">16th-30th: {schedule.processingDays[1]}{schedule.processingDays[1] === 1 ? 'st' : schedule.processingDays[1] === 2 ? 'nd' : schedule.processingDays[1] === 3 ? 'rd' : 'th'} (next month)</p>
+                            <p className="text-xs">1st–15th: {toOrdinal(schedule.processingDays[0])}</p>
+                            <p className="text-xs">16th–30th: {toOrdinal(schedule.processingDays[1])} (next month)</p>
                           </div>
                         </div>
                       ) : schedule.payrollReleaseDay && (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <CalendarDays className="h-3 w-3 text-bisu-purple-medium" />
-                            <span className="font-medium text-gray-700">Generation Day:</span>
+                            <span className="font-medium text-gray-700">Generation Day</span>
                           </div>
-                          <p className="text-gray-600 ml-4">{schedule.payrollReleaseDay}{schedule.payrollReleaseDay === 1 ? 'st' : schedule.payrollReleaseDay === 2 ? 'nd' : schedule.payrollReleaseDay === 3 ? 'rd' : 'th'} of month</p>
+                          <p className="text-gray-600 ml-4">{toOrdinal(schedule.payrollReleaseDay)} of month</p>
                         </div>
                       )}
-                      
+
                       {schedule.cutoffDays && schedule.cutoffDays.length > 0 && (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-bisu-purple-medium" />
-                            <span className="font-medium text-gray-700">Cutoff Days:</span>
+                            <span className="font-medium text-gray-700">Cutoff Days</span>
                           </div>
                           <p className="text-gray-600 ml-4">{formatDays(schedule.cutoffDays)}</p>
                         </div>
                       )}
                     </div>
-                    
-                    {schedule.description && (
-                      <div className="mt-2 pt-2 border-t">
-                        <p className="text-xs text-gray-500">{schedule.description}</p>
+
+                    <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                      <div className="text-xs text-bisu-purple-medium flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full bg-bisu-purple-extralight text-bisu-purple-deep">
+                          {next.label}{next.date ? `: ${formatDateLabel(next.date)}` : ''}
+                        </span>
                       </div>
-                    )}
+                      <Button variant="ghost" size="sm" onClick={() => handleEditClick(schedule)} className="text-bisu-purple-deep">
+                        <Edit className="h-4 w-4 mr-1" /> Edit
+                      </Button>
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
