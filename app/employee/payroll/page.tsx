@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -18,7 +19,8 @@ import {
   TrendingDown,
   User,
   Building,
-  Briefcase
+  Briefcase,
+  Printer
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/use-auth"
@@ -222,6 +224,94 @@ export default function PayslipDetailsPage() {
     )
   }
 
+  const generatePayslipHtml = () => {
+    if (!payrollData) return ""
+    const { employee, calculations, currentMonth } = payrollData
+    const period = new Date(currentMonth.year, currentMonth.month - 1, 1)
+      .toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Payslip - ${employee.name} - ${period}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #1f2937; margin: 0; padding: 24px; }
+            .header { text-align: center; margin-bottom: 16px; }
+            .brand { font-weight: 800; color: #3b2a8c; }
+            .sub { color: #6b7280; }
+            .section { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+            .section-title { font-weight: 700; color: #3b2a8c; margin: 0 0 12px 0; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+            .row { display: flex; justify-content: space-between; padding: 6px 0; }
+            .label { color: #6b7280; }
+            .value { font-weight: 600; }
+            .total { font-size: 18px; font-weight: 800; color: #3b2a8c; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="brand">BISU Payroll</div>
+            <div class="sub">Payslip for ${period}</div>
+          </div>
+          <div class="section">
+            <div class="section-title">Employee Information</div>
+            <div class="grid">
+              <div class="row"><span class="label">Name</span><span class="value">${employee.name}</span></div>
+              <div class="row"><span class="label">Employee ID</span><span class="value">${employee.employeeId || 'N/A'}</span></div>
+              <div class="row"><span class="label">Department</span><span class="value">${employee.department || 'N/A'}</span></div>
+              <div class="row"><span class="label">Position</span><span class="value">${employee.position || 'N/A'}</span></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-title">Rates</div>
+            <div class="grid">
+              <div class="row"><span class="label">Daily Rate</span><span class="value">${formatCurrency(calculations.dailyRate)}</span></div>
+              <div class="row"><span class="label">Hourly Rate</span><span class="value">${formatCurrency(calculations.hourlyRate)}</span></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-title">Earnings</div>
+            <div class="grid">
+              <div class="row"><span class="label">Base Pay</span><span class="value">${formatCurrency(calculations.basePay)}</span></div>
+              <div class="row"><span class="label">Overtime Pay</span><span class="value">${formatCurrency(calculations.overtimePay)}</span></div>
+              <div class="row"><span class="label">Bonuses & Allowances</span><span class="value">${formatCurrency(calculations.bonuses)}</span></div>
+              <div class="row"><span class="label">Gross Pay</span><span class="total">${formatCurrency(calculations.grossPay)}</span></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-title">Deductions</div>
+            <div class="grid">
+              <div class="row"><span class="label">Government Contributions</span><span class="value">${formatCurrency(calculations.governmentDeductions)}</span></div>
+              <div class="row"><span class="label">Loans</span><span class="value">${formatCurrency(calculations.loanDeductions)}</span></div>
+              <div class="row"><span class="label">Late Deductions</span><span class="value">${formatCurrency(calculations.lateDeductions)}</span></div>
+              <div class="row"><span class="label">Other Deductions</span><span class="value">${formatCurrency(calculations.otherDeductions)}</span></div>
+              <div class="row"><span class="label">Total Deductions</span><span class="total">${formatCurrency(calculations.totalDeductions)}</span></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="row"><span class="label">Net Pay</span><span class="total">${formatCurrency(calculations.netPay)}</span></div>
+          </div>
+        </body>
+      </html>
+    `
+  }
+
+  const handleGeneratePayslip = () => {
+    const html = generatePayslipHtml()
+    if (!html) return
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    setTimeout(() => {
+      try { w.print(); } catch {}
+      setTimeout(() => { try { w.close() } catch {} }, 800)
+    }, 400)
+  }
+
   return (
     <motion.div 
       className="space-y-6"
@@ -229,9 +319,14 @@ export default function PayslipDetailsPage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
-        <p className="text-muted-foreground">Your current payroll, rules, and payment history</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
+          <p className="text-muted-foreground">Your current payroll, rules, and payment history</p>
+        </div>
+        <Button onClick={handleGeneratePayslip} className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white">
+          <Printer className="h-4 w-4 mr-2" /> Generate Payslip
+        </Button>
       </div>
 
       {/* Employee Information Card */}
@@ -309,7 +404,7 @@ export default function PayslipDetailsPage() {
 
         <TabsContent value="current" className="space-y-6">
           {/* Current Month Summary */}
-          <Card>
+          <Card className="border-bisu-purple-light bg-bisu-purple-extralight">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                 <TrendingUp className="h-5 w-5" />
@@ -318,39 +413,39 @@ export default function PayslipDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-4 gap-5">
-                <div className="flex items-center gap-4 p-4 rounded-xl border bg-blue-50/50">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center">
+                <div className="flex items-center gap-4 p-4 rounded-xl border border-bisu-purple-light bg-white">
+                  <div className="h-10 w-10 rounded-full bg-bisu-purple-extralight text-bisu-purple-deep flex items-center justify-center">
                     <Calendar className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-blue-700">{payrollData.currentMonth.workingDays}</p>
+                    <p className="text-2xl font-bold text-bisu-purple-deep">{payrollData.currentMonth.workingDays}</p>
                     <p className="text-xs text-muted-foreground">Working Days</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 p-4 rounded-xl border bg-green-50/50">
-                  <div className="h-10 w-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
+                <div className="flex items-center gap-4 p-4 rounded-xl border border-bisu-purple-light bg-white">
+                  <div className="h-10 w-10 rounded-full bg-bisu-purple-extralight text-bisu-purple-deep flex items-center justify-center">
                     <Clock className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-green-700">{payrollData.currentMonth.totalHoursWorked.toFixed(1)}</p>
+                    <p className="text-2xl font-bold text-bisu-purple-deep">{payrollData.currentMonth.totalHoursWorked.toFixed(1)}</p>
                     <p className="text-xs text-muted-foreground">Hours Worked</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 p-4 rounded-xl border bg-orange-50/50">
-                  <div className="h-10 w-10 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center">
+                <div className="flex items-center gap-4 p-4 rounded-xl border border-bisu-purple-light bg-white">
+                  <div className="h-10 w-10 rounded-full bg-bisu-purple-extralight text-bisu-purple-deep flex items-center justify-center">
                     <TrendingUp className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-orange-700">{payrollData.currentMonth.overtimeHours.toFixed(1)}</p>
+                    <p className="text-2xl font-bold text-bisu-purple-deep">{payrollData.currentMonth.overtimeHours.toFixed(1)}</p>
                     <p className="text-xs text-muted-foreground">Overtime Hours</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 p-4 rounded-xl border bg-red-50/50">
-                  <div className="h-10 w-10 rounded-full bg-red-100 text-red-700 flex items-center justify-center">
+                <div className="flex items-center gap-4 p-4 rounded-xl border border-bisu-purple-light bg-white">
+                  <div className="h-10 w-10 rounded-full bg-bisu-purple-extralight text-bisu-purple-deep flex items-center justify-center">
                     <AlertCircle className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-red-700">{payrollData.currentMonth.lateCount}</p>
+                    <p className="text-2xl font-bold text-bisu-purple-deep">{payrollData.currentMonth.lateCount}</p>
                     <p className="text-xs text-muted-foreground">Late Count</p>
                   </div>
                 </div>
@@ -361,9 +456,9 @@ export default function PayslipDetailsPage() {
           {/* Current Payroll Calculation */}
           <div className="grid md:grid-cols-2 gap-6">
             {/* Earnings */}
-            <Card className="border-green-200 bg-green-50/50">
+            <Card className="border-bisu-purple-light bg-bisu-purple-extralight">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-green-700">
+                <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                   <TrendingUp className="h-5 w-5" />
                   Current Earnings
                 </CardTitle>
@@ -371,32 +466,32 @@ export default function PayslipDetailsPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span>Base Pay:</span>
-                  <span className="font-medium">{formatCurrency(payrollData.calculations.basePay)}</span>
+                  <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.basePay)}</span>
                 </div>
                 {payrollData.calculations.overtimePay > 0 && (
                   <div className="flex justify-between">
                     <span>Overtime Pay:</span>
-                    <span className="font-medium text-green-600">{formatCurrency(payrollData.calculations.overtimePay)}</span>
+                    <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.overtimePay)}</span>
                   </div>
                 )}
                 {payrollData.calculations.bonuses > 0 && (
                   <div className="flex justify-between">
                     <span>Bonuses & Allowances:</span>
-                    <span className="font-medium text-green-600">{formatCurrency(payrollData.calculations.bonuses)}</span>
+                    <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.bonuses)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Gross Pay:</span>
-                  <span className="text-green-600">{formatCurrency(payrollData.calculations.grossPay)}</span>
+                  <span className="text-bisu-purple-deep">{formatCurrency(payrollData.calculations.grossPay)}</span>
                 </div>
               </CardContent>
             </Card>
 
             {/* Deductions */}
-            <Card className="border-red-200 bg-red-50/50">
+            <Card className="border-bisu-purple-light bg-white">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-700">
+                <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                   <TrendingDown className="h-5 w-5" />
                   Current Deductions
                 </CardTitle>
@@ -405,31 +500,31 @@ export default function PayslipDetailsPage() {
                 {payrollData.calculations.governmentDeductions > 0 && (
                   <div className="flex justify-between">
                     <span>Government Contributions:</span>
-                    <span className="font-medium">{formatCurrency(payrollData.calculations.governmentDeductions)}</span>
+                    <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.governmentDeductions)}</span>
                   </div>
                 )}
                 {payrollData.calculations.loanDeductions > 0 && (
                   <div className="flex justify-between">
                     <span>Loan Deductions:</span>
-                    <span className="font-medium">{formatCurrency(payrollData.calculations.loanDeductions)}</span>
+                    <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.loanDeductions)}</span>
                   </div>
                 )}
                 {payrollData.calculations.lateDeductions > 0 && (
                   <div className="flex justify-between">
                     <span>Late Deductions:</span>
-                    <span className="font-medium">{formatCurrency(payrollData.calculations.lateDeductions)}</span>
+                    <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.lateDeductions)}</span>
                   </div>
                 )}
                 {payrollData.calculations.otherDeductions > 0 && (
                   <div className="flex justify-between">
                     <span>Other Deductions:</span>
-                    <span className="font-medium">{formatCurrency(payrollData.calculations.otherDeductions)}</span>
+                    <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.otherDeductions)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total Deductions:</span>
-                  <span className="text-red-600">{formatCurrency(payrollData.calculations.totalDeductions)}</span>
+                  <span className="text-bisu-purple-deep">{formatCurrency(payrollData.calculations.totalDeductions)}</span>
                 </div>
               </CardContent>
             </Card>

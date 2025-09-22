@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
-import { Decimal } from '@prisma/client/runtime/library'
 import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
 
 export async function GET(request: NextRequest) {
@@ -139,9 +138,10 @@ export async function GET(request: NextRequest) {
     const overtimeHours = Math.max(0, totalHoursWorked - expectedTotalHours)
     const regularHours = Math.min(totalHoursWorked, expectedTotalHours)
 
-    // Calculate base salary from payroll rules
-    const monthlySalary = calculateBaseSalaryFromRules(payrollRules)
-    const dailyRate = monthlySalary / 22 // Assuming 22 working days per month
+    // Determine daily rate directly from payroll rules (base pay == daily rate)
+    const baseRule = payrollRules.find((rule: any) => rule.type === 'base' || rule.category === 'base_pay')
+    const dailyRate = baseRule ? Number(baseRule.amount) : (calculateBaseSalaryFromRules(payrollRules) / 22)
+    const monthlySalary = dailyRate * 22
     const hourlyRate = dailyRate / expectedDailyHours
 
     // Calculate overtime pay
