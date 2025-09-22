@@ -271,7 +271,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            {/* Payroll Alerts Section */}
+            {/* Payroll Alerts Section
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -282,7 +282,7 @@ export default function AdminDashboard() {
                 data={dashboardData}
                 isLoading={isLoading}
               />
-            </motion.div>
+            </motion.div> */}
             
               {/* Payroll Breakdown Section */}
             <motion.div
@@ -338,7 +338,7 @@ export default function AdminDashboard() {
                     variant="outline" 
                     size="sm"
                     onClick={handleDepartmentFilter}
-                    className="flex items-center gap-1 border-purple-200 hover:bg-purple-50 hover:text-purple-700 shadow-sm"
+                    className="flex items-center gap-1 text-gray-900 border-purple-200 hover:bg-purple-50 hover:text-purple-700 shadow-sm"
                   >
                     <Filter className="h-4 w-4" />
                     {selectedDepartment}
@@ -347,7 +347,7 @@ export default function AdminDashboard() {
                     variant="outline" 
                     size="sm"
                     onClick={handleStatusFilter}
-                    className="flex items-center gap-1 border-purple-200 hover:bg-purple-50 hover:text-purple-700 shadow-sm"
+                    className="flex items-center gap-1 text-gray-900 border-purple-200 hover:bg-purple-50 hover:text-purple-700 shadow-sm"
                   >
                     <Filter className="h-4 w-4" />
                     {selectedStatus}
@@ -356,7 +356,7 @@ export default function AdminDashboard() {
                     variant="outline" 
                     size="sm"
                     onClick={handleSortChange}
-                    className="flex items-center gap-1 border-purple-200 hover:bg-purple-50 hover:text-purple-700 shadow-sm"
+                    className="flex items-center gap-1 text-gray-900 border-purple-200 hover:bg-purple-50 hover:text-purple-700 shadow-sm"
                   >
                     <ArrowUpDown className="h-4 w-4" />
                     Sort by: {sortBy}
@@ -365,7 +365,7 @@ export default function AdminDashboard() {
               </div>
               
               <EmployeeTable 
-                data={dashboardData?.recentActivity?.payroll || []}
+                data={dashboardData?.employeePayroll || []}
                 isLoading={isLoading}
                 searchTerm={searchTerm}
                 selectedDepartment={selectedDepartment}

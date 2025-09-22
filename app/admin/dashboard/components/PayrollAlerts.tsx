@@ -201,7 +201,7 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
         <Alert variant="default" className="border-bisu-purple-light bg-bisu-purple-extralight">
           <Shield className="h-4 w-4 text-bisu-purple-deep" />
           <AlertTitle className="text-bisu-purple-deep font-semibold">
-            Payroll System Status: Good
+            us: Good
           </AlertTitle>
           <AlertDescription className="text-bisu-purple-medium">
             <p>All payroll deadlines are on track. {deadlineStatus?.message}</p>

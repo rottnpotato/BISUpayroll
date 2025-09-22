@@ -504,6 +504,30 @@ export async function GET(request: NextRequest) {
       payrollPeriodEnd = endCandidate
     }
 
+    // Fetch current payroll records within the computed payroll period for Employee Payroll Details
+    const currentPeriodPayroll = await prisma.payrollRecord.findMany({
+      where: {
+        payPeriodStart: {
+          gte: payrollPeriodStart
+        },
+        payPeriodEnd: {
+          lte: payrollPeriodEnd
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            employeeId: true,
+            department: true,
+            status: true
+          }
+        }
+      }
+    })
+
     // Ensure consistent data structure even when empty
     const response = {
       overview: {
@@ -543,6 +567,7 @@ export async function GET(request: NextRequest) {
         attendance: recentAttendance || [],
         payroll: recentPayroll || []
       },
+      employeePayroll: currentPeriodPayroll || [],
       payrollDetails: {
         company: "BISU Balilihan Campus",
         period: {

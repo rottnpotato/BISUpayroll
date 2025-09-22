@@ -13,6 +13,27 @@ export interface DashboardData {
     newEmployeesThisMonth: number
     attendanceRate: number
   }
+  employeePayroll: Array<{
+    id: string
+    userId: string
+    payPeriodStart: Date
+    payPeriodEnd: Date
+    baseSalary: number
+    overtime: number
+    deductions: number
+    bonuses: number
+    grossPay: number
+    netPay: number
+    isPaid: boolean
+    createdAt: Date
+    user: {
+      firstName: string
+      lastName: string
+      employeeId: string | null
+      department: string | null
+      status?: string
+    }
+  }>
   departmentStats: Array<{
     department: string
     _count: { id: number }

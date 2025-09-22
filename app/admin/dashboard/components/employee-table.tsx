@@ -25,6 +25,7 @@ import {
 
 interface Employee {
   id?: string
+  userId?: string
   firstName: string
   lastName: string
   grossPay?: number
@@ -75,6 +76,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
   // Transform the payroll data to match our employee interface
   let employees: Employee[] = data?.map((payroll: any) => ({
     id: payroll.id,
+    userId: payroll.userId,
     firstName: payroll.user?.firstName || 'Unknown',
     lastName: payroll.user?.lastName || 'Employee',
     grossPay: Number(payroll.grossPay || 0),
@@ -87,6 +89,17 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
     department: payroll.user?.department || 'Unassigned',
     employeeId: payroll.user?.employeeId
   })) || []
+
+  // Dedupe by employee (prefer employeeId, then userId, then record id)
+  if (employees.length > 1) {
+    const seen = new Set<string>()
+    employees = employees.filter((emp) => {
+      const key = (emp.employeeId || emp.userId || emp.id || `${emp.firstName}-${emp.lastName}`) as string
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }
 
   // Apply search filter
   if (searchTerm) {
@@ -210,7 +223,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                 <Checkbox className="border-purple-300" />
               </TableCell>
               <TableCell 
-                className="font-medium cursor-pointer"
+                className="text-gray-900 font-medium cursor-pointer"
                 onClick={() => handleSort('name')}
               >
                 <div className="flex items-center">
@@ -218,7 +231,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                 </div>
               </TableCell>
               <TableCell 
-                className="font-medium cursor-pointer"
+                className="text-gray-900 font-medium cursor-pointer"
                 onClick={() => handleSort('grossPay')}
               >
                 <div className="flex items-center">
@@ -226,24 +239,24 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                 </div>
               </TableCell>
               <TableCell 
-                className="font-medium cursor-pointer"
-                onClick={() => handleSort('netPay')}
+                className="text-gray-900 font-medium cursor-pointer"
+                onClick={() => handleSort('n  etPay')}
               >
                 <div className="flex items-center">
                   Salary to Receive {getSortIcon('netPay')}
                 </div>
               </TableCell>
-              <TableCell className="font-medium">Department</TableCell>
+              <TableCell className="text-gray-900 font-medium">Department</TableCell>
               <TableCell className="font-medium">Status</TableCell>
               <TableCell 
-                className="font-medium cursor-pointer"
+                className="text-gray-900 font-medium cursor-pointer"
                 onClick={() => handleSort('totalCost')}
               >
                 <div className="flex items-center">
                   Total Cost {getSortIcon('totalCost')}
                 </div>
               </TableCell>
-              <TableCell className="font-medium text-center">Details</TableCell>
+              <TableCell className="text-gray-900 font-medium text-center">Details</TableCell>
               <TableCell className="w-12 text-center">Action</TableCell>
             </TableRow>
           </TableHeader>
@@ -269,17 +282,17 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                       </Avatar>
                       <div>
                         <div className="font-medium text-gray-900">{employee.firstName} {employee.lastName}</div>
-                        <div className="text-xs text-gray-500">{employee.employeeId || 'No ID'}</div>
+                        <div className="text-xs text-gray-800">{employee.employeeId || 'No ID'}</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-gray-900">{formatCurrency(employee.grossPay || 0)}</div>
-                    <div className="text-xs text-gray-500">Before deductions</div>
+                    <div className="text-xs text-gray-800">Before deductions</div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-green-700">{formatCurrency(employee.netPay || 0)}</div>
-                    <div className="text-xs text-gray-500">Take-home pay</div>
+                    <div className="text-xs text-gray-800">Take-home pay</div>
                   </TableCell>
                   <TableCell>
                     <div className="px-2 py-1 rounded-md bg-purple-50 text-purple-800 text-sm inline-block">
@@ -290,7 +303,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                     {getStatusBadge(employee.status)}
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-gray-900">{formatCurrency((employee.grossPay || 0) + (employee.bonuses || 0) + 2000)}</div>
+                    <div className="font-medium text-gray-900">{formatCurrency(employee.grossPay || 0)}</div>
                   </TableCell>
                   <TableCell>
                     <TooltipProvider>
@@ -350,7 +363,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className="p-1.5 hover:bg-purple-100 rounded-full mx-auto flex">
-                          <MoreHorizontal className="h-5 w-5 text-gray-600" />
+                          <MoreHorizontal className="h-5 w-5 text-gray-800" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
@@ -379,7 +392,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
         </Table>
       </div>
       <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 bg-gray-50">
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-800">
           Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{endIndex}</span> of <span className="font-medium">{totalEmployees}</span> employees
         </div>
         <div className="flex items-center space-x-2">
