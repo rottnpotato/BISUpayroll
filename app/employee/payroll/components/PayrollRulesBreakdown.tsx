@@ -53,6 +53,8 @@ interface PayrollRulesBreakdownProps {
   appliedRules: PayrollRule[]
   deductionBreakdown: DeductionBreakdown
   calculations: {
+    dailyRate: number
+    hourlyRate: number
     basePay: number
     overtimePay: number
     bonuses: number
@@ -106,6 +108,22 @@ export function PayrollRulesBreakdown({
           </p>
         </CardHeader>
         <CardContent>
+          {/* Rate Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            <div className="flex items-center justify-between rounded-lg border bg-green-50/40 px-4 py-3">
+              <span className="text-sm text-muted-foreground">Rate per Day</span>
+              <span className="font-semibold text-green-700">
+                {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(calculations.dailyRate)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border bg-blue-50/40 px-4 py-3">
+              <span className="text-sm text-muted-foreground">Rate per Hour</span>
+              <span className="font-semibold text-blue-700">
+                {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(calculations.hourlyRate)}
+              </span>
+            </div>
+          </div>
+
           <Tabs defaultValue="summary" className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="summary">Summary</TabsTrigger>
@@ -246,6 +264,11 @@ export function PayrollRulesBreakdown({
                               <span className="flex items-center gap-1">
                                 <DollarSign className="h-3 w-3" />
                                 Fixed amount
+                              </span>
+                            )}
+                            {rule.type === 'base' && (
+                              <span className="ml-2 rounded-full bg-white border px-2 py-0.5 font-medium text-gray-700">
+                                Rate/Day: {formatCurrency(calculations.dailyRate)}
                               </span>
                             )}
                           </div>

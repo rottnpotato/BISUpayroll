@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +23,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog"
+import { Calendar as MiniCalendar } from "@/components/ui/calendar"
 
 interface AttendanceRecord {
   id: string
@@ -408,6 +409,28 @@ export default function EmployeeAttendancePage() {
 
   const recentRecords = attendanceData?.records ? [...attendanceData.records].slice(-10).reverse() : []
 
+  // Prepare date modifiers for mini calendar highlighting
+  const { presentDates, lateDates, absentDates } = useMemo(() => {
+    if (!attendanceData?.records) {
+      return { presentDates: [] as Date[], lateDates: [] as Date[], absentDates: [] as Date[] }
+    }
+    const present: Date[] = []
+    const late: Date[] = []
+    const absent: Date[] = []
+    attendanceData.records.forEach((record) => {
+      const status = (record.status || '').toLowerCase()
+      const dateObj = new Date(record.date)
+      if (status === 'absent') {
+        absent.push(dateObj)
+      } else if (status === 'late') {
+        late.push(dateObj)
+      } else {
+        present.push(dateObj)
+      }
+    })
+    return { presentDates: present, lateDates: late, absentDates: absent }
+  }, [attendanceData])
+
   return (
     <div className="p-6 space-y-8">
       {/* Time Action Confirmation Dialog */}
@@ -482,16 +505,17 @@ export default function EmployeeAttendancePage() {
         animate="visible"
         className="space-y-8"
       >
-        {/* Clock In/Out Section */}
-        <motion.div variants={itemVariants}>
-          <Card className="shadow-md">
-            <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
-              <CardTitle className="text-bisu-purple-deep flex items-center gap-2">
-                <Clock className="h-6 w-6" />
-                Time Clock
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+        {/* Time Clock + Mini Calendar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <motion.div variants={itemVariants} className="lg:col-span-2">
+            <Card className="shadow-md">
+              <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
+                <CardTitle className="text-bisu-purple-deep flex items-center gap-2">
+                  <Clock className="h-6 w-6" />
+                  Time Clock
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
               <div className="text-center">
                 <div className="text-3xl font-mono font-bold text-bisu-purple-deep">
                   {format(currentTime, 'HH:mm:ss')}
@@ -615,9 +639,44 @@ export default function EmployeeAttendancePage() {
                   {restrictionsDisabled ? '🔓 Enable Time Restrictions' : '🔒 Disable Time Restrictions (Testing)'}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Mini Calendar */}
+          <motion.div variants={itemVariants} className="lg:col-span-1">
+            <Card className="shadow-md">
+              <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
+                <CardTitle className="text-bisu-purple-deep flex items-center gap-2">
+                  <CalendarDays className="h-6 w-6" />
+                  Mini Calendar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MiniCalendar
+                  className="rounded-md border"
+                  defaultMonth={new Date(selectedYear, selectedMonth - 1, 1)}
+                  showOutsideDays
+                  modifiers={{
+                    present: presentDates,
+                    late: lateDates,
+                    absent: absentDates,
+                  }}
+                  modifiersClassNames={{
+                    present: "bg-green-100 text-green-700 font-medium",
+                    late: "bg-yellow-100 text-yellow-700 font-medium",
+                    absent: "bg-red-100 text-red-700 font-medium",
+                  }}
+                />
+                <div className="flex items-center justify-center gap-3 text-xs text-gray-600 mt-3">
+                  <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500"></span>Present</div>
+                  <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-yellow-500"></span>Late</div>
+                  <div className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500"></span>Absent</div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
 
         {/* Summary Statistics */}
         {attendanceData && (

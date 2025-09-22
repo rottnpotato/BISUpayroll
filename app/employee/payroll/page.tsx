@@ -275,8 +275,8 @@ export default function PayslipDetailsPage() {
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm text-muted-foreground">Base Salary</p>
-                <p className="font-medium">{formatCurrency(payrollData.baseSalary)}</p>
+                <p className="text-sm text-muted-foreground">Daily Rate</p>
+                <p className="font-medium">{formatCurrency(payrollData.calculations.dailyRate)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -317,22 +317,42 @@ export default function PayslipDetailsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-4 gap-4">
-                <div className="text-center p-4 rounded-lg bg-blue-50">
-                  <p className="text-2xl font-bold text-blue-600">{payrollData.currentMonth.workingDays}</p>
-                  <p className="text-sm text-muted-foreground">Working Days</p>
+              <div className="grid md:grid-cols-4 gap-5">
+                <div className="flex items-center gap-4 p-4 rounded-xl border bg-blue-50/50">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-blue-700">{payrollData.currentMonth.workingDays}</p>
+                    <p className="text-xs text-muted-foreground">Working Days</p>
+                  </div>
                 </div>
-                <div className="text-center p-4 rounded-lg bg-green-50">
-                  <p className="text-2xl font-bold text-green-600">{payrollData.currentMonth.totalHoursWorked.toFixed(1)}</p>
-                  <p className="text-sm text-muted-foreground">Hours Worked</p>
+                <div className="flex items-center gap-4 p-4 rounded-xl border bg-green-50/50">
+                  <div className="h-10 w-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-green-700">{payrollData.currentMonth.totalHoursWorked.toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">Hours Worked</p>
+                  </div>
                 </div>
-                <div className="text-center p-4 rounded-lg bg-orange-50">
-                  <p className="text-2xl font-bold text-orange-600">{payrollData.currentMonth.overtimeHours.toFixed(1)}</p>
-                  <p className="text-sm text-muted-foreground">Overtime Hours</p>
+                <div className="flex items-center gap-4 p-4 rounded-xl border bg-orange-50/50">
+                  <div className="h-10 w-10 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-700">{payrollData.currentMonth.overtimeHours.toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">Overtime Hours</p>
+                  </div>
                 </div>
-                <div className="text-center p-4 rounded-lg bg-red-50">
-                  <p className="text-2xl font-bold text-red-600">{payrollData.currentMonth.lateCount}</p>
-                  <p className="text-sm text-muted-foreground">Late Count</p>
+                <div className="flex items-center gap-4 p-4 rounded-xl border bg-red-50/50">
+                  <div className="h-10 w-10 rounded-full bg-red-100 text-red-700 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-red-700">{payrollData.currentMonth.lateCount}</p>
+                    <p className="text-xs text-muted-foreground">Late Count</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -463,17 +483,17 @@ export default function PayslipDetailsPage() {
                   >
                     <Card className="hover:shadow-md transition-shadow">
                       <CardHeader>
-                        <div className="flex justify-between items-start">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                           <div>
                             <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                               <Calendar className="h-5 w-5" />
-                              Pay Period: {formatDate(record.payPeriodStart)} - {formatDate(record.payPeriodEnd)}
+                              {formatDate(record.payPeriodStart)} - {formatDate(record.payPeriodEnd)}
                             </CardTitle>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Generated on {record.generatedAt ? formatDate(record.generatedAt) : 'Pending'}
+                              Generated {record.generatedAt ? `on ${formatDate(record.generatedAt)}` : '— Pending'}
                             </p>
                           </div>
-                          <Badge className={status.color}>
+                          <Badge className={`${status.color} rounded-full px-3 py-1 text-xs` }>
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {status.label}
                           </Badge>
@@ -481,28 +501,27 @@ export default function PayslipDetailsPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="grid md:grid-cols-3 gap-4">
-                          <div className="text-center p-3 rounded-lg bg-green-50">
-                            <p className="text-lg font-bold text-green-600">{formatCurrency(record.grossPay)}</p>
-                            <p className="text-sm text-muted-foreground">Gross Pay</p>
+                          <div className="p-4 rounded-lg border bg-green-50/50">
+                            <p className="text-xs text-muted-foreground">Gross Pay</p>
+                            <p className="text-xl font-semibold text-green-700">{formatCurrency(record.grossPay)}</p>
                           </div>
-                          <div className="text-center p-3 rounded-lg bg-red-50">
-                            <p className="text-lg font-bold text-red-600">{formatCurrency(record.deductions)}</p>
-                            <p className="text-sm text-muted-foreground">Deductions</p>
+                          <div className="p-4 rounded-lg border bg-red-50/50">
+                            <p className="text-xs text-muted-foreground">Deductions</p>
+                            <p className="text-xl font-semibold text-red-700">{formatCurrency(record.deductions)}</p>
                           </div>
-                          <div className="text-center p-3 rounded-lg bg-blue-50">
-                            <p className="text-lg font-bold text-bisu-purple-deep">{formatCurrency(record.netPay)}</p>
-                            <p className="text-sm text-muted-foreground">Net Pay</p>
+                          <div className="p-4 rounded-lg border bg-blue-50/50">
+                            <p className="text-xs text-muted-foreground">Net Pay</p>
+                            <p className="text-xl font-semibold text-bisu-purple-deep">{formatCurrency(record.netPay)}</p>
                           </div>
                         </div>
-                        
                         <div className="mt-4 pt-4 border-t">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Payment Status:</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <span className="text-sm text-muted-foreground">Payment Status</span>
                             <div className="flex items-center gap-2">
                               <StatusIcon className="h-4 w-4" />
                               <span className="font-medium">{status.label}</span>
                               {record.isPaid && record.paidAt && (
-                                <span className="text-sm text-muted-foreground ml-2">
+                                <span className="text-sm text-muted-foreground">
                                   on {formatDate(record.paidAt)}
                                 </span>
                               )}
