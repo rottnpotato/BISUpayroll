@@ -137,6 +137,36 @@ body {
     --ring: 258 35% 50%;
   }
 
+  /* Employee pages: make cards lighter for better contrast in dark mode */
+  .employee-light-cards {
+    /* Base surface and text */
+    --background: 257 30% 98%;
+    --foreground: 258 35% 20%;
+
+    /* Cards */
+    --card: 257 30% 100%;
+    --card-foreground: 258 35% 20%;
+
+    /* Popovers/menus (e.g., selects, dropdowns) */
+    --popover: 257 30% 100%;
+    --popover-foreground: 258 35% 20%;
+
+    /* Inputs and borders */
+    --input: 257 20% 80%;
+    --border: 257 20% 80%;
+
+    /* Accent/hover states for outline/ghost buttons */
+    --accent: 257 30% 92%;
+    --accent-foreground: 258 35% 20%;
+
+    /* Muted text like placeholders */
+    --muted: 257 30% 92%;
+    --muted-foreground: 258 25% 40%;
+
+    /* Rings remain consistent */
+    --ring: 258 35% 50%;
+  }
+
   .dark {
     --background: 258 35% 12%;
     --foreground: 257 30% 90%;

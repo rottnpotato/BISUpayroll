@@ -399,3 +399,92 @@ export const filterReports = (reports: any[], searchTerm: string, selectedReport
     return matchesSearch && matchesType
   })
 } 
+
+// Parse saved JSON ledger content into PayrollData[] and DateRange
+export const parseSavedLedgerJsonToPayrollData = (
+  content: string
+): { payrollData: PayrollData[]; dateRange: DateRange } => {
+  let parsed: any
+  try {
+    parsed = JSON.parse(content)
+  } catch (error) {
+    throw new Error("Invalid JSON content for saved ledger")
+  }
+
+  const from = parsed.payPeriodStart ? new Date(parsed.payPeriodStart) : undefined
+  const to = parsed.payPeriodEnd ? new Date(parsed.payPeriodEnd) : undefined
+
+  if (!from || !to || isNaN(from.getTime()) || isNaN(to.getTime())) {
+    throw new Error("Saved ledger is missing a valid pay period range")
+  }
+
+  const employees: any[] = Array.isArray(parsed.employees) ? parsed.employees : []
+
+  const payrollData: PayrollData[] = employees.map((emp: any, index: number) => {
+    const name: string = emp.name || "Unknown"
+    let firstName = name
+    let lastName = ""
+    if (name.includes(",")) {
+      const parts = name.split(",")
+      lastName = (parts[0] || "").trim()
+      firstName = (parts.slice(1).join(",") || "").trim()
+    } else {
+      const parts = name.trim().split(/\s+/)
+      if (parts.length > 1) {
+        lastName = parts.pop() as string
+        firstName = parts.join(" ")
+      }
+    }
+
+    const deductions = emp.deductions || {}
+
+    return {
+      id: String(index + 1),
+      userId: emp.employeeId || String(index + 1),
+      user: {
+        id: emp.employeeId || String(index + 1),
+        firstName,
+        lastName,
+        employeeId: emp.employeeId || null,
+        department: emp.department || parsed.department || null,
+        position: emp.position || null
+      },
+      baseSalary: Number(emp.baseSalary || 0),
+      grossPay: Number(emp.grossPay || 0),
+      netPay: Number(emp.netPay || 0),
+      totalDeductions: Number(emp.totalDeductions || 0),
+      earningsBreakdown: {
+        regularPay: Number(emp.regularPay || 0),
+        overtimePay: Number(emp.overtimePay || 0),
+        holidayPay: Number(emp.holidayPay || 0),
+        allowances: Number(emp.allowances || 0),
+        bonuses: Number(emp.bonuses || 0),
+        thirteenthMonthPay: Number(emp.thirteenthMonthPay || 0),
+        serviceIncentiveLeave: Number(emp.serviceIncentiveLeave || 0),
+        otherEarnings: Number(emp.otherEarnings || 0)
+      },
+      deductionBreakdown: {
+        withholdingTax: deductions.withholdingTax ?? 0,
+        gsisContribution: deductions.gsisContribution ?? 0,
+        philHealthContribution: deductions.philHealthContribution ?? 0,
+        pagibigContribution: deductions.pagibigContribution ?? 0,
+        lateDeductions: deductions.lateDeductions ?? 0,
+        loanDeductions: deductions.loanDeductions ?? 0,
+        otherDeductions: deductions.otherDeductions ?? 0,
+        citySavingsLoan: deductions.citySavingsLoan ?? 0,
+        sssContribution: deductions.sssContribution ?? 0
+      },
+      attendanceData: {
+        daysPresent: Number(emp.daysPresent || 0),
+        hoursWorked: Number(emp.hoursWorked || 0),
+        lateHours: Number(emp.lateHours || 0)
+      },
+      payPeriodStart: parsed.payPeriodStart,
+      payPeriodEnd: parsed.payPeriodEnd
+    }
+  })
+
+  const dateRange: DateRange = { from, to }
+
+  return { payrollData, dateRange }
+}

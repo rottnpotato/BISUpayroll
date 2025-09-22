@@ -35,6 +35,14 @@ interface AttendanceRecord {
   approvalStatus: string
   rejectionReason: string | null
   approvedAt: string | null
+  // Optional session-based fields when available
+  morningTimeIn?: string | null
+  morningTimeOut?: string | null
+  afternoonTimeIn?: string | null
+  afternoonTimeOut?: string | null
+  isHalfDay?: boolean
+  isEarlyOut?: boolean
+  earlyOutReason?: string | null
 }
 
 interface AttendanceSummary {
@@ -398,6 +406,8 @@ export default function EmployeeAttendancePage() {
     },
   }
 
+  const recentRecords = attendanceData?.records ? [...attendanceData.records].slice(-10).reverse() : []
+
   return (
     <div className="p-6 space-y-8">
       {/* Time Action Confirmation Dialog */}
@@ -463,7 +473,7 @@ export default function EmployeeAttendancePage() {
         transition={{ duration: 0.5 }}
       >
         <h1 className="text-3xl font-bold text-bisu-purple-deep mb-2">My Attendance</h1>
-        <p className="text-gray-600">Track your attendance and working hours</p>
+        <p className="text-gray-600">Today is {format(currentTime, 'EEEE, MMMM d, yyyy')}</p>
       </motion.div>
 
       <motion.div
@@ -474,27 +484,27 @@ export default function EmployeeAttendancePage() {
       >
         {/* Clock In/Out Section */}
         <motion.div variants={itemVariants}>
-          <Card className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white">
-            <CardHeader>
-              <CardTitle className="text-bisu-yellow flex items-center gap-2">
+          <Card className="shadow-md">
+            <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
+              <CardTitle className="text-bisu-purple-deep flex items-center gap-2">
                 <Clock className="h-6 w-6" />
                 Time Clock
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="text-center">
-                <div className="text-3xl font-mono font-bold text-bisu-yellow">
+                <div className="text-3xl font-mono font-bold text-bisu-purple-deep">
                   {format(currentTime, 'HH:mm:ss')}
                 </div>
-                <div className="text-lg text-bisu-yellow-light">
+                <div className="text-sm text-gray-600">
                   {format(currentTime, 'EEEE, MMMM d, yyyy')}
                 </div>
-                <div className="text-sm text-bisu-yellow-light mt-2">
-                  <div>Morning: 8:00 AM - 12:00 PM | Afternoon: 1:00 PM - 5:00 PM</div>
+                <div className="text-sm text-gray-600 mt-2">
+                  <div className="text-bisu-purple-deep/80">Morning: 8:00 AM - 12:00 PM | Afternoon: 1:00 PM - 5:00 PM</div>
                   <div className="text-xs mt-1">Time-in allowed during session times</div>
                   {restrictionsDisabled && (
-                    <div className="text-red-200 text-xs mt-1 font-semibold">
-                      ⚠️ TIME RESTRICTIONS DISABLED (TESTING MODE)
+                    <div className="text-amber-700 text-xs mt-1 font-semibold">
+                      ⚠️ Time restrictions disabled (testing)
                     </div>
                   )}
                 </div>
@@ -502,15 +512,15 @@ export default function EmployeeAttendancePage() {
 
               <div className="space-y-4">
                 <div className="text-center">
-                  <div className="text-sm text-bisu-yellow-light">Today's Status</div>
-                  <div className="text-lg font-semibold text-white">{getTodayStatus()}</div>
+                  <div className="text-sm text-gray-500">Today's Status</div>
+                  <div className="text-lg font-semibold text-bisu-purple-deep">{getTodayStatus()}</div>
                   {todayRecord?.isHalfDay && (
-                    <div className="text-sm text-yellow-300 mt-1">
+                    <div className="text-sm text-amber-600 mt-1">
                       Half-day attendance ({todayRecord.hours?.toFixed(2) || '0'} hours)
                     </div>
                   )}
                   {todayRecord?.isEarlyOut && (
-                    <div className="text-sm text-orange-300 mt-1">
+                    <div className="text-sm text-orange-600 mt-1">
                       Early timeout - {todayRecord.earlyOutReason}
                     </div>
                   )}
@@ -520,30 +530,30 @@ export default function EmployeeAttendancePage() {
                 {todayRecord && (
                   <div className="grid grid-cols-2 gap-4">
                     {/* Morning Session */}
-                    <div className="text-center border border-bisu-yellow-light/20 rounded-lg p-3">
-                      <div className="text-sm text-bisu-yellow-light font-medium mb-2">Morning Session</div>
+                    <div className="text-center border border-bisu-purple-extralight rounded-lg p-3">
+                      <div className="text-sm text-gray-600 font-medium mb-2">Morning Session</div>
                       <div className="space-y-1">
-                        <div className="text-xs text-bisu-yellow-light">Time In</div>
-                        <div className="text-sm font-semibold text-white">
+                        <div className="text-xs text-gray-500">Time In</div>
+                        <div className="text-sm font-semibold text-bisu-purple-deep">
                           {todayRecord.morningTimeIn || '-'}
                         </div>
-                        <div className="text-xs text-bisu-yellow-light">Time Out</div>
-                        <div className="text-sm font-semibold text-white">
+                        <div className="text-xs text-gray-500">Time Out</div>
+                        <div className="text-sm font-semibold text-bisu-purple-deep">
                           {todayRecord.morningTimeOut || '-'}
                         </div>
                       </div>
                     </div>
                     
                     {/* Afternoon Session */}
-                    <div className="text-center border border-bisu-yellow-light/20 rounded-lg p-3">
-                      <div className="text-sm text-bisu-yellow-light font-medium mb-2">Afternoon Session</div>
+                    <div className="text-center border border-bisu-purple-extralight rounded-lg p-3">
+                      <div className="text-sm text-gray-600 font-medium mb-2">Afternoon Session</div>
                       <div className="space-y-1">
-                        <div className="text-xs text-bisu-yellow-light">Time In</div>
-                        <div className="text-sm font-semibold text-white">
+                        <div className="text-xs text-gray-500">Time In</div>
+                        <div className="text-sm font-semibold text-bisu-purple-deep">
                           {todayRecord.afternoonTimeIn || '-'}
                         </div>
-                        <div className="text-xs text-bisu-yellow-light">Time Out</div>
-                        <div className="text-sm font-semibold text-white">
+                        <div className="text-xs text-gray-500">Time Out</div>
+                        <div className="text-sm font-semibold text-bisu-purple-deep">
                           {todayRecord.afternoonTimeOut || '-'}
                         </div>
                       </div>
@@ -555,14 +565,14 @@ export default function EmployeeAttendancePage() {
                 {todayRecord && !todayRecord.morningTimeIn && !todayRecord.afternoonTimeIn && (
                   <div className="flex justify-center items-center gap-4">
                     <div className="text-center">
-                      <div className="text-sm text-bisu-yellow-light">Time In</div>
-                      <div className="text-lg font-semibold text-white">
+                      <div className="text-sm text-gray-500">Time In</div>
+                      <div className="text-lg font-semibold text-bisu-purple-deep">
                         {todayRecord.timeIn || '-'}
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-sm text-bisu-yellow-light">Time Out</div>
-                      <div className="text-lg font-semibold text-white">
+                      <div className="text-sm text-gray-500">Time Out</div>
+                      <div className="text-lg font-semibold text-bisu-purple-deep">
                         {todayRecord.timeOut || '-'}
                       </div>
                     </div>
@@ -596,10 +606,10 @@ export default function EmployeeAttendancePage() {
                     toast.info(restrictionsDisabled ? 'Time restrictions enabled' : 'Time restrictions disabled for testing')
                   }}
                   variant="outline"
-                  className={`text-xs px-4 py-2 border-2 ${
+                  className={`text-xs px-4 py-2 border-bisu-purple-deep text-bisu-purple-deep ${
                     restrictionsDisabled 
-                      ? 'bg-red-600 text-white border-red-400 hover:bg-red-700' 
-                      : 'bg-orange-600 text-white border-orange-400 hover:bg-orange-700'
+                      ? 'bg-amber-50 hover:bg-amber-100' 
+                      : 'bg-white hover:bg-bisu-purple-extralight'
                   }`}
                 >
                   {restrictionsDisabled ? '🔓 Enable Time Restrictions' : '🔒 Disable Time Restrictions (Testing)'}
@@ -669,6 +679,49 @@ export default function EmployeeAttendancePage() {
                 </CardContent>
               </Card>
             </div>
+          </motion.div>
+        )}
+
+        {/* Recent Attendance */}
+        {recentRecords && recentRecords.length > 0 && (
+          <motion.div variants={itemVariants}>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-bisu-purple-deep flex items-center gap-2">
+                    <CalendarDays className="h-5 w-5" />
+                    Recent Attendance
+                  </CardTitle>
+                  <span className="text-xs text-gray-500">Last {recentRecords.length} days</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Day</TableHead>
+                      <TableHead>Time In</TableHead>
+                      <TableHead>Time Out</TableHead>
+                      <TableHead>Hours</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentRecords.map((record: AttendanceRecord) => (
+                      <TableRow key={`recent-${record.id}`}>
+                        <TableCell className="font-medium">{format(new Date(record.date), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>{record.dayOfWeek}</TableCell>
+                        <TableCell>{record.timeIn || '-'}</TableCell>
+                        <TableCell>{record.timeOut || '-'}</TableCell>
+                        <TableCell>{formatHours(record.hours)}</TableCell>
+                        <TableCell>{getStatusBadge(record.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </motion.div>
         )}
 

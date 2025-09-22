@@ -4,7 +4,7 @@ import type React from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { BisuLogo } from "@/components/bisu-logo"
 import { AnimatedSidebar } from "@/components/animated-sidebar"
-import { LayoutDashboard, Calendar, DollarSign, FileText, User } from "lucide-react"
+import { Calendar, DollarSign, User } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { motion } from "@/components/simple-motion"
@@ -12,10 +12,8 @@ import { PageLoading } from "@/components/ui/page-loading"
 import { NotificationProvider } from "@/components/ui/notification"
 
 const employeeNavItems = [
-  { href: "/employee/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/employee/attendance", label: "My Attendance", icon: Calendar },
-  { href: "/employee/payroll", label: "Payroll Info", icon: DollarSign },
-  { href: "/employee/reports", label: "My Reports", icon: FileText },
+  { href: "/employee/attendance", label: "Attendance", icon: Calendar },
+  { href: "/employee/payroll", label: "Payslip Details", icon: DollarSign },
   { href: "/employee/profile", label: "Profile", icon: User },
 ]
 
@@ -102,8 +100,8 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (sidebarCollapsed ? 'ml-20' : 'ml-64')}`}
         >
           {/* Page content */}
-          <main className="flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-[1200px]">
-            {isLoading ? <PageLoading message="Loading your dashboard..." /> : children}
+          <main className="employee-light-cards flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-[1200px]">
+            {isLoading ? <PageLoading message="Loading your attendance..." /> : children}
           </main>
         </motion.div>
       </div>

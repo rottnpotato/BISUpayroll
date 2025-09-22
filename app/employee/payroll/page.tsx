@@ -130,7 +130,7 @@ interface DetailedPayrollData {
   appliedRules: PayrollRule[]
 }
 
-export default function EmployeePayrollPage() {
+export default function PayslipDetailsPage() {
   const [payrollData, setPayrollData] = useState<DetailedPayrollData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
@@ -185,8 +185,8 @@ export default function EmployeePayrollPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">My Payroll</h1>
-          <p className="text-muted-foreground">View your payroll records and payment details</p>
+        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
+        <p className="text-muted-foreground">View your payroll details, applied rules, and history</p>
         </div>
         <div className="grid gap-4">
           {[...Array(3)].map((_, i) => (
@@ -206,8 +206,8 @@ export default function EmployeePayrollPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">My Payroll</h1>
-          <p className="text-muted-foreground">View your payroll records and payment details</p>
+        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
+        <p className="text-muted-foreground">View your payroll details, applied rules, and history</p>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -230,10 +230,8 @@ export default function EmployeePayrollPage() {
       transition={{ duration: 0.5 }}
     >
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">My Payroll</h1>
-        <p className="text-muted-foreground">
-          View your current payroll calculation, applied rules, and payment history.
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
+        <p className="text-muted-foreground">Your current payroll, rules, and payment history</p>
       </div>
 
       {/* Employee Information Card */}
@@ -292,7 +290,7 @@ export default function EmployeePayrollPage() {
         </CardContent>
       </Card>
 
-      {/* Main Payroll Tabs */}
+      {/* Main Tabs */}
       <Tabs defaultValue="current" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="current" className="flex items-center gap-2">

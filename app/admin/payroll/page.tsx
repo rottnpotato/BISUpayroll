@@ -43,8 +43,9 @@ import { usePayrollRules } from './hooks/usePayrollRules'
 import { usePayrollConfig } from './hooks/usePayrollConfig'
 import { useReportsState, usePayrollGeneration, usePrintPayroll } from './hooks'
 import { reportTemplateData } from './constants'
-import { filterReports } from './utils/reports'
-import type { PayrollRule } from './types'
+import { filterReports, generatePrintHTML, parseSavedLedgerJsonToPayrollData } from './utils/reports'
+import type { PayrollRule, Report } from './types'
+import { useToast } from "@/hooks/use-toast"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -72,6 +73,7 @@ const itemVariants = {
 export default function PayrollPage() {
   // Use our custom hooks for data and state management
   const { rules, users, schedules, isLoading, loadData } = usePayrollData()
+  const { toast } = useToast()
   
   // Tab state management with URL hash support
   const [activeTab, setActiveTab] = useState("overview")
@@ -253,6 +255,62 @@ export default function PayrollPage() {
     )
     if (success) {
       setShowPreview(false)
+    }
+  }
+
+  // Handle printing of an already-saved ledger from Recent Reports
+  const handlePrintSavedReport = async (report: Report) => {
+    try {
+      if (!report?.id) {
+        toast({ title: "Invalid report", description: "Missing report identifier.", variant: "destructive" })
+        return
+      }
+
+      const res = await fetch(`/api/admin/payroll/files/${report.id}/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'view' })
+      })
+
+      if (!res.ok) {
+        throw new Error(`Failed to load report content (${res.status})`)
+      }
+
+      const data = await res.json()
+      const content: string = data?.content || ''
+
+      let htmlContent = ''
+      if (content.trim().startsWith('<')) {
+        // Already HTML
+        htmlContent = content
+      } else {
+        // Likely JSON ledger → transform to printable HTML
+        const { payrollData: parsedData, dateRange } = parseSavedLedgerJsonToPayrollData(content)
+        htmlContent = generatePrintHTML(parsedData, dateRange, null)
+      }
+
+      const printWindow = window.open('', '_blank')
+      if (!printWindow) {
+        toast({ title: "Print Blocked", description: "Allow popups to print the ledger.", variant: "destructive" })
+        return
+      }
+
+      printWindow.document.open()
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+
+      setTimeout(() => {
+        try {
+          printWindow.print()
+          setTimeout(() => { printWindow.close() }, 1000)
+        } catch (e) {
+          console.error('Print error:', e)
+          toast({ title: "Print Error", description: "Unable to print the ledger.", variant: "destructive" })
+        }
+      }, 500)
+    } catch (error) {
+      console.error('Failed to print saved report:', error)
+      toast({ title: "Print Error", description: "There was an issue printing the selected ledger.", variant: "destructive" })
     }
   }
 
@@ -475,11 +533,7 @@ export default function PayrollPage() {
                         window.open(report.downloadUrl, '_blank', 'noopener,noreferrer')
                       }
                     }}
-                    onPrint={(report) => {
-                      if (report.downloadUrl) {
-                        window.open(report.downloadUrl, '_blank', 'noopener,noreferrer')
-                      }
-                    }}
+                    onPrint={(report) => { handlePrintSavedReport(report) }}
                   />
                 </motion.div>
               </div>
