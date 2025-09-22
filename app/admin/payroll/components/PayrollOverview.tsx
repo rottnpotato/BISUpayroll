@@ -23,6 +23,10 @@ import {
 } from "lucide-react"
 import { PayrollRule, PayrollSchedule, WorkingHoursConfig, RatesConfig, LeaveBenefitsConfig, PayrollGroup, PayrollFile, PayrollOverviewSummary } from '../types'
 import { toast } from "sonner"
+import { OverviewHeader } from "./overview/OverviewHeader"
+import { OverviewStats } from "./overview/OverviewStats"
+import { GroupsList } from "./overview/GroupsList"
+import { FilesList } from "./overview/FilesList"
 
 interface PayrollOverviewProps {
   rules: PayrollRule[]
@@ -219,15 +223,23 @@ export function PayrollOverview({
 
   if (isLoading) {
     return (
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
-              <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card className="animate-pulse">
+          <CardContent className="p-10">
+            <div className="h-5 bg-gray-200 rounded w-1/4 mb-6"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -239,329 +251,171 @@ export function PayrollOverview({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Summary Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="border-l-4 border-l-bisu-purple-deep">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-              <Users className="h-4 w-4 text-bisu-purple-medium" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.totalEmployees}</div>
-              <p className="text-xs text-muted-foreground">Active employees</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Header */}
+      <OverviewHeader summary={payrollSummary} onRefresh={fetchPayrollOverview} />
 
-        <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="border-l-4 border-l-bisu-yellow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Monthly Payroll</CardTitle>
-              <DollarSign className="h-4 w-4 text-bisu-yellow-dark" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-bisu-purple-deep">{formatCurrency(payrollSummary.monthlyPayrollTotal)}</div>
-              <p className="text-xs text-muted-foreground">Estimated total</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Stats */}
+      <motion.div variants={itemVariants} initial="hidden" animate="visible">
+        <OverviewStats summary={payrollSummary} formatCurrency={formatCurrency} />
+      </motion.div>
 
-        <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="border-l-4 border-l-orange-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
-              <Clock className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.pendingApproval}</div>
-              <p className="text-xs text-muted-foreground">Awaiting approval</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Main Content */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          <motion.div variants={itemVariants} initial="hidden" animate="visible">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                    <FolderOpen className="h-5 w-5" />
+                    Recent Payroll Groups
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={fetchPayrollOverview} className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-purple-light">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <GroupsList groups={payrollGroups} />
+              </CardContent>
+            </Card>
+          </motion.div>
 
-        <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="border-l-4 border-l-green-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Next Pay Date</CardTitle>
-              <Calendar className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-bisu-purple-deep">
-                {payrollSummary.upcomingPayDate || 'Not Set'}
-              </div>
-              <p className="text-xs text-muted-foreground">Scheduled generation</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+          <motion.div variants={itemVariants} initial="hidden" animate="visible">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                    <FileText className="h-5 w-5" />
+                    Recent Payroll Files
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={fetchPayrollOverview} className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-purple-light">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <FilesList files={recentFiles} />
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
 
-      {/* Configuration Summary */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="flex flex-col h-full min-h-[280px]">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                <BarChart3 className="h-5 w-5" />
-                Active Calculations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.activeRules}</span>
-                <span className="text-sm text-muted-foreground">of {rules.length} total</span>
-              </div>
-              <div className="flex-1 space-y-2">
-                {rules.length > 0 ? (
-                  rules.slice(0, 3).map((rule) => (
-                    <div key={rule.id} className="flex justify-between items-center text-sm py-2">
-                      <span className="truncate flex-1 mr-2">{rule.name}</span>
-                      <Badge variant={rule.isActive ? "default" : "secondary"} className="text-xs flex-shrink-0">
-                        {rule.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex items-center justify-center h-full text-center text-muted-foreground text-sm">
-                    No payroll calculations configured
-                  </div>
-                )}
-                {rules.length > 3 && (
-                  <div className="text-xs text-muted-foreground text-center pt-2">
-                    +{rules.length - 3} more items
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="flex flex-col h-full min-h-[280px]">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                <Clock className="h-5 w-5" />
-                Schedule Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.activeSchedules}</span>
-                <span className="text-sm text-muted-foreground">of {schedules.length} total</span>
-              </div>
-              <div className="flex-1 space-y-3">
-                {schedules.length > 0 ? (
-                  schedules.slice(0, 2).map((schedule) => (
-                    <div key={schedule.id} className="flex justify-between items-start py-2">
-                      <div className="flex-1 mr-2">
-                        <div className="font-medium text-sm">{schedule.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {schedule.cutoffType || 'Bi-monthly'}
-                        </div>
+        <div className="space-y-6">
+          <motion.div variants={itemVariants} initial="hidden" animate="visible">
+            <Card className="flex flex-col h-full">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                  <BarChart3 className="h-5 w-5" />
+                  Active Calculations
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.activeRules}</span>
+                  <span className="text-sm text-muted-foreground">of {rules.length} total</span>
+                </div>
+                <div className="flex-1 space-y-2">
+                  {rules.length > 0 ? (
+                    rules.slice(0, 3).map((rule) => (
+                      <div key={rule.id} className="flex justify-between items-center text-sm py-2">
+                        <span className="truncate flex-1 mr-2">{rule.name}</span>
+                        <Badge variant={rule.isActive ? "default" : "secondary"} className="text-xs flex-shrink-0">
+                          {rule.isActive ? "Active" : "Inactive"}
+                        </Badge>
                       </div>
-                      <Badge variant={schedule.isActive ? "default" : "secondary"} className="text-xs flex-shrink-0">
-                        {schedule.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                    ))
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-center text-muted-foreground text-sm">
+                      No payroll calculations configured
                     </div>
-                  ))
-                ) : (
-                  <div className="flex items-center justify-center h-full text-center text-muted-foreground text-sm">
-                    No schedules configured
-                  </div>
-                )}
-                {schedules.length > 2 && (
-                  <div className="text-xs text-muted-foreground text-center pt-2">
-                    +{schedules.length - 2} more schedules
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+                  )}
+                  {rules.length > 3 && (
+                    <div className="text-xs text-muted-foreground text-center pt-2">
+                      +{rules.length - 3} more items
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-        <motion.div variants={itemVariants} initial="hidden" animate="visible">
-          <Card className="flex flex-col h-full min-h-[280px]">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                <FolderOpen className="h-5 w-5" />
-                Payroll Groups
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.generatedGroups}</span>
-                <span className="text-sm text-muted-foreground">generated</span>
-              </div>
-              <div className="flex-1 space-y-1">
+          <motion.div variants={itemVariants} initial="hidden" animate="visible">
+            <Card className="flex flex-col h-full">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                  <Clock className="h-5 w-5" />
+                  Schedule Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-2xl font-bold text-bisu-purple-deep">{payrollSummary.activeSchedules}</span>
+                  <span className="text-sm text-muted-foreground">of {schedules.length} total</span>
+                </div>
+                <div className="flex-1 space-y-3">
+                  {schedules.length > 0 ? (
+                    schedules.slice(0, 2).map((schedule) => (
+                      <div key={schedule.id} className="flex justify-between items-start py-2">
+                        <div className="flex-1 mr-2">
+                          <div className="font-medium text-sm">{schedule.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {schedule.cutoffType || 'Bi-monthly'}
+                          </div>
+                        </div>
+                        <Badge variant={schedule.isActive ? "default" : "secondary"} className="text-xs flex-shrink-0">
+                          {schedule.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-center text-muted-foreground text-sm">
+                      No schedules configured
+                    </div>
+                  )}
+                  {schedules.length > 2 && (
+                    <div className="text-xs text-muted-foreground text-center pt-2">
+                      +{schedules.length - 2} more schedules
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div variants={itemVariants} initial="hidden" animate="visible">
+            <Card className="flex flex-col h-full">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                  <FolderOpen className="h-5 w-5" />
+                  Payroll Groups
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-2">
                 <div className="flex justify-between py-1">
-                  <span className="text-sm">Generated:</span>
+                  <span className="text-sm">Generated</span>
                   <span className="font-medium">{payrollSummary.generatedGroups}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-sm">Completed:</span>
+                  <span className="text-sm">Completed</span>
                   <span className="font-medium text-green-600">{payrollSummary.completedPayrolls}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-sm">Pending:</span>
+                  <span className="text-sm">Pending</span>
                   <span className="font-medium text-orange-600">{payrollSummary.pendingApproval}</span>
                 </div>
-                <Separator className="my-3" />
-                <div className="flex justify-between font-medium py-1">
-                  <span className="text-sm">Total Files:</span>
+                <div className="h-px w-full bg-gray-200 my-2" />
+                <div className="flex justify-between py-1">
+                  <span className="text-sm">Total Files</span>
                   <span className="text-sm">{payrollSummary.totalPayrollFiles}</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       </div>
-
-      {/* Recent Payroll Groups */}
-      <motion.div variants={itemVariants} initial="hidden" animate="visible">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                <FolderOpen className="h-5 w-5" />
-                Recent Payroll Groups
-              </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchPayrollOverview}
-                className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-purple-light"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {payrollGroups.length > 0 ? (
-              <div className="space-y-3">
-                {payrollGroups.map((group) => {
-                  const status = getGroupStatus(group)
-                  const StatusIcon = status.icon
-                  
-                  return (
-                    <div key={group.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50">
-                      <div className="flex items-center gap-3">
-                        <div>
-                          <div className="font-medium">
-                            {group.scheduleName}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {group.employeeCount} employees • {group.departments.join(', ')}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDate(group.payPeriodStart)} - {formatDate(group.payPeriodEnd)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">{formatCurrency(group.totalNetPay)}</div>
-                        <div className="text-xs text-muted-foreground">{group.fileCount} files</div>
-                        <Badge className={status.color}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {status.label}
-                        </Badge>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Payroll Groups</h3>
-                <p className="text-gray-500 text-center">
-                  Payroll groups will appear here once they are generated based on schedules.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Recent Payroll Files */}
-      <motion.div variants={itemVariants} initial="hidden" animate="visible">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                <FileText className="h-5 w-5" />
-                Recent Payroll Files
-              </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchPayrollOverview}
-                className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-purple-light"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {recentFiles.length > 0 ? (
-              <div className="space-y-3">
-                {recentFiles.map((file) => {
-                  const status = getFileStatus(file)
-                  const StatusIcon = status.icon
-                  
-                  return (
-                    <div key={file.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-bisu-purple-medium" />
-                        <div>
-                          <div className="font-medium">
-                            {file.fileName}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {file.reportType} • {file.employeeCount} employees
-                            {file.department && ` • ${file.department}`}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDate(file.generatedAt)} • {formatFileSize(file.fileSize)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">{formatCurrency(file.totalNetPay)}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Downloads: {file.downloadCount}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className={status.color}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {status.label}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                          >
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Payroll Files</h3>
-                <p className="text-gray-500 text-center">
-                  Generated payroll files will appear here for safekeeping and backup.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
     </motion.div>
   )
 }
