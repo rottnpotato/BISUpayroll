@@ -183,26 +183,26 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Status Badge with dynamic styling */}
+          {/* Status Badge aligned to BISU theme */}
           {(() => {
             const status = data?.payrollDetails?.status || "Processing"
             const isPaid = status.includes("Paid")
             const isApproved = status.includes("Approved")
             const isGenerated = status.includes("Generated")
-            
-            let badgeClasses = "flex items-center gap-1 px-3 py-1 text-sm font-medium"
+
+            let badgeClasses = "flex items-center gap-1 px-3 py-1 text-sm font-medium border"
             let iconComponent = <CircleCheck className="h-3 w-3" />
-            
+
             if (isPaid) {
-              badgeClasses += " bg-green-50 text-green-700 border-green-200"
+              badgeClasses += " bg-bisu-purple-extralight text-bisu-purple-deep border-bisu-purple-light"
             } else if (isApproved) {
-              badgeClasses += " bg-blue-50 text-blue-700 border-blue-200"
+              badgeClasses += " bg-bisu-yellow-extralight text-bisu-purple-deep border-bisu-yellow"
             } else if (isGenerated) {
-              badgeClasses += " bg-amber-50 text-amber-700 border-amber-200"
+              badgeClasses += " bg-bisu-purple-extralight text-bisu-purple-medium border-bisu-purple-light"
             } else {
               badgeClasses += " bg-gray-50 text-gray-700 border-gray-200"
             }
-            
+
             return (
               <Badge className={badgeClasses}>
                 {iconComponent}
@@ -246,7 +246,7 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
         {/* Progress bar background */}
         <div className="h-1 bg-gray-200 w-full rounded-full absolute top-1/2 -translate-y-1/2"></div>
         
-        {/* Progress bar fill based on completion */}
+        {/* Progress bar fill based on completion using BISU purple */}
         <div 
           className="h-1 bg-bisu-purple-deep rounded-full absolute top-1/2 -translate-y-1/2 transition-all duration-500"
           style={{
@@ -261,12 +261,12 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
             <div className={`w-8 h-8 rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold mb-1 ${
               timelineData.startDate.completed 
                 ? 'bg-bisu-purple-deep text-white' 
-                : 'bg-gray-300 text-gray-600'
+                : 'bg-bisu-purple-extralight text-bisu-purple-medium'
             }`}>
               {timelineData.startDate.day}
             </div>
             <div className={`text-xs font-medium ${
-              timelineData.startDate.completed ? 'text-bisu-purple-deep' : 'text-gray-500'
+              timelineData.startDate.completed ? 'text-bisu-purple-deep' : 'text-bisu-purple-medium'
             }`}>
               {timelineData.startDate.month}
             </div>
@@ -279,13 +279,13 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
           <div className="flex flex-col items-center">
             <div className={`w-8 h-8 rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold mb-1 ${
               timelineData.processDate.completed 
-                ? 'bg-bisu-yellow text-gray-800' 
-                : 'bg-gray-300 text-gray-600'
+                ? 'bg-bisu-yellow text-bisu-purple-deep' 
+                : 'bg-bisu-purple-extralight text-bisu-purple-medium'
             }`}>
               {timelineData.processDate.day}
             </div>
             <div className={`text-xs font-medium ${
-              timelineData.processDate.completed ? 'text-yellow-700' : 'text-gray-500'
+              timelineData.processDate.completed ? 'text-bisu-purple-deep' : 'text-bisu-purple-medium'
             }`}>
               {timelineData.processDate.month}
             </div>
@@ -298,13 +298,13 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
           <div className="flex flex-col items-center">
             <div className={`w-8 h-8 rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-xs font-semibold mb-1 ${
               timelineData.endDate.completed 
-                ? 'bg-green-500 text-white' 
-                : 'bg-gray-300 text-gray-600'
+                ? 'bg-bisu-purple-deep text-white' 
+                : 'bg-bisu-purple-extralight text-bisu-purple-medium'
             }`}>
               {timelineData.endDate.day}
             </div>
             <div className={`text-xs font-medium ${
-              timelineData.endDate.completed ? 'text-green-600' : 'text-gray-500'
+              timelineData.endDate.completed ? 'text-bisu-purple-deep' : 'text-bisu-purple-medium'
             }`}>
               {timelineData.endDate.month}
             </div>

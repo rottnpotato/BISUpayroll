@@ -201,7 +201,7 @@ export default function AdminDashboard() {
                       onClick={handleCalendarClick}
                     >
                       <Calendar className="h-4 w-4" />
-                      July 2025
+                      {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </Button>
                     <Button 
                       variant="outline" 

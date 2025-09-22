@@ -459,22 +459,49 @@ export async function GET(request: NextRequest) {
     let payrollPeriodStart = startOfMonth
     let payrollPeriodEnd = new Date()
 
-    if (activePayrollSchedule && activePayrollSchedule.days.length > 0) {
-      // Use the first payroll day of current month as period start
-      const payrollDay = activePayrollSchedule.days[0]
-      const currentMonth = new Date().getMonth()
-      const currentYear = new Date().getFullYear()
-      
-      // If we're past the payroll day, use current month's payroll day
-      // Otherwise, use previous month's payroll day as start
-      if (new Date().getDate() >= payrollDay) {
-        payrollPeriodStart = new Date(currentYear, currentMonth, payrollDay)
-      } else {
-        payrollPeriodStart = new Date(currentYear, currentMonth - 1, payrollDay)
+    if (activePayrollSchedule && Array.isArray(activePayrollSchedule.days) && activePayrollSchedule.days.length > 0) {
+      const today = new Date()
+      const currentMonthIndex = today.getMonth()
+      const currentYear = today.getFullYear()
+
+      // Build candidate schedule dates across prev, current, and next month
+      const sortedDays = [...activePayrollSchedule.days].sort((a: number, b: number) => a - b)
+      const candidateDates: Date[] = []
+
+      for (let monthOffset = -1; monthOffset <= 1; monthOffset++) {
+        for (const day of sortedDays) {
+          candidateDates.push(new Date(currentYear, currentMonthIndex + monthOffset, day))
+        }
       }
-      
-      // Period end is the next payroll day
-      payrollPeriodEnd = new Date(currentYear, currentMonth + 1, payrollDay)
+
+      candidateDates.sort((a, b) => a.getTime() - b.getTime())
+
+      // Find the most recent schedule date <= today for start, and the next > today for end
+      let startCandidate: Date | null = null
+      let endCandidate: Date | null = null
+      for (const date of candidateDates) {
+        if (date.getTime() <= today.getTime()) {
+          startCandidate = date
+        }
+        if (!endCandidate && date.getTime() > today.getTime()) {
+          endCandidate = date
+        }
+      }
+
+      // Fallbacks if boundaries are not found (e.g., today is before all candidate dates)
+      if (!startCandidate) {
+        // Use the latest date from two months back as a conservative start
+        const lastDayPrevPrevMonth = sortedDays[sortedDays.length - 1]
+        startCandidate = new Date(currentYear, currentMonthIndex - 1, lastDayPrevPrevMonth)
+      }
+      if (!endCandidate) {
+        // Use the earliest date from the month after next as the end
+        const firstDayNextMonth = sortedDays[0]
+        endCandidate = new Date(currentYear, currentMonthIndex + 1, firstDayNextMonth)
+      }
+
+      payrollPeriodStart = startCandidate
+      payrollPeriodEnd = endCandidate
     }
 
     // Ensure consistent data structure even when empty

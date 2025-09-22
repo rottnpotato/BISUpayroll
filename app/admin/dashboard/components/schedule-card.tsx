@@ -140,15 +140,15 @@ export default function ScheduleCard() {
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'payroll':
-        return <FileText className="h-4 w-4 text-blue-500" />;
+        return <FileText className="h-4 w-4 text-bisu-purple-deep" />
       case 'report':
-        return <Clock className="h-4 w-4 text-green-500" />;
+        return <Clock className="h-4 w-4 text-bisu-purple-medium" />
       case 'payment':
-        return <AlertCircle className="h-4 w-4 text-purple-500" />;
+        return <AlertCircle className="h-4 w-4 text-bisu-yellow" />
       default:
-        return <Bell className="h-4 w-4 text-gray-500" />;
+        return <Bell className="h-4 w-4 text-gray-500" />
     }
-  };
+  }
 
   if (error) {
     return (
@@ -224,9 +224,9 @@ export default function ScheduleCard() {
                       <div className="flex items-center gap-1 text-xs">
                         {getEventIcon(event.type)}
                         <span className={`
-                          ${event.type === 'payroll' ? 'text-blue-500' : 
-                            event.type === 'report' ? 'text-green-600' : 
-                            event.type === 'payment' ? 'text-purple-600' : 'text-gray-500'}
+                          ${event.type === 'payroll' ? 'text-bisu-purple-deep' : 
+                            event.type === 'report' ? 'text-bisu-purple-medium' : 
+                            event.type === 'payment' ? 'text-bisu-yellow' : 'text-gray-500'}
                         `}>
                           {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
                         </span>

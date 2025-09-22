@@ -51,12 +51,12 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
     <div className="space-y-4">
       {/* Missed Deadline Alert */}
       {deadlineStatus?.isMissed && (
-        <Alert variant="destructive" className="border-red-300 bg-red-50">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle className="text-red-800 font-semibold">
+        <Alert variant="destructive" className="border-bisu-yellow bg-bisu-yellow-extralight">
+          <AlertTriangle className="h-4 w-4 text-bisu-purple-deep" />
+          <AlertTitle className="text-bisu-purple-deep font-semibold">
             Payroll Generation Overdue
           </AlertTitle>
-          <AlertDescription className="text-red-700">
+          <AlertDescription className="text-bisu-purple-medium">
             <div className="mt-2">
               <p>{deadlineStatus.message}</p>
               {deadlineStatus.daysOverdue && deadlineStatus.daysOverdue > 3 && (
@@ -68,12 +68,12 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
                 <Button 
                   onClick={handleGeneratePayroll}
                   size="sm" 
-                  className="bg-red-600 hover:bg-red-700 text-white"
+                  className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
                 >
                   Generate Payroll Now
                   <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
-                <Badge variant="outline" className="border-red-300 text-red-700">
+                <Badge variant="outline" className="border-bisu-purple-light text-bisu-purple-deep">
                   {deadlineStatus.daysOverdue} day{deadlineStatus.daysOverdue !== 1 ? 's' : ''} overdue
                 </Badge>
               </div>
@@ -84,12 +84,12 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
 
       {/* Urgent Deadlines Alert */}
       {urgentDeadlines.length > 0 && !deadlineStatus?.isMissed && (
-        <Alert variant="default" className="border-amber-300 bg-amber-50">
-          <Clock className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800 font-semibold">
+        <Alert variant="default" className="border-bisu-yellow bg-bisu-yellow-extralight">
+          <Clock className="h-4 w-4 text-bisu-purple-deep" />
+          <AlertTitle className="text-bisu-purple-deep font-semibold">
             Upcoming Payroll Deadlines
           </AlertTitle>
-          <AlertDescription className="text-amber-700">
+          <AlertDescription className="text-bisu-purple-medium">
             <div className="mt-2 space-y-2">
               {urgentDeadlines.slice(0, 2).map((deadline, index) => (
                 <div key={index} className="flex items-center justify-between">
@@ -105,8 +105,8 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
                     </span>
                   </div>
                   <Badge 
-                    variant={deadline.daysUntil <= 1 ? "destructive" : "default"}
-                    className="text-xs"
+                    variant="outline"
+                    className={`text-xs border-bisu-purple-light ${deadline.daysUntil <= 1 ? 'text-bisu-purple-deep' : 'text-bisu-purple-medium'}`}
                   >
                     {deadline.daysUntil === 0 ? 'Today' : 
                      deadline.daysUntil === 1 ? 'Tomorrow' : 
@@ -126,23 +126,23 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
 
       {/* File Security Status */}
       {fileStatus && fileStatus.hasGeneratedFiles && (
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-bisu-purple-light bg-bisu-purple-extralight">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-800 flex items-center gap-2">
-              <Shield className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium text-bisu-purple-deep flex items-center gap-2">
+              <Shield className="h-4 w-4 text-bisu-purple-deep" />
               Payroll File Security Status
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="space-y-1">
-                <div className="text-green-700">Total Files: {fileStatus.fileCount}</div>
-                <div className="text-green-700">Encrypted: {fileStatus.encryptedFiles}</div>
+                <div className="text-bisu-purple-deep">Total Files: {fileStatus.fileCount}</div>
+                <div className="text-bisu-purple-deep">Encrypted: {fileStatus.encryptedFiles}</div>
               </div>
               <div className="space-y-1">
-                <div className="text-green-700">Employees: {fileStatus.totalEmployees}</div>
+                <div className="text-bisu-purple-deep">Employees: {fileStatus.totalEmployees}</div>
                 {fileStatus.lastGenerated && (
-                  <div className="text-green-600 text-xs">
+                  <div className="text-bisu-purple-medium text-xs">
                     Last: {new Date(fileStatus.lastGenerated).toLocaleDateString()}
                   </div>
                 )}
@@ -150,9 +150,9 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
             </div>
             
             {fileStatus.encryptedFiles < fileStatus.fileCount && (
-              <Alert variant="default" className="mt-3 border-amber-300 bg-amber-50">
-                <AlertCircle className="h-3 w-3" />
-                <AlertDescription className="text-xs text-amber-700">
+              <Alert variant="default" className="mt-3 border-bisu-yellow bg-bisu-yellow-extralight">
+                <AlertCircle className="h-3 w-3 text-bisu-purple-deep" />
+                <AlertDescription className="text-xs text-bisu-purple-medium">
                   {fileStatus.fileCount - fileStatus.encryptedFiles} file(s) are not encrypted. 
                   Consider re-generating with encryption enabled.
                 </AlertDescription>
@@ -164,10 +164,10 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
 
       {/* Upcoming Schedule */}
       {normalDeadlines.length > 0 && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-bisu-purple-light bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800 flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium text-bisu-purple-deep flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-bisu-purple-deep" />
               Upcoming Payroll Schedule
             </CardTitle>
           </CardHeader>
@@ -176,18 +176,18 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
               {normalDeadlines.slice(0, 3).map((deadline, index) => (
                 <div key={index} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="capitalize text-blue-700">{deadline.type}</span>
-                    <span className="text-blue-600">
+                    <span className="capitalize text-bisu-purple-deep">{deadline.type}</span>
+                    <span className="text-bisu-purple-medium">
                       {new Date(deadline.date).toLocaleDateString()}
                     </span>
                   </div>
-                  <Badge variant="outline" className="border-blue-300 text-blue-700 text-xs">
+                  <Badge variant="outline" className="border-bisu-purple-light text-bisu-purple-deep text-xs">
                     {deadline.daysUntil} day{deadline.daysUntil !== 1 ? 's' : ''}
                   </Badge>
                 </div>
               ))}
               {normalDeadlines.length > 3 && (
-                <p className="text-xs text-blue-600 mt-2">
+                <p className="text-xs text-bisu-purple-medium mt-2">
                   +{normalDeadlines.length - 3} more scheduled event{normalDeadlines.length - 3 !== 1 ? 's' : ''}
                 </p>
               )}
@@ -198,12 +198,12 @@ const PayrollAlerts: FC<PayrollAlertsProps> = ({ data, isLoading }) => {
 
       {/* No Issues State */}
       {!deadlineStatus?.isMissed && urgentDeadlines.length === 0 && (
-        <Alert variant="default" className="border-green-300 bg-green-50">
-          <Shield className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-800 font-semibold">
+        <Alert variant="default" className="border-bisu-purple-light bg-bisu-purple-extralight">
+          <Shield className="h-4 w-4 text-bisu-purple-deep" />
+          <AlertTitle className="text-bisu-purple-deep font-semibold">
             Payroll System Status: Good
           </AlertTitle>
-          <AlertDescription className="text-green-700">
+          <AlertDescription className="text-bisu-purple-medium">
             <p>All payroll deadlines are on track. {deadlineStatus?.message}</p>
             {fileStatus?.hasGeneratedFiles && (
               <p className="text-sm mt-1">
