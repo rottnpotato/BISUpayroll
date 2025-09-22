@@ -103,26 +103,33 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-4xl z-10 flex flex-col md:flex-row gap-6"
+        className="w-full max-w-4xl z-10 flex flex-col md:flex-row gap-6 "
       >
-        <div className="w-full md:w-1/2 flex flex-col justify-center items-center text-white p-6">
+        <div className="w-full md:w-1/2 flex flex-col justify-start items-start text-white p-6 md:pt-8">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="mb-8 flex items-center gap-4"
+            className="mb-4 mt-7 flex items-center gap-1"
           >
+            <Image 
+              src="/bagong-pilipinas.png" 
+              alt="Bagong Pilipinas Logo" 
+              width={90} 
+              height={55} 
+              className="transition-opacity hover:opacity-100"
+            />
             <Image 
               src="/LOGO_BISU.svg" 
               alt="BISU Logo" 
               width={90} 
               height={90}
               priority
-              className="w-auto h-auto max-h-[90px]"
+              className="w-auto h-auto max-h-[85px]"
             />
             <div className="flex flex-col">
-              <h2 className="text-2xl font-bold">BOHOL ISLAND</h2>
-              <h2 className="text-2xl font-bold">STATE UNIVERSITY</h2>
+              <h2 className="text-xl font-bold">BOHOL ISLAND</h2>
+              <h2 className="text-xl font-bold">STATE UNIVERSITY</h2>
               <p className="text-xs text-white/80">Balilihan Campus</p>
             </div>
           </motion.div>
@@ -131,35 +138,46 @@ export default function LoginPage() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="text-center mb-8"
+            className="text-left mb-6 max-w-md"
           >
             <h1 className="text-3xl font-bold mb-2">PAYROLL MANAGEMENT SYSTEM</h1>
             <p className="text-white/80">Balance • Integrity • Stewardship • Uprightness</p>
           </motion.div>
           
-          <motion.div
+          {/* <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.5 }}
-            className="flex items-center justify-center mt-4"
+            className="flex items-center justify-start gap-6 mt-2 opacity-80"
           >
             <Image 
               src="/bagong-pilipinas.png" 
               alt="Bagong Pilipinas Logo" 
-              width={120} 
-              height={60} 
-              className="mr-4"
+              width={110} 
+              height={55} 
+              className="transition-opacity hover:opacity-100"
             />
-            <Image 
+            {/* <Image 
               src="/tuvlogo.png" 
               alt="TUV Rheinland Logo" 
-              width={120} 
-              height={60}
-            />
-          </motion.div>
+              width={110} 
+              height={55}
+              className="transition-opacity hover:opacity-100"
+            /> 
+          </motion.div> */}
         </div>
         
         <Card className="shadow-2xl bg-white/10 backdrop-blur-md border-white/30 w-full md:w-1/2">
+          <div className="flex justify-center space-x-6 text-white pt-4">
+            <div className="flex items-center space-x-2">
+              <Users size={16} />
+              <span className="text-sm">Staff Portal</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <ShieldCheck size={16} />
+              <span className="text-sm">Admin Panel</span>
+            </div>
+          </div>
           <CardHeader className="space-y-2 text-center">
             <CardTitle className="text-3xl font-bold text-white">Welcome Back</CardTitle>
             <CardDescription className="text-white/80">Sign in to access your dashboard.</CardDescription>
@@ -242,45 +260,7 @@ export default function LoginPage() {
                 </Button>
               </motion.div>
             </form>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="mt-6 text-center text-sm"
-            >
-              <div className="bg-white/10 rounded-lg p-4 space-y-2">
-                <p className="text-white font-medium">Demo Credentials:</p>
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white">Admin:</span>
-                    <code className="bg-[#46246C]/70 px-2 py-1 rounded text-white">
-                      admin@bisu.edu.ph / password123
-                    </code>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white">Employee:</span>
-                    <code className="bg-[#46246C]/70 px-2 py-1 rounded text-white">
-                      juan.delacruz@bisu.edu.ph / password123
-                    </code>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              className="mt-4 flex justify-center space-x-6 text-white"
-            >
-              <div className="flex items-center space-x-2">
-                <Users size={16} />
-                <span className="text-sm">Staff Portal</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <ShieldCheck size={16} />
-                <span className="text-sm">Admin Panel</span>
-              </div>
-            </motion.div>
+            
           </CardContent>
         </Card>
       </motion.div>
