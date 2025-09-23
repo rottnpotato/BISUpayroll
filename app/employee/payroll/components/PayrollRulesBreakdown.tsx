@@ -110,15 +110,15 @@ export function PayrollRulesBreakdown({
         <CardContent>
           {/* Rate Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-            <div className="flex items-center justify-between rounded-lg border bg-green-50/40 px-4 py-3">
+            <div className="flex items-center justify-between rounded-lg border border-bisu-purple-light bg-bisu-purple-extralight px-4 py-3">
               <span className="text-sm text-muted-foreground">Rate per Day</span>
-              <span className="font-semibold text-green-700">
+              <span className="font-semibold text-bisu-purple-deep">
                 {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(calculations.dailyRate)}
               </span>
             </div>
-            <div className="flex items-center justify-between rounded-lg border bg-blue-50/40 px-4 py-3">
+            <div className="flex items-center justify-between rounded-lg border border-bisu-purple-light bg-bisu-purple-extralight px-4 py-3">
               <span className="text-sm text-muted-foreground">Rate per Hour</span>
-              <span className="font-semibold text-blue-700">
+              <span className="font-semibold text-bisu-purple-deep">
                 {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(calculations.hourlyRate)}
               </span>
             </div>
@@ -134,9 +134,9 @@ export function PayrollRulesBreakdown({
             <TabsContent value="summary" className="space-y-4">
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Earnings Summary */}
-                <Card className="border-green-200 bg-green-50/50">
+                <Card className="border-bisu-purple-light bg-bisu-purple-extralight">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2 text-green-700">
+                    <CardTitle className="text-lg flex items-center gap-2 text-bisu-purple-deep">
                       <TrendingUp className="h-5 w-5" />
                       Total Earnings
                     </CardTitle>
@@ -149,27 +149,27 @@ export function PayrollRulesBreakdown({
                     {calculations.overtimePay > 0 && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm">Overtime Pay:</span>
-                        <span className="font-medium text-green-600">{formatCurrency(calculations.overtimePay)}</span>
+                        <span className="font-medium text-bisu-purple-deep">{formatCurrency(calculations.overtimePay)}</span>
                       </div>
                     )}
                     {calculations.bonuses > 0 && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm">Bonuses & Allowances:</span>
-                        <span className="font-medium text-green-600">{formatCurrency(calculations.bonuses)}</span>
+                        <span className="font-medium text-bisu-purple-deep">{formatCurrency(calculations.bonuses)}</span>
                       </div>
                     )}
                     <Separator />
                     <div className="flex justify-between items-center font-bold text-lg">
                       <span>Gross Pay:</span>
-                      <span className="text-green-600">{formatCurrency(calculations.grossPay)}</span>
+                      <span className="text-bisu-purple-deep">{formatCurrency(calculations.grossPay)}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Deductions Summary */}
-                <Card className="border-red-200 bg-red-50/50">
+                <Card className="border-bisu-purple-light bg-white">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2 text-red-700">
+                    <CardTitle className="text-lg flex items-center gap-2 text-bisu-purple-deep">
                       <TrendingDown className="h-5 w-5" />
                       Total Deductions
                     </CardTitle>
@@ -196,7 +196,7 @@ export function PayrollRulesBreakdown({
                     <Separator />
                     <div className="flex justify-between items-center font-bold text-lg">
                       <span>Total Deductions:</span>
-                      <span className="text-red-600">{formatCurrency(calculations.totalDeductions)}</span>
+                      <span className="text-bisu-purple-deep">{formatCurrency(calculations.totalDeductions)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -219,7 +219,7 @@ export function PayrollRulesBreakdown({
             <TabsContent value="earnings" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-green-700">
+                  <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                     <Plus className="h-5 w-5" />
                     Earnings Breakdown
                   </CardTitle>
@@ -236,7 +236,7 @@ export function PayrollRulesBreakdown({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="flex items-center justify-between p-4 rounded-lg border bg-green-50/30"
+                        className="flex items-center justify-between p-4 rounded-lg border border-bisu-purple-light bg-bisu-purple-extralight"
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -245,10 +245,10 @@ export function PayrollRulesBreakdown({
                               <Badge variant="outline" className="text-xs">Base</Badge>
                             )}
                             {rule.type === 'additional' && (
-                              <Badge variant="outline" className="text-xs bg-blue-50">Additional</Badge>
+                              <Badge variant="outline" className="text-xs bg-bisu-purple-extralight">Additional</Badge>
                             )}
                             {rule.type === 'bonus' && (
-                              <Badge variant="outline" className="text-xs bg-green-50">Bonus</Badge>
+                              <Badge variant="outline" className="text-xs bg-bisu-purple-extralight">Bonus</Badge>
                             )}
                           </div>
                           {rule.description && (
@@ -267,14 +267,14 @@ export function PayrollRulesBreakdown({
                               </span>
                             )}
                             {rule.type === 'base' && (
-                              <span className="ml-2 rounded-full bg-white border px-2 py-0.5 font-medium text-gray-700">
+                              <span className="ml-2 rounded-full bg-white border border-bisu-purple-light px-2 py-0.5 font-medium text-bisu-purple-deep">
                                 Rate/Day: {formatCurrency(calculations.dailyRate)}
                               </span>
                             )}
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-green-600">{formatCurrency(rule.calculatedAmount)}</p>
+                          <p className="font-bold text-bisu-purple-deep">{formatCurrency(rule.calculatedAmount)}</p>
                           {rule.isPercentage && (
                             <p className="text-xs text-muted-foreground">
                               {rule.amount}% rate
@@ -293,7 +293,7 @@ export function PayrollRulesBreakdown({
               {deductionBreakdown.government.details.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-blue-700">
+                    <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                       <Minus className="h-5 w-5" />
                       Government Contributions
                     </CardTitle>
@@ -308,7 +308,7 @@ export function PayrollRulesBreakdown({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-blue-50/30"
+                        className="flex items-center justify-between p-3 rounded-lg border border-bisu-purple-light bg-bisu-purple-extralight"
                       >
                         <div>
                           <h4 className="font-medium">{deduction.name}</h4>
@@ -318,13 +318,13 @@ export function PayrollRulesBreakdown({
                             </p>
                           )}
                         </div>
-                        <p className="font-bold text-red-600">{formatCurrency(deduction.amount)}</p>
+                        <p className="font-bold text-bisu-purple-deep">{formatCurrency(deduction.amount)}</p>
                       </motion.div>
                     ))}
                     <Separator />
                     <div className="flex justify-between items-center font-bold">
                       <span>Total Government Deductions:</span>
-                      <span className="text-red-600">{formatCurrency(deductionBreakdown.government.total)}</span>
+                      <span className="text-bisu-purple-deep">{formatCurrency(deductionBreakdown.government.total)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -334,7 +334,7 @@ export function PayrollRulesBreakdown({
               {deductionBreakdown.loans.details.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-orange-700">
+                    <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                       <Minus className="h-5 w-5" />
                       Loan Deductions
                     </CardTitle>
@@ -346,7 +346,7 @@ export function PayrollRulesBreakdown({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-orange-50/30"
+                        className="flex items-center justify-between p-3 rounded-lg border border-bisu-purple-light bg-bisu-purple-extralight"
                       >
                         <div>
                           <h4 className="font-medium">{deduction.name}</h4>
@@ -354,13 +354,13 @@ export function PayrollRulesBreakdown({
                             <p className="text-sm text-muted-foreground mt-1">{deduction.description}</p>
                           )}
                         </div>
-                        <p className="font-bold text-red-600">{formatCurrency(deduction.amount)}</p>
+                        <p className="font-bold text-bisu-purple-deep">{formatCurrency(deduction.amount)}</p>
                       </motion.div>
                     ))}
                     <Separator />
                     <div className="flex justify-between items-center font-bold">
                       <span>Total Loan Deductions:</span>
-                      <span className="text-red-600">{formatCurrency(deductionBreakdown.loans.total)}</span>
+                      <span className="text-bisu-purple-deep">{formatCurrency(deductionBreakdown.loans.total)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -370,7 +370,7 @@ export function PayrollRulesBreakdown({
               {deductionBreakdown.other.details.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-purple-700">
+                    <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                       <Minus className="h-5 w-5" />
                       Other Deductions
                     </CardTitle>
@@ -382,7 +382,7 @@ export function PayrollRulesBreakdown({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-purple-50/30"
+                        className="flex items-center justify-between p-3 rounded-lg border border-bisu-purple-light bg-bisu-purple-extralight"
                       >
                         <div>
                           <h4 className="font-medium">{deduction.name}</h4>
@@ -390,13 +390,13 @@ export function PayrollRulesBreakdown({
                             <p className="text-sm text-muted-foreground mt-1">{deduction.description}</p>
                           )}
                         </div>
-                        <p className="font-bold text-red-600">{formatCurrency(deduction.amount)}</p>
+                        <p className="font-bold text-bisu-purple-deep">{formatCurrency(deduction.amount)}</p>
                       </motion.div>
                     ))}
                     <Separator />
                     <div className="flex justify-between items-center font-bold">
                       <span>Total Other Deductions:</span>
-                      <span className="text-red-600">{formatCurrency(deductionBreakdown.other.total)}</span>
+                      <span className="text-bisu-purple-deep">{formatCurrency(deductionBreakdown.other.total)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -406,7 +406,7 @@ export function PayrollRulesBreakdown({
               {deductionRules.length > 0 && (
                 <Card className="mt-6">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-red-700">
+                    <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
                       <Info className="h-5 w-5" />
                       All Applicable Deduction Rules
                     </CardTitle>
@@ -421,7 +421,7 @@ export function PayrollRulesBreakdown({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-red-50/30"
+                        className="flex items-center justify-between p-3 rounded-lg border border-bisu-purple-light bg-bisu-purple-extralight"
                       >
                         <div className="flex-1">
                           <h4 className="font-medium">{rule.name}</h4>
@@ -443,7 +443,7 @@ export function PayrollRulesBreakdown({
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-red-600">{formatCurrency(rule.calculatedAmount)}</p>
+                          <p className="font-bold text-bisu-purple-deep">{formatCurrency(rule.calculatedAmount)}</p>
                           {rule.isPercentage && (
                             <p className="text-xs text-muted-foreground">
                               {rule.amount}% rate
