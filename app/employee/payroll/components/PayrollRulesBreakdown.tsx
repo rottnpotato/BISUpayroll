@@ -101,7 +101,7 @@ export function PayrollRulesBreakdown({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
             <Calculator className="h-5 w-5" />
-            Payroll Rules Applied to Your Account
+            Payroll Calculations Applied to Your Account
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Detailed breakdown of all earnings and deductions based on your employment terms

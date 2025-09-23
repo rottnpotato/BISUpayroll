@@ -394,7 +394,7 @@ export default function PayslipDetailsPage() {
           </TabsTrigger>
           <TabsTrigger value="rules" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Payroll Rules
+            Payroll Calculations
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
@@ -537,7 +537,7 @@ export default function PayslipDetailsPage() {
                 <p className="text-lg font-medium text-muted-foreground mb-2">Your Projected Net Pay</p>
                 <p className="text-4xl font-bold text-bisu-purple-deep">{formatCurrency(payrollData.calculations.netPay)}</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Based on current month attendance and applicable payroll rules
+                  Based on current month attendance and applicable payroll calculations
                 </p>
               </div>
             </CardContent>
