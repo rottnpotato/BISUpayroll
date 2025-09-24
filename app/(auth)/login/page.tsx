@@ -53,23 +53,24 @@ export default function LoginPage() {
       const result = await login({ email, password })
       
       if (result.success) {
-        toast({ 
-          title: "Login Successful", 
-          description: result.message || "Welcome back!" 
+        const successMessage = (result.message || "Welcome back!").trim()
+        toast({
+          title:"Login Result",
+          description: successMessage
         })
         
         // The auth context will handle the redirection based on user role
       } else {
         toast({
-          title: "Login Failed",
+          title: "Login Result",
           description: result.message || "Invalid credentials.",
           variant: "destructive",
         })
       }
     } catch (error) {
-      console.error("Login error:", error)
+      console.error("Login Result:", error)
       toast({
-        title: "Login Error",
+        title: "Login Result",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
@@ -84,7 +85,7 @@ export default function LoginPage() {
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-[#46246C] via-[#623B93] to-[#46246C] text-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Loading...</p>
+          <p>Loading application...</p>
         </div>
       </div>
     )
