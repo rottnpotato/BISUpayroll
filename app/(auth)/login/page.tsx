@@ -145,27 +145,6 @@ export default function LoginPage() {
             <p className="text-white/80">Balance • Integrity • Stewardship • Uprightness</p>
           </motion.div>
           
-          {/* <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-            className="flex items-center justify-start gap-6 mt-2 opacity-80"
-          >
-            <Image 
-              src="/bagong-pilipinas.png" 
-              alt="Bagong Pilipinas Logo" 
-              width={110} 
-              height={55} 
-              className="transition-opacity hover:opacity-100"
-            />
-            {/* <Image 
-              src="/tuvlogo.png" 
-              alt="TUV Rheinland Logo" 
-              width={110} 
-              height={55}
-              className="transition-opacity hover:opacity-100"
-            /> 
-          </motion.div> */}
         </div>
         
         <Card className="shadow-2xl bg-white/10 backdrop-blur-md border-white/30 w-full md:w-1/2">

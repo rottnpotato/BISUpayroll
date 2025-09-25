@@ -3,6 +3,33 @@ import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
 
+const ADMIN_APPROVED_STATUS = 'APPROVED'
+const ADMIN_REJECTED_STATUS = 'REJECTED'
+const ATTENDANCE_PENDING_STATUS = 'PENDING'
+
+const hasAdminLock = (record: any) =>
+  Boolean(
+    record?.approvedById &&
+    record?.status === ADMIN_APPROVED_STATUS &&
+    record?.timeIn &&
+    record?.timeOut
+  )
+
+const hasAdminRejection = (record: any) =>
+  Boolean(record?.approvedById && record?.status === ADMIN_REJECTED_STATUS)
+
+const calculateHoursBetween = (start: Date, end: Date): number =>
+  Math.max(0, parseFloat(((end.getTime() - start.getTime()) / (1000 * 60 * 60)).toFixed(2)))
+
+const determineStatusAfterAutoDecision = (
+  currentStatus: string | null | undefined,
+  shouldAutoApprove: boolean
+) => {
+  if (!shouldAutoApprove) return ATTENDANCE_PENDING_STATUS
+  if (!currentStatus || currentStatus === ADMIN_APPROVED_STATUS) return ADMIN_APPROVED_STATUS
+  return currentStatus
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get token from cookie
@@ -235,6 +262,23 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to fetch attendance record from database')
     }
 
+    if (attendanceRecord) {
+      if (hasAdminRejection(attendanceRecord)) {
+        return NextResponse.json({
+          success: false,
+          message: 'This attendance was rejected by a supervisor and cannot be modified. Please contact your supervisor for further assistance.'
+        }, { status: 403 })
+      }
+
+      // Only lock records that have completed punches and were explicitly approved
+      if (hasAdminLock(attendanceRecord)) {
+        return NextResponse.json({
+          success: false,
+          message: 'This attendance was already approved by a supervisor and can no longer be changed. Please coordinate with your supervisor for adjustments.'
+        }, { status: 403 })
+      }
+    }
+
     // Check for duplicate entries within acceptable range if prevention is enabled
     if (preventDuplicateEntries && action === 'time-in') {
       const rangeStart = new Date(now.getTime() - (duplicateRangeHours * 60 * 60 * 1000))
@@ -333,7 +377,7 @@ export async function POST(request: NextRequest) {
           date: now,
           sessionType: sessionType,
           isLate: isLate,
-          status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
+          status: determineStatusAfterAutoDecision(null, shouldAutoApproveTimeIn),
           totalSessions: 1
         }
 
@@ -350,9 +394,11 @@ export async function POST(request: NextRequest) {
           data: sessionData
         })
 
+        const wasAutoApproved = sessionData.status === ADMIN_APPROVED_STATUS
+
         return NextResponse.json({
           success: true,
-          message: shouldAutoApproveTimeIn 
+          message: wasAutoApproved
             ? `${sessionType?.charAt(0).toUpperCase()}${sessionType?.slice(1)} time-in recorded and automatically approved`
             : `${sessionType?.charAt(0).toUpperCase()}${sessionType?.slice(1)} time-in recorded - pending approval by supervisor`,
           data: {
@@ -360,8 +406,8 @@ export async function POST(request: NextRequest) {
             sessionType: sessionType,
             isLate: attendanceRecord.isLate,
             expectedWorkHours: dailyHours,
-            status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
-            approvalStatus: shouldAutoApproveTimeIn ? 'Auto-approved' : 'Pending supervisor approval'
+            status: sessionData.status,
+            approvalStatus: wasAutoApproved ? 'Auto-approved' : 'Pending supervisor approval'
           }
         })
       } 
@@ -401,7 +447,7 @@ export async function POST(request: NextRequest) {
         const updateData: any = {
           sessionType: 'full_day', // Now both sessions
           totalSessions: attendanceRecord.totalSessions + 1,
-          status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING'
+          status: determineStatusAfterAutoDecision(attendanceRecord.status, shouldAutoApproveTimeIn)
         }
 
         if (sessionType === 'afternoon') {
@@ -415,9 +461,11 @@ export async function POST(request: NextRequest) {
           data: updateData
         })
 
+        const wasAutoApproved = updateData.status === ADMIN_APPROVED_STATUS
+
         return NextResponse.json({
           success: true,
-          message: shouldAutoApproveTimeIn 
+          message: wasAutoApproved
             ? `${sessionType?.charAt(0).toUpperCase()}${sessionType?.slice(1)} time-in recorded and automatically approved`
             : `${sessionType?.charAt(0).toUpperCase()}${sessionType?.slice(1)} time-in recorded - pending approval by supervisor`,
           data: {
@@ -426,8 +474,8 @@ export async function POST(request: NextRequest) {
             totalSessions: attendanceRecord.totalSessions,
             isLate: attendanceRecord.isLate,
             expectedWorkHours: dailyHours,
-            status: shouldAutoApproveTimeIn ? 'APPROVED' : 'PENDING',
-            approvalStatus: shouldAutoApproveTimeIn ? 'Auto-approved' : 'Pending supervisor approval'
+            status: updateData.status,
+            approvalStatus: wasAutoApproved ? 'Auto-approved' : 'Pending supervisor approval'
           }
         })
       }
@@ -493,39 +541,54 @@ export async function POST(request: NextRequest) {
       } 
       // Record time-out and calculate hours worked
       else {
-        // Calculate session-specific hours
-        let sessionHours = 0
+        // Determine reference time-in for this session
         let timeInForSession: Date | null = null
-        
-        if (timeOutSession === 'morning' && attendanceRecord.morningTimeIn) {
-          timeInForSession = attendanceRecord.morningTimeIn
-          sessionHours = parseFloat(((now.getTime() - timeInForSession.getTime()) / (1000 * 60 * 60)).toFixed(2))
-        } else if (timeOutSession === 'afternoon' && attendanceRecord.afternoonTimeIn) {
-          timeInForSession = attendanceRecord.afternoonTimeIn
-          sessionHours = parseFloat(((now.getTime() - timeInForSession.getTime()) / (1000 * 60 * 60)).toFixed(2))
-        } else if (attendanceRecord.timeIn) {
-          timeInForSession = attendanceRecord.timeIn
-          sessionHours = parseFloat(((now.getTime() - timeInForSession.getTime()) / (1000 * 60 * 60)).toFixed(2))
+
+        if (timeOutSession === 'morning') {
+          timeInForSession = attendanceRecord.morningTimeIn ?? null
+        } else if (timeOutSession === 'afternoon') {
+          timeInForSession = attendanceRecord.afternoonTimeIn ?? null
+        } else {
+          timeInForSession = attendanceRecord.timeIn ?? attendanceRecord.morningTimeIn ?? attendanceRecord.afternoonTimeIn ?? null
         }
-        
+
+        if (!timeInForSession) {
+          return NextResponse.json({
+            success: false,
+            message: 'No corresponding time-in record found for this session. Please contact your supervisor.'
+          }, { status: 400 })
+        }
+
+        if (now.getTime() <= timeInForSession.getTime()) {
+          return NextResponse.json({
+            success: false,
+            message: 'Time-out must be later than the recorded time-in. Please verify the time and try again.'
+          }, { status: 400 })
+        }
+
+        const sessionHours = calculateHoursBetween(timeInForSession, now)
+
         // Calculate total hours worked for the day
         let totalHoursWorked = sessionHours
         
         // Add existing session hours if this is a second session
         if (timeOutSession === 'afternoon' && attendanceRecord.morningTimeIn && attendanceRecord.morningTimeOut) {
-          const morningHours = parseFloat(((attendanceRecord.morningTimeOut.getTime() - attendanceRecord.morningTimeIn.getTime()) / (1000 * 60 * 60)).toFixed(2))
-          totalHoursWorked += morningHours
+          totalHoursWorked += calculateHoursBetween(attendanceRecord.morningTimeIn, attendanceRecord.morningTimeOut)
         } else if (timeOutSession === 'morning' && attendanceRecord.afternoonTimeIn && attendanceRecord.afternoonTimeOut) {
-          const afternoonHours = parseFloat(((attendanceRecord.afternoonTimeOut.getTime() - attendanceRecord.afternoonTimeIn.getTime()) / (1000 * 60 * 60)).toFixed(2))
-          totalHoursWorked += afternoonHours
+          totalHoursWorked += calculateHoursBetween(attendanceRecord.afternoonTimeIn, attendanceRecord.afternoonTimeOut)
         }
         
         // Check if this constitutes a half-day
-        const isHalfDay = totalHoursWorked >= halfDayMinimumHours && totalHoursWorked < dailyHours
+        const hasMorningCompletion = Boolean(attendanceRecord.morningTimeIn && (timeOutSession === 'morning' || attendanceRecord.morningTimeOut))
+        const hasAfternoonCompletion = Boolean(attendanceRecord.afternoonTimeIn && (timeOutSession === 'afternoon' || attendanceRecord.afternoonTimeOut))
+
+        const isHalfDay = allowHalfDay
+          ? totalHoursWorked >= halfDayMinimumHours && totalHoursWorked < dailyHours
+          : false
         
         // Determine if attendance is complete for the day
-        const hasCompletedMorning = attendanceRecord.morningTimeIn && (timeOutSession === 'morning' || attendanceRecord.morningTimeOut)
-        const hasCompletedAfternoon = attendanceRecord.afternoonTimeIn && (timeOutSession === 'afternoon' || attendanceRecord.afternoonTimeOut)
+        const hasCompletedMorning = hasMorningCompletion
+        const hasCompletedAfternoon = hasAfternoonCompletion
         const isAttendanceComplete = hasCompletedMorning && hasCompletedAfternoon
 
         // Check if it's a holiday (simplified - you can enhance this with a holidays table)
@@ -570,7 +633,7 @@ export async function POST(request: NextRequest) {
         const shouldAutoApprove = (() => {
           // Check reasonable working hours (4-12 hours)
           if (totalHoursWorked < 4 || totalHoursWorked > 12) return false
-          
+
           // Check if excessively late (more than 2 hours)
           if (attendanceRecord.isLate) {
             const timeInHour = attendanceRecord.timeIn?.getHours() || 0
@@ -578,18 +641,21 @@ export async function POST(request: NextRequest) {
             const actualTimeIn = timeInHour * 60 + timeInMinute
             const expectedTimeIn = workStartHour * 60 + workStartMinute
             const lateMinutes = actualTimeIn - expectedTimeIn
-            
+
             // Don't auto-approve if more than 2 hours late (120 minutes)
             if (lateMinutes > 120) return false
           }
-          
+
+          // Prevent auto-approval if early-out requires supervisor review
+          if (isEarlyOut) return false
+
           return true
         })()
 
         // Prepare update data for session-based time-out
         const updateData: any = {
           hoursWorked: totalHoursWorked,
-          status: shouldAutoApprove ? 'APPROVED' : 'PENDING',
+          status: determineStatusAfterAutoDecision(attendanceRecord.status, shouldAutoApprove),
           isHalfDay: isHalfDay,
           isEarlyOut: isEarlyOut
         }
@@ -688,6 +754,8 @@ export async function POST(request: NextRequest) {
           responseMessage += ` This is a half-day attendance (${totalHoursWorked.toFixed(2)} hours). ${hasCompletedMorning && !hasCompletedAfternoon ? 'Afternoon session still needed for full day.' : 'Morning session still needed for full day.'}`
         }
 
+        const wasAutoApproved = updateData.status === ADMIN_APPROVED_STATUS
+
         return NextResponse.json({
           success: true,
           message: responseMessage,
@@ -709,8 +777,8 @@ export async function POST(request: NextRequest) {
             holidayMultiplier: isHoliday ? holidayRate : 1.0,
             isWeekend,
             expectedDailyHours: dailyHours,
-            status: shouldAutoApprove ? 'APPROVED' : 'PENDING',
-            approvalStatus: shouldAutoApprove ? 'Auto-approved' : 'Pending supervisor approval',
+            status: updateData.status,
+            approvalStatus: wasAutoApproved ? 'Auto-approved' : 'Pending supervisor approval',
             earnings: {
               dailyRate,
               hourlyRate,
