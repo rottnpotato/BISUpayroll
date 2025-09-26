@@ -1,5 +1,6 @@
 import { ContributionsConfig, TaxBracket, TaxBracketsConfig } from "@/app/admin/payroll/types"
 import { PayrollConfigurationService } from "@/app/admin/payroll/configuration/service"
+import { getWorkingDaysInMonth, getWorkingDaysInYear } from "./work-calendar"
 
 let cachedConfig: { contributions: ContributionsConfig; tax: TaxBracketsConfig } | null = null
 let lastConfigFetch = 0
@@ -92,16 +93,16 @@ export interface PayrollCalculationResult {
   appliedRulesBreakdown: any[]
 }
 
-export function calculateDailyRate(monthlySalary: number): number {
-  return monthlySalary / 22 // Standard 22 working days per month
+export function calculateDailyRate(dailyRate: number): number {
+  return dailyRate
 }
 
-export function calculateHourlyRate(monthlySalary: number, dailyHours: number = 8): number {
-  return calculateDailyRate(monthlySalary) / dailyHours
+export function calculateHourlyRate(dailyRate: number, dailyHours: number = 8): number {
+  return dailyRate / dailyHours
 }
 
-export function calculateAnnualTaxableIncome(monthlyGross: number): number {
-  return monthlyGross * 12
+export function calculateAnnualTaxableIncome(annualGross: number): number {
+  return annualGross
 }
 
 export function calculateWithholdingTax(annualTaxableIncome: number, brackets: TaxBracket[]): number {
@@ -123,52 +124,52 @@ export function calculateWithholdingTax(annualTaxableIncome: number, brackets: T
   return 0
 }
 
-export function calculateGSISContribution(monthlySalary: number, config: ContributionsConfig): number {
+export function calculateGSISContribution(salaryBase: number, config: ContributionsConfig): number {
   const { employeeRate, minSalary, maxSalary, brackets } = config.gsis
   if (brackets && brackets.length > 0) {
-    const matched = brackets.find(bracket => monthlySalary >= bracket.salaryMin && monthlySalary <= bracket.salaryMax)
+    const matched = brackets.find(bracket => salaryBase >= bracket.salaryMin && salaryBase <= bracket.salaryMax)
     if (matched) {
-      return monthlySalary * (matched.employeeRate / 100)
+      return salaryBase * (matched.employeeRate / 100)
     }
   }
-  const contributionBase = Math.max(minSalary, Math.min(maxSalary, monthlySalary))
+  const contributionBase = Math.max(minSalary, Math.min(maxSalary, salaryBase))
   return contributionBase * (employeeRate / 100)
 }
 
-export function calculatePhilHealthContribution(monthlySalary: number, config: ContributionsConfig): number {
+export function calculatePhilHealthContribution(salaryBase: number, config: ContributionsConfig): number {
   const { employeeRate, minContribution, maxContribution, minSalary, maxSalary, brackets } = config.philHealth
   if (brackets && brackets.length > 0) {
-    const matched = brackets.find(bracket => monthlySalary >= bracket.salaryMin && monthlySalary <= bracket.salaryMax)
+    const matched = brackets.find(bracket => salaryBase >= bracket.salaryMin && salaryBase <= bracket.salaryMax)
     if (matched) {
-      const contribution = monthlySalary * (matched.employeeRate / 100)
+      const contribution = salaryBase * (matched.employeeRate / 100)
       return Math.max(minContribution, Math.min(maxContribution, contribution))
     }
   }
 
-  if (monthlySalary < minSalary) {
+  if (salaryBase < minSalary) {
     return minContribution
   }
 
-  const contributionBase = Math.min(maxSalary, monthlySalary)
+  const contributionBase = Math.min(maxSalary, salaryBase)
   const contribution = contributionBase * (employeeRate / 100)
   return Math.max(minContribution, Math.min(maxContribution, contribution))
 }
 
-export function calculatePagibigContribution(monthlySalary: number, config: ContributionsConfig): number {
+export function calculatePagibigContribution(salaryBase: number, config: ContributionsConfig): number {
   const { employeeRate, minContribution, maxContribution, minSalary, maxSalary, brackets } = config.pagibig
   if (brackets && brackets.length > 0) {
-    const matched = brackets.find(bracket => monthlySalary >= bracket.salaryMin && monthlySalary <= bracket.salaryMax)
+    const matched = brackets.find(bracket => salaryBase >= bracket.salaryMin && salaryBase <= bracket.salaryMax)
     if (matched) {
-      const contribution = monthlySalary * (matched.employeeRate / 100)
+      const contribution = salaryBase * (matched.employeeRate / 100)
       return Math.max(minContribution, Math.min(maxContribution, contribution))
     }
   }
 
-  if (monthlySalary < minSalary) {
+  if (salaryBase < minSalary) {
     return minContribution
   }
 
-  const contributionBase = Math.min(maxSalary, monthlySalary)
+  const contributionBase = Math.min(maxSalary, salaryBase)
   const contribution = contributionBase * (employeeRate / 100)
   return Math.max(minContribution, Math.min(maxContribution, contribution))
 }
@@ -289,8 +290,8 @@ export function calculateBaseSalaryFromRules(appliedRules: any[]): number {
     return Number(baseSalaryRule.amount)
   }
   
-  // Default fallback - could be configured in system settings
-  return 25000 // Default base salary if no rule is found
+  // Default fallback - daily rate unavailable
+  return 0
 }
 
 export async function calculateCompletePayroll(data: PayrollCalculationData): Promise<PayrollCalculationResult> {
@@ -336,15 +337,28 @@ export async function calculateCompletePayroll(data: PayrollCalculationData): Pr
   const totalEarnings = regularPay + overtimePay + holidayPay + allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave + otherEarnings
   const grossPay = totalEarnings
   
-  // Calculate mandatory contributions
-  const gsisContribution = calculateGSISContribution(baseSalary, contributionConfig)
-  const philHealthContribution = calculatePhilHealthContribution(baseSalary, contributionConfig)
-  const pagibigContribution = calculatePagibigContribution(baseSalary, contributionConfig)
+  // Calculate mandatory contributions based on daily rate and actual days worked
+  const contributionBase = dailyRate * daysWorked
+  const gsisContribution = calculateGSISContribution(contributionBase, contributionConfig)
+  const philHealthContribution = calculatePhilHealthContribution(contributionBase, contributionConfig)
+  const pagibigContribution = calculatePagibigContribution(contributionBase, contributionConfig)
   
   // Calculate taxable income (gross pay minus non-taxable contributions)
   const taxableIncome = grossPay - gsisContribution - philHealthContribution - pagibigContribution - thirteenthMonthPay - serviceIncentiveLeave
-  const annualTaxableIncome = calculateAnnualTaxableIncome(taxableIncome)
-  const withholdingTax = calculateWithholdingTax(annualTaxableIncome, taxConfig.brackets)
+  // Annualize based on working days in year vs month
+  try {
+    const now = new Date()
+    const workingDaysMonth = await getWorkingDaysInMonth(now.getFullYear(), now.getMonth() + 1)
+    const workingDaysYear = await getWorkingDaysInYear(now.getFullYear())
+    const monthlyEquivalent = workingDaysMonth > 0 ? taxableIncome * (22 / workingDaysMonth) : taxableIncome
+    const annualGrossEquivalent = workingDaysYear > 0 ? (monthlyEquivalent * (workingDaysYear / 22)) : (monthlyEquivalent * 12)
+    const annualTaxableIncome = calculateAnnualTaxableIncome(annualGrossEquivalent)
+    var computedAnnualTaxableIncome = annualTaxableIncome
+  } catch {
+    // Fallback to 12x if calendar unavailable
+    var computedAnnualTaxableIncome = taxableIncome * 12
+  }
+  const withholdingTax = calculateWithholdingTax(computedAnnualTaxableIncome, taxConfig.brackets)
   
   // Calculate other deductions
   const lateDeductions = calculateLateDeductions(lateHours, hourlyRate, dailyRate, configurations.lateDeductionAmount, configurations.lateDeductionBasis)

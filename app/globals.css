@@ -166,28 +166,6 @@ body {
     /* Rings remain consistent */
     --ring: 258 35% 50%;
   }
-
-  .dark {
-    --background: 258 35% 12%;
-    --foreground: 257 30% 90%;
-    --card: 258 35% 18%;
-    --card-foreground: 257 30% 90%;
-    --popover: 258 35% 10%;
-    --popover-foreground: 257 30% 90%;
-    --primary: 258 40% 45%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 45 100% 55%;
-    --secondary-foreground: 258 35% 10%;
-    --muted: 258 25% 25%;
-    --muted-foreground: 257 30% 70%;
-    --accent: 258 25% 30%;
-    --accent-foreground: 257 30% 90%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 258 20% 30%;
-    --input: 258 20% 25%;
-    --ring: 45 100% 60%;
-  }
 }
 
 @layer base {
@@ -226,7 +204,7 @@ body {
   /* Focus styles using standard ring utilities */
   :focus-visible {
     @apply outline-none ring-2 ring-offset-2 ring-offset-white transition-shadow;
-    ring-color: #ffc107;
+    @apply ring-[#ffc107];
   }
 
   /* Scrollbar styling */
