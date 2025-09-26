@@ -199,17 +199,17 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
     const normalizedStatus = status?.toLowerCase()
     switch (normalizedStatus) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100/70">Active</Badge>
       case 'inactive':
-        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">Inactive</Badge>
+        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100/70">Inactive</Badge>
       case 'terminated':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Terminated</Badge>
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100/70">Terminated</Badge>
       case 'pending':
-        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">Pending</Badge>
+        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100/70">Pending</Badge>
       case 'leave':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">On Leave</Badge>
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100/70">On Leave</Badge>
       default:
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100/70">Active</Badge>
     }
   }
 

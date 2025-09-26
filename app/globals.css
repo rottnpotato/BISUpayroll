@@ -30,19 +30,19 @@ body {
 
   /* Custom button styles */
   .btn-primary {
-    @apply bg-[#3A2E5A] text-white hover:bg-[#4F3F7A] transition-all duration-200;
+    @apply bg-[#3A2E5A] text-white hover:bg-[#7864A3] transition-all duration-200;
   }
 
   .btn-secondary {
-    @apply bg-[#FFC107] text-[#3A2E5A] hover:bg-[#D4A106] transition-all duration-200;
+    @apply bg-[#FFC107] text-[#3A2E5A] hover:bg-[#FFD54F] transition-all duration-200;
   }
 
   .btn-outline-primary {
-    @apply border-2 border-[#3A2E5A] text-[#3A2E5A] hover:bg-[#3A2E5A] hover:text-white transition-all duration-200;
+    @apply border-2 border-[#3A2E5A] text-[#3A2E5A] hover:bg-[#7864A3]/30 hover:text-[#2A1F40] transition-all duration-200;
   }
 
   .btn-outline-secondary {
-    @apply border-2 border-[#FFC107] text-[#D4A106] hover:bg-[#FFC107] hover:text-[#3A2E5A] transition-all duration-200;
+    @apply border-2 border-[#FFC107] text-[#D4A106] hover:bg-[#FFD54F]/40 hover:text-[#2A1F40] transition-all duration-200;
   }
 
   /* Loading spinner */

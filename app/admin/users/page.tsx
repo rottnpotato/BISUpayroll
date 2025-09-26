@@ -577,7 +577,7 @@ export default function AdminUsersPage() {
                       users.map((user, index) => (
                         <TableRow 
                           key={user.id} 
-                          className={`transition-all hover:bg-bisu-purple-light/5 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
+                          className={`transition-all hover:bg-bisu-yellow-light/5 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
                           onClick={() => {
                             setSelectedUser(user)
                             // setIsUserDetailsDialogOpen(true) // This dialog is no longer used
@@ -726,7 +726,7 @@ export default function AdminUsersPage() {
                       className={`h-8 w-8 p-0 rounded-full ${
                         page === currentPage 
                           ? 'bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white border-0' 
-                          : 'border-bisu-purple-light/30 text-bisu-purple-deep hover:bg-bisu-purple-light/10'
+                          : 'border-bisu-purple-light/30 text-bisu-purple-deep hover:bg-bisu-yellow-light/10'
                       }`}
                     >
                       {page}

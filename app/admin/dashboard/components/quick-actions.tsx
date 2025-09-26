@@ -20,7 +20,7 @@ const quickActions = [
     iconBg: "bg-bisu-purple-extralight",
     iconColor: "text-bisu-purple-deep",
     hoverColor: "hover:border-bisu-purple-light",
-    hoverBg: "group-hover:bg-bisu-purple-light group-hover:text-white",
+    hoverBg: "group-hover:bg-bisu-yellow-light group-hover:text-white",
     hoverIcon: "group-hover:text-white",
     hoverChevron: "group-hover:text-bisu-purple-medium"
   },

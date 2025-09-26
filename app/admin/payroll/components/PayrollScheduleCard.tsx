@@ -406,7 +406,7 @@ export function PayrollScheduleCard({
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => handleDeleteSchedule(schedule)}
-                                    className="bg-red-600 hover:bg-red-700"
+                                    className="bg-red-600 hover:bg-red-600/90"
                                   >
                                     Delete
                                   </AlertDialogAction>

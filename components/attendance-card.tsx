@@ -147,7 +147,7 @@ export function AttendanceCard({ record, onEdit, onDelete, index }: AttendanceCa
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 hover:bg-bisu-purple-light hover:text-white transition-all duration-200"
+                  className="h-8 w-8 p-0 hover:bg-bisu-yellow-light hover:text-white transition-all duration-200"
                   onClick={() => onEdit(record)}
                 >
                   <Edit className="h-4 w-4" />

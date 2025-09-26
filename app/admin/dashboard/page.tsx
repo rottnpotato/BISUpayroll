@@ -215,7 +215,7 @@ export default function AdminDashboard() {
                     <Button 
                       variant="default" 
                       size="sm"
-                      className="flex items-center gap-2 bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep font-medium shadow-lg transition-all duration-200 transform hover:scale-105"
+                      className="flex items-center gap-2 bg-bisu-yellow hover:bg-bisu-yellow-light text-bisu-purple-deep font-medium shadow-lg transition-all duration-200 transform hover:scale-105"
                       onClick={handleExportClick}
                     >
                       <Download className="h-4 w-4" />
@@ -271,18 +271,6 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            {/* Payroll Alerts Section
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="mb-6"
-            >
-              <PayrollAlerts 
-                data={dashboardData}
-                isLoading={isLoading}
-              />
-            </motion.div> */}
             
               {/* Payroll Breakdown Section */}
             <motion.div

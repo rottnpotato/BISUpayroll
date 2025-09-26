@@ -171,7 +171,7 @@ export default function EmployeeProfile() {
         </div>
         <Button
           onClick={() => window.print()}
-          className="bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
+          className="bg-bisu-yellow hover:bg-bisu-yellow-light text-bisu-purple-deep print:hidden"
         >
           <Printer className="mr-2 h-4 w-4" />
           Print Profile
@@ -250,7 +250,7 @@ export default function EmployeeProfile() {
                 </div>
 
                 <Button 
-                  className="mt-6 w-full bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep"
+                  className="mt-6 w-full bg-bisu-yellow hover:bg-bisu-yellow-light text-bisu-purple-deep"
                   onClick={() => setIsEditing(!isEditing)}
                 >
                   {isEditing ? "Cancel Editing" : "Edit Profile"}

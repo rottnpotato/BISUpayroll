@@ -255,7 +255,7 @@ export function WorkCalendarCard() {
               </div>
             )}
             <div className="space-y-2">
-              <Button onClick={save} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white w-full">
+              <Button onClick={save} disabled={saving} className="bg-green-600 hover:bg-green-600/90 text-white w-full">
                 <Save className={`mr-2 h-4 w-4 ${saving ? 'animate-spin' : ''}`} /> {saving ? 'Saving...' : 'Save Overrides'}
               </Button>
             </div>

@@ -141,7 +141,7 @@ export const RecentActivity: FC<RecentActivityProps> = ({
               <Button variant={filter === "files" ? "default" : "ghost"} size="sm" className={filter === "files" ? "h-7 px-3 bg-bisu-purple-deep text-white" : "h-7 px-3"} onClick={() => setFilter("files")}>Files</Button>
             </div>
             {onRefresh && (
-              <Button variant="outline" size="sm" onClick={onRefresh} className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-purple-light">
+              <Button variant="outline" size="sm" onClick={onRefresh} className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-yellow-light">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
@@ -203,7 +203,7 @@ export const RecentActivity: FC<RecentActivityProps> = ({
 
             {filteredItems.length > initialLimit && (
               <div className="pt-2 flex justify-center">
-                <Button onClick={handleToggleExpand} variant="outline" size="sm" className="border-bisu-purple-medium text-bisu-purple-deep hover:bg-bisu-purple-light min-w-[140px]">
+                <Button onClick={handleToggleExpand} variant="outline" size="sm" className="border-bisu-purple-medium text-bisu-purple-deep hover:bg-bisu-yellow-light min-w-[140px]">
                   {expanding ? (
                     <span className="flex items-center"><span className="animate-spin h-4 w-4 border-2 border-bisu-purple-medium border-t-transparent rounded-full mr-2" />Loading...</span>
                   ) : expanded ? "Show less" : "See more"}

@@ -64,7 +64,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           <p className="mb-6 text-white">You need employee access to view this area.</p>
           <button
             onClick={() => logout()}
-            className="px-4 py-2 bg-bisu-yellow text-bisu-purple-deep rounded-lg hover:bg-bisu-yellow-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+            className="px-4 py-2 bg-bisu-yellow text-bisu-purple-deep rounded-lg hover:bg-bisu-yellow-light transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
             style={
               {
                 "--tw-ring-color": "#FFC107",

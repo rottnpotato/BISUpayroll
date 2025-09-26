@@ -158,7 +158,7 @@ export function TaxConfigSummaryCard({
                   Save All Configurations
                 </Button>
               )}
-              <Button variant="outline" className="border-bisu-purple-deep text-bisu-purple-deep hover:bg-bisu-purple-light">
+              <Button variant="outline" className="border-bisu-purple-deep text-bisu-purple-deep hover:bg-bisu-yellow-light">
                 <FileText size={16} className="mr-2" />
                 Export Configuration
               </Button>

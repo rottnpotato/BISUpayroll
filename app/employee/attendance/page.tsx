@@ -608,7 +608,7 @@ export default function EmployeeAttendancePage() {
                 <Button
                   onClick={handleTimeIn}
                   disabled={!canClockIn() || isClockingIn}
-                  className="bg-green-600 hover:bg-green-700 text-white px-8"
+                  className="bg-green-600 hover:bg-green-600/90 text-white px-8"
                   title={!canClockIn() && !todayRecord?.timeIn && !restrictionsDisabled ? 'Time-in only allowed between 6:00 AM - 12:59 PM' : ''}
                 >
                   {isClockingIn ? 'Clocking In...' : 'Clock In'}
@@ -616,7 +616,7 @@ export default function EmployeeAttendancePage() {
                 <Button
                   onClick={handleTimeOut}
                   disabled={!canClockOut() || isClockingOut}
-                  className="bg-red-600 hover:bg-red-700 text-white px-8"
+                  className="bg-red-600 hover:bg-red-600/90 text-white px-8"
                 >
                   {isClockingOut ? 'Clocking Out...' : 'Clock Out'}
                 </Button>

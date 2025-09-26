@@ -26,7 +26,7 @@ export const OverviewHeader: FC<OverviewHeaderProps> = ({ title = "Payroll Overv
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onRefresh} className="border-bisu-purple-medium text-bisu-purple-deep hover:bg-bisu-purple-light">
+          <Button variant="outline" onClick={onRefresh} className="border-bisu-purple-medium text-bisu-purple-deep hover:bg-bisu-yellow-light">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>

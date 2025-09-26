@@ -445,7 +445,7 @@ export default function EmployeeDashboard() {
             <Button 
               onClick={() => window.print()} 
               size="sm"
-              className="mt-2 bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep print:hidden"
+              className="mt-2 bg-bisu-yellow hover:bg-bisu-yellow-light text-bisu-purple-deep print:hidden"
             >
               <Printer className="mr-2 h-4 w-4" />
               Print Dashboard
@@ -503,7 +503,7 @@ export default function EmployeeDashboard() {
                     disabled={isTimeActionLoading || (!isWithinTimeWindow && !isTimedIn)}
                     className={`w-full py-6 text-lg font-semibold transition-all ${
                       isTimedIn
-                        ? "bg-bisu-yellow hover:bg-bisu-yellow-dark text-bisu-purple-deep"
+                        ? "bg-bisu-yellow hover:bg-bisu-yellow-light text-bisu-purple-deep"
                         : isWithinTimeWindow
                         ? "bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
                         : "bg-gray-400 text-gray-600 cursor-not-allowed opacity-60"
@@ -568,7 +568,7 @@ export default function EmployeeDashboard() {
                     onSelect={setDate}
                     className="rounded-md"
                     modifiersClassNames={{
-                      selected: "bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow-dark",
+                      selected: "bg-bisu-yellow text-bisu-purple-deep hover:bg-bisu-yellow-light",
                       today: "bg-bisu-purple-light text-white",
                     }}
                   />

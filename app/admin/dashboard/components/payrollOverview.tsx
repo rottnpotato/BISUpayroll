@@ -123,10 +123,6 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
     return newEmployeesThisMonth > 0 ? `+${newEmployeesThisMonth}` : "0"
   }
   
-  const calculateProcessingTimeChange = () => {
-    // For now return neutral value since we don't have historical processing time data
-    return "±0"
-  }
   
   const calculatePayrollGrowth = () => {
     const payrollTrends = data?.payrollTrends || []
@@ -151,24 +147,21 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
       change: calculateEmployeeGrowth(), 
       color: "bisu-purple-deep",
       bgColor: "bg-bisu-purple-extralight"
-    },
-    { 
-      label: "Processing Time", 
-      value: "3 days", 
-      icon: <Calendar className="h-4 w-4" />, 
-      change: calculateProcessingTimeChange(), 
-      color: "bisu-yellow",
-      bgColor: "bg-yellow-50"
-    },
+    },  
     { 
       label: "Avg. Payroll", 
-      value: employeeCount > 0 ? (totalAmount / employeeCount) : 0, 
+      value: employeeCount > 0 ? Number((totalAmount / employeeCount).toFixed(2)) : 0,
       icon: <PhilippinePeso className="h-4 w-4" />, 
       change: calculatePayrollGrowth(), 
       color: "bisu-purple-medium",
       bgColor: "bg-purple-50"
     }
   ]
+  
+  // Use a 2-column grid when only two stats exist for better balance
+  const statsGridClass = stats.length <= 2
+    ? "grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6"
+    : "grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-6 overflow-hidden">
@@ -179,7 +172,7 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
             {/* BISU logo with clean styling */}
             <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
               <img 
-                src="/bisu-seal.png" 
+                src="/LOGO_BISU.svg" 
                 alt="BISU Logo" 
                 className="h-full w-full object-cover"
               />
@@ -190,7 +183,7 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
             </div>
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">BISU Payroll Main</h2>
+            <h2 className="text-xl font-semibold text-gray-900">BISU Payroll</h2>
             <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
               <div className="flex items-center gap-1">
                 <Building2 className="h-3 w-3 text-bisu-purple-medium" />
@@ -207,35 +200,8 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
         
         <div className="flex items-center gap-3">
           {/* Status Badge aligned to BISU theme */}
-          {(() => {
-            const status = data?.payrollDetails?.status || "Processing"
-            const isPaid = status.includes("Paid")
-            const isApproved = status.includes("Approved")
-            const isGenerated = status.includes("Generated")
-
-            let badgeClasses = "flex items-center gap-1 px-3 py-1 text-sm font-medium border"
-            let iconComponent = <CircleCheck className="h-3 w-3" />
-
-            if (isPaid) {
-              badgeClasses += " bg-bisu-purple-extralight text-bisu-purple-deep border-bisu-purple-light"
-            } else if (isApproved) {
-              badgeClasses += " bg-bisu-yellow-extralight text-bisu-purple-deep border-bisu-yellow"
-            } else if (isGenerated) {
-              badgeClasses += " bg-bisu-purple-extralight text-bisu-purple-medium border-bisu-purple-light"
-            } else {
-              badgeClasses += " bg-gray-50 text-gray-700 border-gray-200"
-            }
-
-            return (
-              <Badge className={badgeClasses}>
-                {iconComponent}
-                <span>{status}</span>
-              </Badge>
-            )
-          })()}
-          
           {/* Action Button */}
-          <button className="text-sm text-bisu-purple-deep hover:text-bisu-purple-medium font-medium flex items-center gap-1 transition-colors">
+          <button className="text-sm text-bisu-purple-deep hover:text-bisu-yellow-dark font-medium flex items-center gap-1 transition-colors">
             View Details
             <ArrowRight className="h-3 w-3" />
           </button>
@@ -243,20 +209,20 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
       </div>
       
       {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {stats.map((stat, index) => (
-          <Card key={index} className="p-4 border border-gray-100 shadow-none hover:shadow-sm transition-shadow">
+      <div className={statsGridClass}>
+        {stats.map((stat) => (
+          <Card key={stat.label} className="p-5 md:p-6 border border-gray-100 rounded-xl shadow-none hover:shadow-sm transition-shadow">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`flex-shrink-0 p-2 rounded-lg ${stat.bgColor} text-${stat.color}`}>
+                <div className={`flex-shrink-0 p-3 rounded-lg ${stat.bgColor} text-${stat.color}`}>
                   {stat.icon}
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 mb-1">{stat.label}</div>
-                  <div className="text-lg font-semibold text-gray-900">{stat.value}</div>
+                  <div className="text-2xl md:text-3xl font-semibold text-gray-900">{stat.value}</div>
                 </div>
               </div>
-              <div className={`text-xs px-2 py-1 rounded-full ${stat.bgColor} text-${stat.color} font-medium`}>
+              <div className={`text-xs px-2.5 py-1.5 rounded-full ${stat.bgColor} text-${stat.color} font-semibold`}>
                 {stat.change}
               </div>
             </div>

@@ -351,7 +351,7 @@ export function TaxBracketsConfigCard({ config, onConfigChange, onSave, onFetchE
             <Button
               onClick={handleSave}
               disabled={isLoading || !hasUnsavedChanges}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-600/90 text-white"
             >
               {isLoading ? (
                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
