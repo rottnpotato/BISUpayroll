@@ -123,6 +123,7 @@ export const PayrollPreviewDialog = ({
       payrollData
         .sort((a, b) => `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`))
         .map((employee, index) => {
+          console.log(employee)
           const salary = parseFloat(employee.baseSalary?.toString() || '0')
           
           // Use the detailed data from PayrollResult if available

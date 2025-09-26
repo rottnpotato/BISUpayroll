@@ -32,6 +32,7 @@ export function MonthlyPayrollGenerator({
   const [useScheduleRange, setUseScheduleRange] = useState(false)
   const [monthPreset, setMonthPreset] = useState<"this" | "last">("this")
   const [halfPreset, setHalfPreset] = useState<"first" | "second">("first")
+  const [quickMonthPreset, setQuickMonthPreset] = useState<"this" | "last">("this")
 
   const activeSchedule = useMemo(() => schedules?.find(s => s.isActive) || null, [schedules])
 
@@ -46,11 +47,13 @@ export function MonthlyPayrollGenerator({
   const setThisMonth = () => {
     const now = new Date()
     onDateRangeChange({ from: startOfMonth(now), to: endOfMonth(now) })
+    setQuickMonthPreset("this")
   }
 
   const setLastMonth = () => {
     const prev = subMonths(new Date(), 1)
     onDateRangeChange({ from: startOfMonth(prev), to: endOfMonth(prev) })
+    setQuickMonthPreset("last")
   }
 
   const computeScheduleRange = (presetMonth: "this" | "last", presetHalf: "first" | "second") => {
@@ -105,14 +108,14 @@ export function MonthlyPayrollGenerator({
               <button
                 type="button"
                 onClick={setLastMonth}
-                className="px-3 py-1.5 text-sm bg-white text-gray-700 hover:bg-gray-50"
+                className={`px-3 py-1.5 text-sm ${quickMonthPreset === 'last' ? 'bg-bisu-purple-deep text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
               >
                 Last Month
               </button>
               <button
                 type="button"
                 onClick={setThisMonth}
-                className="px-3 py-1.5 text-sm border-l bg-bisu-purple-deep text-white hover:bg-bisu-purple-medium"
+                className={`px-3 py-1.5 text-sm border-l ${quickMonthPreset === 'this' ? 'bg-bisu-purple-deep text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
               >
                 This Month
               </button>

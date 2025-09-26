@@ -17,7 +17,7 @@ export async function GET(
             employeeId: true,
             department: true,
             position: true,
-            salary: true
+        
           }
         }
       }
@@ -108,7 +108,7 @@ export async function PUT(
             employeeId: true,
             department: true,
             position: true,
-            salary: true
+      
           }
         }
       }

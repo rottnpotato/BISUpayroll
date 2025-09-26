@@ -7,7 +7,8 @@ import {
   calculateBaseSalaryFromRules
 } from "@/lib/payroll-calculations"
 import { PayrollConfigurationService } from "@/app/admin/payroll/configuration/service"
-import { encryptPayrollFile, createSecureDirectory } from "@/lib/crypto-utils"
+import type { ContributionsConfig, TaxBracketsConfig } from "@/app/admin/payroll/types"
+import { encryptPayrollFile } from "@/lib/crypto-utils"
 import { cookies } from "next/headers"
 import { verifyToken } from "@/lib/auth"
 import fs from 'fs'
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
     const [contributionConfig, taxConfig] = await Promise.all([
       PayrollConfigurationService.loadType('contributions'),
       PayrollConfigurationService.loadType('taxBrackets')
-    ])
+    ]) as [ContributionsConfig, TaxBracketsConfig]
 
     const configurations = {
       dailyHours: parseFloat(configs['working_hours_dailyHours'] || '8'),

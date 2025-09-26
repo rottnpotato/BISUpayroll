@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
 import { decryptPayrollFile, cleanupDecryptedFile } from "@/lib/crypto-utils"
-import { headers } from "next/headers"
 import fs from 'fs'
 import path from 'path'
 
@@ -103,8 +102,9 @@ export async function GET(
         break
     }
 
-    // Create response with file
-    const response = new NextResponse(fileBuffer, {
+    // Create response with file using Uint8Array for correct BodyInit typing
+    const uint8Array = Uint8Array.from(fileBuffer)
+    const response = new NextResponse(uint8Array, {
       status: 200,
       headers: {
         'Content-Type': contentType,

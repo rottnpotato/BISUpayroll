@@ -42,7 +42,6 @@ export async function GET(request: NextRequest) {
             employeeId: true,
             department: true,
             position: true,
-            salary: true
           }
         }
       },
@@ -111,7 +110,6 @@ export async function PUT(request: NextRequest) {
             employeeId: true,
             department: true,
             position: true,
-            salary: true
           }
         }
       }
