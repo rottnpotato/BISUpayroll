@@ -195,6 +195,7 @@ export function ConfigurationLayout(props: ConfigurationLayoutProps) {
           <TaxConfigSummaryCard
             ratesConfig={props.ratesConfig}
             leaveBenefitsConfig={props.leaveBenefitsConfig}
+            onSave={async () => { await props.saveAllConfigurations() }}
           />
         )
       default:

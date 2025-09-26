@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { 
-  WorkingHoursConfig, 
-  RatesConfig, 
-  LeaveBenefitsConfig, 
-  ContributionsConfig, 
-  TaxBracketsConfig, 
+import {
+  WorkingHoursConfig,
+  RatesConfig,
+  LeaveBenefitsConfig,
+  ContributionsConfig,
+  TaxBracketsConfig,
   ConfigurationScope,
   ConfigurationSaveResponse
 } from '../types'
+// Client code must not import server-only Prisma services. Use API routes instead.
 import { toast } from 'sonner'
 
 interface UnsavedChangesState {
@@ -31,8 +32,8 @@ export const usePayrollConfig = () => {
   const [ratesConfig, setRatesConfig] = useState<RatesConfig>({
     overtimeRate1: 1.25,
     overtimeRate2: 1.5,
-    regularHolidayRate: 200,
-    specialHolidayRate: 130,
+    regularHolidayRate: 2,
+    specialHolidayRate: 1.3,
     currency: 'PHP'
   })
 
@@ -103,32 +104,28 @@ export const usePayrollConfig = () => {
   // Auto-save debounce timer
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
-  // Save configuration to database
+  // Save configuration to database via API route (client-safe)
   const saveConfiguration = useCallback(async (type: 'workingHours' | 'rates' | 'leaveBenefits' | 'contributions' | 'taxBrackets', config: any) => {
     try {
+      const normalizedType = type === 'workingHours'
+        ? 'workingHours'
+        : type === 'rates'
+          ? 'rates'
+          : type === 'leaveBenefits'
+            ? 'leaveBenefits'
+            : type === 'contributions'
+              ? 'contributions'
+              : 'taxBrackets'
+
       const response = await fetch('/api/admin/payroll/config', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: type === 'workingHours' ? 'workingHours' : type === 'rates' ? 'rates' : 'leaveBenefits',
-          config: {
-            ...config,
-            isActive: true
-          }
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: normalizedType, config })
       })
+      const result = await response.json()
 
-      if (!response.ok) {
-        throw new Error(`Failed to save ${type} configuration`)
-      }
-
-      setUnsavedChanges(prev => ({ ...prev, [type]: false }))
-      
-      // Update original config reference
-      if (originalConfigsRef.current) {
-        originalConfigsRef.current[type] = { ...config }
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || `Failed to save ${normalizedType} configuration`)
       }
 
       return true
@@ -149,24 +146,23 @@ export const usePayrollConfig = () => {
       setIsAutoSaving(true)
       await saveConfiguration(type, config)
       setIsAutoSaving(false)
-    }, 2000) // Auto-save after 2 seconds of inactivity
+    }, 2000)
   }, [saveConfiguration])
 
   // Enhanced setters with change tracking
   const setWorkingHoursConfigWithTracking = useCallback((config: WorkingHoursConfig | ((prev: WorkingHoursConfig) => WorkingHoursConfig)) => {
     setWorkingHoursConfig(prev => {
       const newConfig = typeof config === 'function' ? config(prev) : config
-      
-      // Check if there are actual changes
-      const hasChanges = originalConfigsRef.current ? 
-        JSON.stringify(newConfig) !== JSON.stringify(originalConfigsRef.current.workingHours) : 
+
+      const hasChanges = originalConfigsRef.current ?
+        JSON.stringify(newConfig) !== JSON.stringify(originalConfigsRef.current.workingHours) :
         true
-      
+
       if (hasChanges) {
         setUnsavedChanges(prev => ({ ...prev, workingHours: true }))
         autoSave('workingHours', newConfig)
       }
-      
+
       return newConfig
     })
   }, [autoSave])
@@ -174,16 +170,16 @@ export const usePayrollConfig = () => {
   const setRatesConfigWithTracking = useCallback((config: RatesConfig | ((prev: RatesConfig) => RatesConfig)) => {
     setRatesConfig(prev => {
       const newConfig = typeof config === 'function' ? config(prev) : config
-      
-      const hasChanges = originalConfigsRef.current ? 
-        JSON.stringify(newConfig) !== JSON.stringify(originalConfigsRef.current.rates) : 
+
+      const hasChanges = originalConfigsRef.current ?
+        JSON.stringify(newConfig) !== JSON.stringify(originalConfigsRef.current.rates) :
         true
-      
+
       if (hasChanges) {
         setUnsavedChanges(prev => ({ ...prev, rates: true }))
         autoSave('rates', newConfig)
       }
-      
+
       return newConfig
     })
   }, [autoSave])
@@ -239,49 +235,62 @@ export const usePayrollConfig = () => {
     })
   }, [autoSave])
 
-  // Load configurations from the API
+  // Load configurations from the API (client-safe)
   const loadConfigurations = async () => {
     try {
       const response = await fetch('/api/admin/payroll/config')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.configurations) {
-          if (data.configurations.workingHours && Object.keys(data.configurations.workingHours).length > 0) {
-            setWorkingHoursConfig(prev => ({ ...prev, ...data.configurations.workingHours }))
-          }
-          if (data.configurations.rates && Object.keys(data.configurations.rates).length > 0) {
-            setRatesConfig(prev => ({ ...prev, ...data.configurations.rates }))
-          }
-          if (data.configurations.leaveBenefits && Object.keys(data.configurations.leaveBenefits).length > 0) {
-            setLeaveBenefitsConfig(prev => ({ ...prev, ...data.configurations.leaveBenefits }))
-          }
+      const result = await response.json()
 
-          // Store original configurations for change detection
-          originalConfigsRef.current = {
-            workingHours: { ...workingHoursConfig, ...data.configurations.workingHours },
-            rates: { ...ratesConfig, ...data.configurations.rates },
-            leaveBenefits: { ...leaveBenefitsConfig, ...data.configurations.leaveBenefits },
-            contributions: { ...contributionsConfig },
-            taxBrackets: { ...taxBracketsConfig }
-          }
-        }
+      if (!response.ok || !result?.configurations) {
+        throw new Error(result?.error || 'Failed to load configurations')
+      }
+
+      const bundle = result.configurations
+
+      setWorkingHoursConfig(bundle.workingHours)
+      setRatesConfig(bundle.rates)
+      setLeaveBenefitsConfig(bundle.leaveBenefits)
+      setContributionsConfig(bundle.contributions)
+      setTaxBracketsConfig(bundle.taxBrackets)
+
+      originalConfigsRef.current = {
+        workingHours: bundle.workingHours,
+        rates: bundle.rates,
+        leaveBenefits: bundle.leaveBenefits,
+        contributions: bundle.contributions,
+        taxBrackets: bundle.taxBrackets
       }
     } catch (error) {
       console.error('Error loading configurations:', error)
+      toast.error('Failed to load configurations')
     }
   }
 
   // Manual save function for immediate saves
   const saveAllConfigurations = async () => {
-    const results = await Promise.all([
+    const sections = ['workingHours', 'rates', 'leaveBenefits', 'contributions', 'taxBrackets'] as const
+    const promises: Promise<boolean>[] = [
       unsavedChanges.workingHours ? saveConfiguration('workingHours', workingHoursConfig) : Promise.resolve(true),
       unsavedChanges.rates ? saveConfiguration('rates', ratesConfig) : Promise.resolve(true),
-      unsavedChanges.leaveBenefits ? saveConfiguration('leaveBenefits', leaveBenefitsConfig) : Promise.resolve(true)
-    ])
+      unsavedChanges.leaveBenefits ? saveConfiguration('leaveBenefits', leaveBenefitsConfig) : Promise.resolve(true),
+      unsavedChanges.contributions ? saveConfiguration('contributions', contributionsConfig) : Promise.resolve(true),
+      unsavedChanges.taxBrackets ? saveConfiguration('taxBrackets', taxBracketsConfig) : Promise.resolve(true)
+    ]
 
-    const allSaved = results.every(result => result)
+    const results = await Promise.all(promises)
+    const allSaved = results.every(Boolean)
     if (allSaved) {
       toast.success('All configurations saved successfully')
+    } else {
+      const failedSections: string[] = []
+      results.forEach((ok, idx) => {
+        const section = sections[idx]
+        if (!ok && (unsavedChanges as any)[section]) failedSections.push(section)
+      })
+      const message = failedSections.length
+        ? `Some configurations failed to save: ${failedSections.join(', ')}`
+        : 'Some configurations failed to save.'
+      toast.error(message)
     }
     return allSaved
   }
@@ -354,33 +363,24 @@ export const usePayrollConfig = () => {
 
   // Enhanced save function with scope support
   const saveConfigurationWithScope = useCallback(async (
-  type: 'workingHours' | 'rates' | 'leaveBenefits' | 'contributions' | 'taxBrackets', 
-    config: any, 
+    type: 'workingHours' | 'rates' | 'leaveBenefits' | 'contributions' | 'taxBrackets',
+    config: any,
     scope?: ConfigurationScope
   ): Promise<ConfigurationSaveResponse> => {
     try {
       const response = await fetch('/api/admin/payroll/config', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type,
-          config,
-          applicationScope: scope
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, config: { ...config, applicationScope: scope } })
       })
-
       const result = await response.json()
 
-      if (!response.ok) {
-        throw new Error(result.error || `Failed to save ${type} configuration`)
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || `Failed to save ${type} configuration`)
       }
 
-      // Update unsaved changes state
-  setUnsavedChanges(prev => ({ ...prev, [type]: false }))
-      
-      // Update original config reference
+      setUnsavedChanges(prev => ({ ...prev, [type]: false }))
+
       if (originalConfigsRef.current) {
         (originalConfigsRef.current as any)[type] = { ...config }
       }

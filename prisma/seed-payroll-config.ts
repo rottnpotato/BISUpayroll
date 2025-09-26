@@ -18,7 +18,7 @@ async function seedPayrollConfiguration() {
     { key: 'rates_overtimeRate1', value: '1.25' },
     { key: 'rates_overtimeRate2', value: '1.5' },
     { key: 'rates_nightDifferential', value: '0.10' },
-    { key: 'rates_regularHolidayRate', value: '2.0' },
+    { key: 'rates_regularHolidayRate', value: '2' },
     { key: 'rates_specialHolidayRate', value: '1.3' },
     { key: 'rates_currency', value: 'PHP' },
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
-import { ApplicationType, ConfigurationScope } from "@/app/admin/payroll/types"
+import { PayrollConfigurationService } from "@/app/admin/payroll/configuration/service"
+import { normalizeConfigType } from "@/app/admin/payroll/configuration"
+import type { ConfigurationScope } from "@/app/admin/payroll/types"
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,93 +10,18 @@ export async function GET(request: NextRequest) {
     const configType = searchParams.get("type")
 
     if (configType) {
-      // Get specific configuration type
-      const settings = await prisma.systemSettings.findMany({
-        where: {
-          key: {
-            startsWith: `${configType}_`
-          }
-        }
-      })
+      const normalized = normalizeConfigType(configType)
+      if (normalized === 'holidays') {
+        const bundle = await PayrollConfigurationService.loadBundle()
+        return NextResponse.json({ config: bundle.holidays })
+      }
 
-      const config = settings.reduce((acc, setting) => {
-        const key = setting.key.replace(`${configType}_`, '')
-        let value: any = setting.value
-
-        // Parse numeric values
-        if (!isNaN(Number(value))) {
-          value = Number(value)
-        }
-        
-        // Parse boolean values
-        if (value === 'true' || value === 'false') {
-          value = value === 'true'
-        }
-
-        acc[key] = value
-        return acc
-      }, {} as any)
-
+      const config = await PayrollConfigurationService.loadType(normalized)
       return NextResponse.json({ config })
     }
 
-    // Get all payroll configurations
-    const allSettings = await prisma.systemSettings.findMany({
-      where: {
-        OR: [
-          { key: { startsWith: 'working_hours_' } },
-          { key: { startsWith: 'rates_' } },
-          { key: { startsWith: 'leave_benefits_' } },
-          { key: { startsWith: 'contributions_' } },
-          { key: { startsWith: 'tax_brackets_' } }
-        ]
-      }
-    })
-
-    const configurations: {
-      workingHours: Record<string, any>
-      rates: Record<string, any>
-      leaveBenefits: Record<string, any>
-      contributions: Record<string, any>
-      taxBrackets: Record<string, any>
-    } = {
-      workingHours: {},
-      rates: {},
-      leaveBenefits: {},
-      contributions: {},
-      taxBrackets: {}
-    }
-
-    allSettings.forEach(setting => {
-      const [category, key] = setting.key.split('_').slice(0, 2).join('_').split('_')
-      const fieldKey = setting.key.replace(`${category}_`, '')
-      
-      let value: any = setting.value
-
-      // Parse numeric values
-      if (!isNaN(Number(value))) {
-        value = Number(value)
-      }
-      
-      // Parse boolean values
-      if (value === 'true' || value === 'false') {
-        value = value === 'true'
-      }
-
-      if (category === 'working' && key === 'hours') {
-        configurations.workingHours[fieldKey] = value
-      } else if (category === 'rates') {
-        configurations.rates[fieldKey] = value
-      } else if (category === 'leave' && key === 'benefits') {
-        configurations.leaveBenefits[fieldKey] = value
-      } else if (category === 'contributions') {
-        configurations.contributions[fieldKey] = value
-      } else if (category === 'tax' && key === 'brackets') {
-        configurations.taxBrackets[fieldKey] = value
-      }
-    })
-
-    return NextResponse.json({ configurations })
+    const bundle = await PayrollConfigurationService.loadBundle()
+    return NextResponse.json({ configurations: bundle })
   } catch (error) {
     console.error("Error fetching payroll configurations:", error)
     return NextResponse.json(
@@ -115,81 +42,21 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    const normalizedType = normalizeConfigType(type)
 
-    // Handle special configuration types
-    if (type === 'contributions' && config.brackets) {
-      return await saveContributionsWithBrackets(config, applicationScope)
+    if (normalizedType === 'holidays') {
+      return NextResponse.json({
+        success: false,
+        message: 'Holiday configuration must be managed via holiday endpoints'
+      }, { status: 400 })
     }
 
-    if (type === 'tax_brackets' && config.brackets) {
-      return await saveTaxBracketsConfig(config, applicationScope)
-    }
+    const response = await PayrollConfigurationService.saveConfiguration(
+      normalizedType as Exclude<ReturnType<typeof normalizeConfigType>, 'holidays'>,
+      config
+    )
 
-    // Save regular configuration to system settings
-    const savedSettings = []
-    
-    for (const [key, value] of Object.entries(config)) {
-      if (key === 'applicationScope') continue // Skip scope in flat config
-      
-      const settingKey = `${type}_${key}`
-      let stringValue = String(value)
-      let dataType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON' | 'DECIMAL' = 'STRING'
-
-      // Determine data type
-      if (typeof value === 'number') {
-        dataType = Number.isInteger(value) ? 'NUMBER' : 'DECIMAL'
-      } else if (typeof value === 'boolean') {
-        dataType = 'BOOLEAN'
-      } else if (typeof value === 'object') {
-        dataType = 'JSON'
-        stringValue = JSON.stringify(value)
-      }
-      
-      const setting = await prisma.systemSettings.upsert({
-        where: { key: settingKey },
-        update: { 
-          value: stringValue,
-          dataType,
-          category: 'payroll',
-          isActive: true
-        },
-        create: {
-          key: settingKey,
-          value: stringValue,
-          dataType,
-          category: 'payroll',
-          isActive: true
-        }
-      })
-
-      savedSettings.push(setting)
-
-      // Create configuration scope if provided
-      if (applicationScope && applicationScope.applicationType !== 'ALL') {
-        // First, delete existing scopes for this setting
-        await prisma.configurationScope.deleteMany({
-          where: { settingsId: setting.id }
-        })
-
-        // Create new scope
-        await prisma.configurationScope.create({
-          data: {
-            settingsId: setting.id,
-            applicationType: applicationScope.applicationType as ApplicationType,
-            targetId: applicationScope.targetId,
-            targetName: applicationScope.targetName,
-            priority: applicationScope.priority || 0,
-            isActive: applicationScope.isActive !== false
-          }
-        })
-      }
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: "Configuration saved successfully",
-      configId: savedSettings[0]?.id
-    })
+    return NextResponse.json(response)
   } catch (error) {
     console.error("Error saving payroll configuration:", error)
     return NextResponse.json(

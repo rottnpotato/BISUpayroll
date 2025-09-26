@@ -1,41 +1,32 @@
-// Philippine Payroll Calculation Utilities
-// Based on TRAIN Law (RA 10963) and current government contribution rates
+import { ContributionsConfig, TaxBracket, TaxBracketsConfig } from "@/app/admin/payroll/types"
+import { PayrollConfigurationService } from "@/app/admin/payroll/configuration/service"
 
-// Philippine Income Tax Brackets (TRAIN Law - 2023 rates)
-export const TAX_BRACKETS = [
-  { min: 0, max: 250000, rate: 0, fixedAmount: 0 },
-  { min: 250000, max: 400000, rate: 0.15, fixedAmount: 0 },
-  { min: 400000, max: 800000, rate: 0.20, fixedAmount: 22500 },
-  { min: 800000, max: 2000000, rate: 0.25, fixedAmount: 102500 },
-  { min: 2000000, max: 8000000, rate: 0.30, fixedAmount: 402500 },
-  { min: 8000000, max: Infinity, rate: 0.35, fixedAmount: 2202500 }
-]
+let cachedConfig: { contributions: ContributionsConfig; tax: TaxBracketsConfig } | null = null
+let lastConfigFetch = 0
+const CONFIG_CACHE_TTL_MS = 60_000
 
-// Government contribution rates and limits
-export const CONTRIBUTION_RATES = {
-  gsis: {
-    employee: 0.09, // 9% employee share
-    employer: 0.12, // 12% employer share
-    minSalary: 5000,
-    maxSalary: 100000
-  },
-  philHealth: {
-    rate: 0.05, // 5% total (2.5% employee, 2.5% employer)
-    employeeShare: 0.025,
-    employerShare: 0.025,
-    minContribution: 200,
-    maxContribution: 1750,
-    minSalary: 8000,
-    maxSalary: 70000
-  },
-  pagibig: {
-    employeeRate: 0.02, // 2% employee
-    employerRate: 0.02, // 2% employer  
-    minContribution: 24,
-    maxContribution: 200,
-    minSalary: 1200,
-    maxSalary: 10000
+const ensureConfigLoaded = async (): Promise<{ contributions: ContributionsConfig; tax: TaxBracketsConfig }> => {
+  const now = Date.now()
+  if (!cachedConfig || now - lastConfigFetch > CONFIG_CACHE_TTL_MS) {
+    const [contributions, tax] = (await Promise.all([
+      PayrollConfigurationService.loadType('contributions'),
+      PayrollConfigurationService.loadType('taxBrackets')
+    ])) as [ContributionsConfig, TaxBracketsConfig]
+
+    cachedConfig = { contributions, tax }
+    lastConfigFetch = now
   }
+  return cachedConfig as { contributions: ContributionsConfig; tax: TaxBracketsConfig }
+}
+
+const getTaxConfig = async (): Promise<TaxBracketsConfig> => {
+  const config = await ensureConfigLoaded()
+  return config.tax
+}
+
+const getContributionConfig = async (): Promise<ContributionsConfig> => {
+  const config = await ensureConfigLoaded()
+  return config.contributions
 }
 
 export interface PayrollCalculationData {
@@ -56,6 +47,8 @@ export interface PayrollCalculationData {
     specialHolidayRate: number
     lateDeductionAmount: number
     lateDeductionBasis: string
+    contributions?: ContributionsConfig
+    tax?: TaxBracketsConfig
   }
 }
 
@@ -111,44 +104,72 @@ export function calculateAnnualTaxableIncome(monthlyGross: number): number {
   return monthlyGross * 12
 }
 
-export function calculateWithholdingTax(annualTaxableIncome: number): number {
-  for (const bracket of TAX_BRACKETS) {
+export function calculateWithholdingTax(annualTaxableIncome: number, brackets: TaxBracket[]): number {
+  for (const bracket of brackets) {
     if (annualTaxableIncome > bracket.min && annualTaxableIncome <= bracket.max) {
       const taxableAmount = annualTaxableIncome - bracket.min
-      const tax = bracket.fixedAmount + (taxableAmount * bracket.rate)
-      return tax / 12 // Return monthly withholding tax
+      const rate = bracket.rate / 100
+      const tax = (bracket.fixedAmount ?? 0) + (taxableAmount * rate)
+      return tax / 12
     }
+  }
+  const lastBracket = brackets[brackets.length - 1]
+  if (lastBracket && annualTaxableIncome > lastBracket.min) {
+    const rate = lastBracket.rate / 100
+    const taxableAmount = annualTaxableIncome - lastBracket.min
+    const tax = (lastBracket.fixedAmount ?? 0) + (taxableAmount * rate)
+    return tax / 12
   }
   return 0
 }
 
-export function calculateGSISContribution(monthlySalary: number): number {
-  const { employee, minSalary, maxSalary } = CONTRIBUTION_RATES.gsis
+export function calculateGSISContribution(monthlySalary: number, config: ContributionsConfig): number {
+  const { employeeRate, minSalary, maxSalary, brackets } = config.gsis
+  if (brackets && brackets.length > 0) {
+    const matched = brackets.find(bracket => monthlySalary >= bracket.salaryMin && monthlySalary <= bracket.salaryMax)
+    if (matched) {
+      return monthlySalary * (matched.employeeRate / 100)
+    }
+  }
   const contributionBase = Math.max(minSalary, Math.min(maxSalary, monthlySalary))
-  return contributionBase * employee
+  return contributionBase * (employeeRate / 100)
 }
 
-export function calculatePhilHealthContribution(monthlySalary: number): number {
-  const { employeeShare, minContribution, maxContribution, minSalary, maxSalary } = CONTRIBUTION_RATES.philHealth
-  
+export function calculatePhilHealthContribution(monthlySalary: number, config: ContributionsConfig): number {
+  const { employeeRate, minContribution, maxContribution, minSalary, maxSalary, brackets } = config.philHealth
+  if (brackets && brackets.length > 0) {
+    const matched = brackets.find(bracket => monthlySalary >= bracket.salaryMin && monthlySalary <= bracket.salaryMax)
+    if (matched) {
+      const contribution = monthlySalary * (matched.employeeRate / 100)
+      return Math.max(minContribution, Math.min(maxContribution, contribution))
+    }
+  }
+
   if (monthlySalary < minSalary) {
     return minContribution
   }
-  
+
   const contributionBase = Math.min(maxSalary, monthlySalary)
-  const contribution = contributionBase * employeeShare
+  const contribution = contributionBase * (employeeRate / 100)
   return Math.max(minContribution, Math.min(maxContribution, contribution))
 }
 
-export function calculatePagibigContribution(monthlySalary: number): number {
-  const { employeeRate, minContribution, maxContribution, minSalary, maxSalary } = CONTRIBUTION_RATES.pagibig
-  
+export function calculatePagibigContribution(monthlySalary: number, config: ContributionsConfig): number {
+  const { employeeRate, minContribution, maxContribution, minSalary, maxSalary, brackets } = config.pagibig
+  if (brackets && brackets.length > 0) {
+    const matched = brackets.find(bracket => monthlySalary >= bracket.salaryMin && monthlySalary <= bracket.salaryMax)
+    if (matched) {
+      const contribution = monthlySalary * (matched.employeeRate / 100)
+      return Math.max(minContribution, Math.min(maxContribution, contribution))
+    }
+  }
+
   if (monthlySalary < minSalary) {
     return minContribution
   }
-  
+
   const contributionBase = Math.min(maxSalary, monthlySalary)
-  const contribution = contributionBase * employeeRate
+  const contribution = contributionBase * (employeeRate / 100)
   return Math.max(minContribution, Math.min(maxContribution, contribution))
 }
 
@@ -272,7 +293,7 @@ export function calculateBaseSalaryFromRules(appliedRules: any[]): number {
   return 25000 // Default base salary if no rule is found
 }
 
-export function calculateCompletePayroll(data: PayrollCalculationData): PayrollCalculationResult {
+export async function calculateCompletePayroll(data: PayrollCalculationData): Promise<PayrollCalculationResult> {
   const {
     baseSalary,
     daysWorked,
@@ -285,15 +306,23 @@ export function calculateCompletePayroll(data: PayrollCalculationData): PayrollC
     appliedRules,
     configurations
   } = data
-  
-  // Calculate basic rates
+
+  const contributionConfig = configurations.contributions || await getContributionConfig()
+  const taxConfig = configurations.tax || await getTaxConfig()
+
   const dailyRate = calculateDailyRate(baseSalary)
   const hourlyRate = calculateHourlyRate(baseSalary, configurations.dailyHours)
   
   // Calculate earnings
   const regularPay = (hoursWorked - overtimeHours - holidayHours) * hourlyRate
   const overtimePay = calculateOvertimePay(overtimeHours, hourlyRate, configurations.overtimeRate1, configurations.overtimeRate2)
-  const holidayPay = calculateHolidayPay(holidayHours, hourlyRate, holidayType, configurations.regularHolidayRate, configurations.specialHolidayRate)
+  const holidayPay = calculateHolidayPay(
+    holidayHours,
+    hourlyRate,
+    holidayType,
+    configurations.regularHolidayRate,
+    configurations.specialHolidayRate
+  )
   // Night differential removed
   
   // Apply payroll rules for earnings
@@ -308,14 +337,14 @@ export function calculateCompletePayroll(data: PayrollCalculationData): PayrollC
   const grossPay = totalEarnings
   
   // Calculate mandatory contributions
-  const gsisContribution = calculateGSISContribution(baseSalary)
-  const philHealthContribution = calculatePhilHealthContribution(baseSalary)
-  const pagibigContribution = calculatePagibigContribution(baseSalary)
+  const gsisContribution = calculateGSISContribution(baseSalary, contributionConfig)
+  const philHealthContribution = calculatePhilHealthContribution(baseSalary, contributionConfig)
+  const pagibigContribution = calculatePagibigContribution(baseSalary, contributionConfig)
   
   // Calculate taxable income (gross pay minus non-taxable contributions)
   const taxableIncome = grossPay - gsisContribution - philHealthContribution - pagibigContribution - thirteenthMonthPay - serviceIncentiveLeave
   const annualTaxableIncome = calculateAnnualTaxableIncome(taxableIncome)
-  const withholdingTax = calculateWithholdingTax(annualTaxableIncome)
+  const withholdingTax = calculateWithholdingTax(annualTaxableIncome, taxConfig.brackets)
   
   // Calculate other deductions
   const lateDeductions = calculateLateDeductions(lateHours, hourlyRate, dailyRate, configurations.lateDeductionAmount, configurations.lateDeductionBasis)

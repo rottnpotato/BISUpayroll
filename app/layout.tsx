@@ -5,6 +5,7 @@ import { Poppins } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -45,6 +46,7 @@ export default function RootLayout({
               {children}
             </main>
             <Toaster />
+            <SonnerToaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

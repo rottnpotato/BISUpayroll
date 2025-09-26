@@ -6,6 +6,7 @@ import {
   PayrollCalculationResult,
   calculateBaseSalaryFromRules
 } from "@/lib/payroll-calculations"
+import { PayrollConfigurationService } from "@/app/admin/payroll/configuration/service"
 import { encryptPayrollFile, createSecureDirectory } from "@/lib/crypto-utils"
 import { cookies } from "next/headers"
 import { verifyToken } from "@/lib/auth"
@@ -132,6 +133,11 @@ export async function POST(request: NextRequest) {
     const errors = []
 
     // Parse configuration values with defaults
+    const [contributionConfig, taxConfig] = await Promise.all([
+      PayrollConfigurationService.loadType('contributions'),
+      PayrollConfigurationService.loadType('taxBrackets')
+    ])
+
     const configurations = {
       dailyHours: parseFloat(configs['working_hours_dailyHours'] || '8'),
       overtimeRate1: parseFloat(configs['rates_overtimeRate1'] || '1.25'),
@@ -139,7 +145,9 @@ export async function POST(request: NextRequest) {
       regularHolidayRate: parseFloat(configs['rates_regularHolidayRate'] || '2.0'),
       specialHolidayRate: parseFloat(configs['rates_specialHolidayRate'] || '1.3'),
       lateDeductionAmount: parseFloat(configs['working_hours_lateDeductionAmount'] || '0'),
-      lateDeductionBasis: configs['working_hours_lateDeductionBasis'] || 'fixed'
+      lateDeductionBasis: configs['working_hours_lateDeductionBasis'] || 'fixed',
+      contributions: contributionConfig,
+      tax: taxConfig
     }
 
     for (const user of users) {
@@ -199,7 +207,7 @@ export async function POST(request: NextRequest) {
   const allApplicableRules = [...userSpecificRules, ...globalRules]
 
         // Prepare calculation data
-        const calculationData: PayrollCalculationData = {
+    const calculationData: PayrollCalculationData = {
           baseSalary,
           daysWorked,
           hoursWorked: totalHoursWorked,
@@ -210,11 +218,11 @@ export async function POST(request: NextRequest) {
           // Night shift removed from calculation input
           holidayType: 'REGULAR', // Default, could be enhanced
           appliedRules: allApplicableRules,
-          configurations
+      configurations
         }
 
         // Calculate complete payroll using our new utility
-        const result: PayrollCalculationResult = calculateCompletePayroll(calculationData)
+        const result: PayrollCalculationResult = await calculateCompletePayroll(calculationData)
 
         // Upsert PayrollResult record (idempotent for repeated generations on the same period)
         const updatableFields = {

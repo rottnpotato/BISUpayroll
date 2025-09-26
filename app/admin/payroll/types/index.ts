@@ -24,6 +24,17 @@ export interface PayrollRuleAssignment {
     employeeId: string | null
     department: string | null
   }
+  philHealth: {
+    employeeRate: number
+    employerRate: number
+    minContribution: number
+    maxContribution: number
+    minSalary: number
+    maxSalary: number
+    brackets?: ContributionBracket[]
+    applicationScope?: ConfigurationScope
+    isActive?: boolean
+  }
 }
 
 export interface User {
@@ -115,6 +126,8 @@ export interface ContributionsConfig {
     minSalary: number
     maxSalary: number
     brackets?: ContributionBracket[]
+    applicationScope?: ConfigurationScope
+    isActive?: boolean
   }
   philHealth: {
     employeeRate: number
@@ -124,6 +137,8 @@ export interface ContributionsConfig {
     minSalary: number
     maxSalary: number
     brackets?: ContributionBracket[]
+    applicationScope?: ConfigurationScope
+    isActive?: boolean
   }
   pagibig: {
     employeeRate: number
@@ -133,6 +148,8 @@ export interface ContributionsConfig {
     minSalary: number
     maxSalary: number
     brackets?: ContributionBracket[]
+    applicationScope?: ConfigurationScope
+    isActive?: boolean
   }
   applicationScope?: ConfigurationScope
   isActive?: boolean
