@@ -1,0 +1,35 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      HOSTNAME: 0.0.0.0
+      TZ: "Asia/Manila"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app:delegated
+      - pnpm-store:/app/.pnpm-store
+      - node_modules:/app/node_modules
+      - next_cache:/app/.next
+      - prisma_cache:/app/node_modules/.prisma
+    restart: unless-stopped
+    init: true
+
+volumes:
+  pnpm-store:
+  node_modules:
+  next_cache:
+  prisma_cache:
+    
+
+
