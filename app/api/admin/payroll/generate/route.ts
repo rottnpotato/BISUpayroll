@@ -167,8 +167,9 @@ export async function POST(request: NextRequest) {
         let holidayHours = 0
   // Night shift removed
         let daysWorked = 0
-
+        // console.log("user.attendanceRecords", user.attendanceRecords)
         user.attendanceRecords.forEach((record: any) => {
+          console.log("record", record)
           if (record.timeIn && record.timeOut) {
             daysWorked++
             const hoursWorked = Number(record.hoursWorked || 0)
