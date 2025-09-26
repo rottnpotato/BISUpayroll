@@ -25,8 +25,7 @@ import { PayrollRule, PayrollSchedule, WorkingHoursConfig, RatesConfig, LeaveBen
 import { toast } from "sonner"
 import { OverviewHeader } from "./overview/OverviewHeader"
 import { OverviewStats } from "./overview/OverviewStats"
-import { GroupsList } from "./overview/GroupsList"
-import { FilesList } from "./overview/FilesList"
+import { RecentActivity } from "./overview/RecentActivity"
 
 interface PayrollOverviewProps {
   rules: PayrollRule[]
@@ -164,43 +163,24 @@ export function PayrollOverview({
     }).format(amount)
   }
 
-  const formatDate = (dateString: string | Date) => {
-    return new Date(dateString).toLocaleDateString('en-PH', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
+  // Removed unused date/status helpers after unifying activity lists
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
-
-  const getGroupStatus = (group: PayrollGroup) => {
-    switch (group.status) {
-      case 'COMPLETED':
-        return { label: 'Completed', color: 'bg-green-100 text-green-800', icon: CheckCircle }
-      case 'APPROVED':
-        return { label: 'Approved', color: 'bg-blue-100 text-blue-800', icon: CheckCircle }
-      case 'PROCESSING':
-        return { label: 'Processing', color: 'bg-yellow-100 text-yellow-800', icon: Clock }
-      default:
-        return { label: 'Generated', color: 'bg-gray-100 text-gray-800', icon: FileText }
-    }
-  }
-
-  const getFileStatus = (file: PayrollFile) => {
-    switch (file.status) {
-      case 'APPROVED':
-        return { label: 'Approved', color: 'bg-green-100 text-green-800', icon: CheckCircle }
-      case 'ARCHIVED':
-        return { label: 'Archived', color: 'bg-gray-100 text-gray-800', icon: Archive }
-      default:
-        return { label: 'Generated', color: 'bg-blue-100 text-blue-800', icon: FileText }
+  const handleExpandActivity = async () => {
+    try {
+      const [groupsResponse, filesResponse] = await Promise.all([
+        fetch('/api/admin/payroll/groups?limit=100'),
+        fetch('/api/admin/payroll/files?limit=100')
+      ])
+      if (groupsResponse.ok) {
+        const groupsData = await groupsResponse.json()
+        setPayrollGroups(groupsData.groups || [])
+      }
+      if (filesResponse.ok) {
+        const filesData = await filesResponse.json()
+        setRecentFiles(filesData.files || [])
+      }
+    } catch (e) {
+      console.warn('Failed to expand recent activity', e)
     }
   }
 
@@ -263,43 +243,13 @@ export function PayrollOverview({
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <motion.div variants={itemVariants} initial="hidden" animate="visible">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                    <FolderOpen className="h-5 w-5" />
-                    Recent Payroll Groups
-                  </CardTitle>
-                  <Button variant="outline" size="sm" onClick={fetchPayrollOverview} className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-purple-light">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <GroupsList groups={payrollGroups} />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div variants={itemVariants} initial="hidden" animate="visible">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                    <FileText className="h-5 w-5" />
-                    Recent Payroll Files
-                  </CardTitle>
-                  <Button variant="outline" size="sm" onClick={fetchPayrollOverview} className="text-bisu-purple-deep border-bisu-purple-medium hover:bg-bisu-purple-light">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <FilesList files={recentFiles} />
-              </CardContent>
-            </Card>
+            <RecentActivity
+              groups={payrollGroups}
+              files={recentFiles}
+              onRefresh={fetchPayrollOverview}
+              onExpand={handleExpandActivity}
+              initialLimit={8}
+            />
           </motion.div>
         </div>
 
