@@ -655,6 +655,8 @@ export default function EmployeeAttendancePage() {
               <CardContent>
                 <MiniCalendar
                   className="rounded-md border"
+                  classNames={{
+                   head_cell: "text-muted-foreground rounded-md w-12 font-normal text-[0.8rem]",}}
                   defaultMonth={new Date(selectedYear, selectedMonth - 1, 1)}
                   showOutsideDays
                   modifiers={{
