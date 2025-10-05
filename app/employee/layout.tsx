@@ -100,7 +100,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (sidebarCollapsed ? 'ml-20' : 'ml-64')}`}
         >
           {/* Page content */}
-          <main className="employee-light-cards flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-[1200px]">
+          <main className="employee-light-cards flex-1 overflow-auto bg-gray-50 pt-4 px-4 sm:px-6 md:px-8 w-full mx-auto max-w-full">
             {isLoading ? <PageLoading message="Loading your attendance..." /> : children}
           </main>
         </motion.div>

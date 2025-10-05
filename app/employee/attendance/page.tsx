@@ -400,7 +400,7 @@ export default function EmployeeAttendancePage() {
       y: 0,
       opacity: 1,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 100,
         damping: 12,
       },
@@ -604,7 +604,7 @@ export default function EmployeeAttendancePage() {
                 )}
               </div>
 
-              <div className="flex justify-center gap-4">
+              <div className="flex justify-center gap-3">
                 <Button
                   onClick={handleTimeIn}
                   disabled={!canClockIn() || isClockingIn}
@@ -645,10 +645,10 @@ export default function EmployeeAttendancePage() {
 
           {/* Mini Calendar */}
           <motion.div variants={itemVariants} className="lg:col-span-1">
-            <Card className="shadow-md">
+            <Card className="shadow-md w-[400px]">
               <CardHeader className="bg-gradient-to-r from-bisu-purple-deep/10 to-bisu-purple-light/10">
                 <CardTitle className="text-bisu-purple-deep flex items-center gap-2">
-                  <CalendarDays className="h-6 w-6" />
+                  <CalendarDays className="h-6 w-8" />
                   Mini Calendar
                 </CardTitle>
               </CardHeader>
@@ -868,4 +868,4 @@ export default function EmployeeAttendancePage() {
       </motion.div>
     </div>
   )
-} 
+}

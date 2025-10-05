@@ -5,12 +5,16 @@ FROM node:22-bookworm-slim AS base
 # Install system dependencies and pnpm
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-     ca-certificates \
-     openssl \
-     bash \
-     curl \
-     dumb-init \
-     tzdata \
+    ca-certificates \
+    openssl \
+    bash \
+    curl \
+    dumb-init \
+    tzdata \
+    libreoffice \
+    fonts-dejavu \
+    fonts-liberation \
+    fontconfig \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g pnpm@9
 

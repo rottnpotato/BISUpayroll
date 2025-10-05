@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/use-auth"
 import { PayrollRulesBreakdown } from "./components"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface PayrollRecord {
   id: string
@@ -135,6 +136,9 @@ interface DetailedPayrollData {
 export default function PayslipDetailsPage() {
   const [payrollData, setPayrollData] = useState<DetailedPayrollData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [showPdf, setShowPdf] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const { user } = useAuth()
 
   const fetchPayrollData = async () => {
@@ -224,118 +228,59 @@ export default function PayslipDetailsPage() {
     )
   }
 
-  const generatePayslipHtml = () => {
-    if (!payrollData) return ""
-    const { employee, calculations, currentMonth } = payrollData
-    const period = new Date(currentMonth.year, currentMonth.month - 1, 1)
-      .toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
-
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Payslip - ${employee.name} - ${period}</title>
-          <style>
-            body { font-family: Arial, sans-serif; color: #1f2937; margin: 0; padding: 24px; }
-            .header { text-align: center; margin-bottom: 16px; }
-            .brand { font-weight: 800; color: #3b2a8c; }
-            .sub { color: #6b7280; }
-            .section { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-            .section-title { font-weight: 700; color: #3b2a8c; margin: 0 0 12px 0; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
-            .row { display: flex; justify-content: space-between; padding: 6px 0; }
-            .label { color: #6b7280; }
-            .value { font-weight: 600; }
-            .total { font-size: 18px; font-weight: 800; color: #3b2a8c; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="brand">BISU Payroll</div>
-            <div class="sub">Payslip for ${period}</div>
-          </div>
-          <div class="section">
-            <div class="section-title">Employee Information</div>
-            <div class="grid">
-              <div class="row"><span class="label">Name</span><span class="value">${employee.name}</span></div>
-              <div class="row"><span class="label">Employee ID</span><span class="value">${employee.employeeId || 'N/A'}</span></div>
-              <div class="row"><span class="label">Department</span><span class="value">${employee.department || 'N/A'}</span></div>
-              <div class="row"><span class="label">Position</span><span class="value">${employee.position || 'N/A'}</span></div>
-            </div>
-          </div>
-          <div class="section">
-            <div class="section-title">Rates</div>
-            <div class="grid">
-              <div class="row"><span class="label">Daily Rate</span><span class="value">${formatCurrency(calculations.dailyRate)}</span></div>
-              <div class="row"><span class="label">Hourly Rate</span><span class="value">${formatCurrency(calculations.hourlyRate)}</span></div>
-            </div>
-          </div>
-          <div class="section">
-            <div class="section-title">Earnings</div>
-            <div class="grid">
-              <div class="row"><span class="label">Base Pay</span><span class="value">${formatCurrency(calculations.basePay)}</span></div>
-              <div class="row"><span class="label">Overtime Pay</span><span class="value">${formatCurrency(calculations.overtimePay)}</span></div>
-              <div class="row"><span class="label">Bonuses & Allowances</span><span class="value">${formatCurrency(calculations.bonuses)}</span></div>
-              <div class="row"><span class="label">Gross Pay</span><span class="total">${formatCurrency(calculations.grossPay)}</span></div>
-            </div>
-          </div>
-          <div class="section">
-            <div class="section-title">Deductions</div>
-            <div class="grid">
-              <div class="row"><span class="label">Government Contributions</span><span class="value">${formatCurrency(calculations.governmentDeductions)}</span></div>
-              <div class="row"><span class="label">Loans</span><span class="value">${formatCurrency(calculations.loanDeductions)}</span></div>
-              <div class="row"><span class="label">Late Deductions</span><span class="value">${formatCurrency(calculations.lateDeductions)}</span></div>
-              <div class="row"><span class="label">Other Deductions</span><span class="value">${formatCurrency(calculations.otherDeductions)}</span></div>
-              <div class="row"><span class="label">Total Deductions</span><span class="total">${formatCurrency(calculations.totalDeductions)}</span></div>
-            </div>
-          </div>
-          <div class="section">
-            <div class="row"><span class="label">Net Pay</span><span class="total">${formatCurrency(calculations.netPay)}</span></div>
-          </div>
-        </body>
-      </html>
-    `
-  }
-
-  const handleGeneratePayslip = () => {
-    const html = generatePayslipHtml()
-    if (!html) return
-    const w = window.open('', '_blank')
-    if (!w) return
-    w.document.open()
-    w.document.write(html)
-    w.document.close()
-    setTimeout(() => {
-      try { w.print(); } catch {}
-      setTimeout(() => { try { w.close() } catch {} }, 800)
-    }, 400)
-  }
-
-  const handleDownloadDocx = async (recordId: string) => {
+  const handleGeneratePayslip = async () => {
+    if (!payrollData || payrollData.payrollHistory.length === 0) {
+      toast.error('No payroll record available to generate payslip')
+      return
+    }
+    const latest = payrollData.payrollHistory[0]
     try {
-      const res = await fetch(`/api/employee/payslip/${recordId}`)
+      setIsGenerating(true)
+      toast.message('Generating payslip…')
+      // Request PDF (server will fallback to DOCX if conversion fails)
+      const res = await fetch(`/api/employee/payslip/${latest.id}?format=pdf`)
       if (!res.ok) {
-        toast.error('Failed to download payslip')
+        toast.error('Failed to generate payslip')
+        setIsGenerating(false)
         return
       }
       const blob = await res.blob()
-      const contentDisposition = res.headers.get('Content-Disposition') || ''
-      let fileName = 'Payslip.docx'
-      const match = contentDisposition.match(/filename="?([^";]+)"?/)
-      if (match) fileName = match[1]
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileName
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-      toast.success('Payslip downloaded')
-    } catch (e) {
-      console.error(e)
-      toast.error('Error downloading payslip')
+      const isPdf = blob.type === 'application/pdf'
+      const ext = isPdf ? 'pdf' : 'docx'
+      const fileName = `Payslip_${latest.payPeriodStart}_${latest.payPeriodEnd}.${ext}`
+
+      const navAny = window.navigator as any
+      if (navAny && typeof navAny.msSaveOrOpenBlob === 'function') {
+        navAny.msSaveOrOpenBlob(blob, fileName)
+        toast.success('Payslip ready')
+        return
+      }
+
+      const objectUrl = URL.createObjectURL(blob)
+      if (isPdf) {
+        // Show inline dialog with iframe
+        setPdfUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev)
+          return objectUrl
+        })
+        setShowPdf(true)
+        toast.success('Payslip ready')
+      } else {
+        // Fallback to download if PDF not produced
+        const a = document.createElement('a')
+        a.href = objectUrl
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        toast.success('Payslip (DOCX) download started')
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Error generating payslip')
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -351,10 +296,55 @@ export default function PayslipDetailsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
           <p className="text-muted-foreground">Your current payroll, rules, and payment history</p>
         </div>
-        <Button onClick={handleGeneratePayslip} className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white">
-          <Printer className="h-4 w-4 mr-2" /> Generate Payslip
+        <Button 
+          onClick={handleGeneratePayslip} 
+          disabled={isGenerating || !payrollData || payrollData.payrollHistory.length === 0}
+          className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Printer className="h-4 w-4 mr-2" /> {isGenerating ? 'Generating…' : 'Generate Payslip'}
         </Button>
       </div>
+
+      <Dialog open={showPdf} onOpenChange={(o)=>{ if(!o){ setShowPdf(false); if(pdfUrl){ URL.revokeObjectURL(pdfUrl); setPdfUrl(null);} } }}>
+        <DialogContent className="max-w-5xl w-full h-[90vh] p-4 flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between w-full">
+              <span>Payslip PDF Preview</span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={()=>{
+                    const iframe = document.getElementById('payslip-pdf-frame') as HTMLIFrameElement | null
+                    try { iframe?.contentWindow?.focus(); iframe?.contentWindow?.print(); } catch {}
+                  }}
+                >Print</Button>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 border rounded bg-muted overflow-hidden">
+            {pdfUrl ? (
+              <iframe
+                id="payslip-pdf-frame"
+                src={pdfUrl}
+                className="w-full h-full"
+                onLoad={(e)=>{
+                  // Auto attempt print once after load
+                  setTimeout(()=>{
+                    try { (e.target as HTMLIFrameElement).contentWindow?.focus(); (e.target as HTMLIFrameElement).contentWindow?.print(); } catch {}
+                  }, 400);
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">Loading PDF…</div>
+            )}
+          </div>
+          <div className="mt-3 text-xs text-muted-foreground">
+            If the print dialog does not appear automatically, click the Print button.
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Employee Information Card */}
       <Card>
@@ -649,15 +639,7 @@ export default function PayslipDetailsPage() {
                                   </span>
                                 )}
                               </div>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDownloadDocx(record.id)}
-                                className="border-bisu-purple-deep text-bisu-purple-deep hover:bg-bisu-purple-extralight"
-                              >
-                                Download DOCX
-                              </Button>
+                              {/* Per-record download removed; unified into main Generate Payslip button */}
                             </div>
                           </div>
                         </div>

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { generatePayslipDocx } from '@/lib/payslip-docx'
+import libre from 'libreoffice-convert'
+import { promisify } from 'util'
+
+const libreConvertAsync = promisify(libre.convert)
 
 // Helper to format numeric safely
 const num = (v: any) => Number(v || 0)
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ success: false, message: 'Unauthorized access' }, { status: 403 })
     }
 
-    const payrollRecordId = params.id
+    const payrollRecordId = await params.id
 
     // Fetch payroll record and ensure ownership
     const record = await prisma.payrollRecord.findUnique({
@@ -119,17 +123,37 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const { fileName, buffer } = await generatePayslipDocx(payslipData)
 
-    // Convert buffer to ArrayBuffer for Web Response compatibility
+    const searchParams = request.nextUrl.searchParams
+    const format = searchParams.get('format') || 'docx'
+
+    if (format === 'pdf') {
+      try {
+        const pdfBuf: Buffer = await libreConvertAsync(buffer, '.pdf', undefined)
+        const pdfName = fileName.replace(/\.docx$/i, '.pdf')
+        const uint8 = new Uint8Array(pdfBuf)
+        return new Response(uint8, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `inline; filename="${pdfName}"`,
+            'Content-Length': pdfBuf.length.toString()
+          }
+        }) as NextResponse
+      } catch (convErr) {
+        console.error('PDF conversion failed, falling back to DOCX', convErr)
+        // Fall through to return DOCX below
+      }
+    }
+
     const uint8 = new Uint8Array(buffer)
-    const response = new Response(uint8, {
+    return new Response(uint8, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="${fileName}"`,
         'Content-Length': buffer.length.toString()
       }
-    })
-    return response as NextResponse
+    }) as NextResponse
   } catch (error) {
     console.error('Payslip generation error', error)
     return NextResponse.json({ success: false, message: 'Failed to generate payslip' }, { status: 500 })
