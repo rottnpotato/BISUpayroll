@@ -48,7 +48,7 @@ export async function generateToken(user: AuthUser): Promise<string> {
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime('1d')
     .sign(JWT_SECRET_BYTES)
 }
 
@@ -103,7 +103,7 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<A
       }
     }
 
-    if (user.status !== 'ACTIVE') {
+    if (user.status === 'INACTIVE') {
       return {
         success: false,
         message: 'Account is not active. Please contact administrator.',

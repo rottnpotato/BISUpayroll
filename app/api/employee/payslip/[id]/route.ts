@@ -4,6 +4,7 @@ import { prisma } from '@/lib/database'
 import { generatePayslipDocx } from '@/lib/payslip-docx'
 import libre from 'libreoffice-convert'
 import { promisify } from 'util'
+import { m } from 'framer-motion'
 
 const libreConvertAsync = promisify(libre.convert)
 
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     // Derive earnings components heuristically (since not all stored). This can be enhanced if you persist detailed breakdown later.
     const bonuses = appliedRules.filter(r => ['bonus','allowance','additional'].includes(r.type)).reduce((s, r) => s + r.calculatedAmount, 0)
+    const basePay = appliedRules.filter(r => r.type === 'base').reduce((s, r) => s + r.calculatedAmount, 0)
     const basePayApprox = Math.max(0, grossPay - bonuses) // naive assumption
 
     const payslipData = {
@@ -107,7 +109,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         hireDate: record.user.hireDate
       },
       calculations: {
-        basePay: basePayApprox,
+        monthlySalary: basePay * 22, // Approximation
+        basePay: basePay || basePayApprox,
         overtimePay: 0, // Not persisted; requires attendance reconstruction
         bonuses: bonuses,
         grossPay: grossPay,
@@ -120,6 +123,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       },
       appliedRules
     }
+    
 
     const { fileName, buffer } = await generatePayslipDocx(payslipData)
 

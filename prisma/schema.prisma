@@ -14,7 +14,7 @@ model User {
   firstName                    String
   lastName                     String
   role                         Role                    @default(EMPLOYEE)
-  status                       EmploymentStatus        @default(ACTIVE)
+  status                       EmploymentStatus        @default(CONTRACTUAL)
   employeeId                   String?                 @unique
   department                   String?
   position                     String?
@@ -421,9 +421,10 @@ enum Role {
 }
 
 enum EmploymentStatus {
-  ACTIVE
+  PERMANENT
+  TEMPORARY
+  CONTRACTUAL
   INACTIVE
-  TERMINATED
 }
 
 enum LeaveStatus {

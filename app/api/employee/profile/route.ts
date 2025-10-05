@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         month: 'long',
         day: 'numeric'
       }) : 'Not specified',
-      employmentStatus: profileData.status === 'ACTIVE' ? 'Active' : 'Inactive',
+      employmentStatus: profileData.status,
       employeeType: 'Full-time', // Default value
       address: profileData.address || '',
       emergencyContact: {

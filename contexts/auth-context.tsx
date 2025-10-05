@@ -105,14 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log("Auth context navigation check:", { isLoading, pathname, user: user?.role })
     
-    if (!isLoading && !pathname.startsWith("/login")) {
+    if (!isLoading && !pathname!.startsWith("/login")) {
       if (!user) {
         console.log("Auth context - redirecting to login (no user)")
         router.push("/login")
-      } else if (user?.role === "ADMIN" && pathname.startsWith("/employee")) {
+      } else if (user?.role === "ADMIN" && pathname!.startsWith("/employee")) {
         console.log("Auth context - redirecting admin from employee area")
         router.replace("/admin/dashboard")
-      } else if (user?.role === "EMPLOYEE" && pathname.startsWith("/admin")) {
+      } else if (user?.role === "EMPLOYEE" && pathname!.startsWith("/admin")) {
         console.log("Auth context - redirecting employee from admin area")
         router.replace("/employee/dashboard")
       } else if (pathname === "/") {

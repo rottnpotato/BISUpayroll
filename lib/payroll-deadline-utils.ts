@@ -44,7 +44,7 @@ export async function checkPayrollDeadlineStatus(): Promise<PayrollDeadlineStatu
 
     // Calculate expected generation date based on schedule
     let expectedGenerationDate: Date | null = null
-    let nextGenerationDate: Date | null = null
+    let nextGenerationDate: Date | undefined = undefined
 
     if (activeSchedule.days && activeSchedule.days.length > 0) {
       // Find the most recent payroll day that should have been processed

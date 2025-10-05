@@ -38,7 +38,7 @@ interface Employee {
   baseSalary?: number
   overtime?: number
   bonuses?: number
-  status?: 'ACTIVE' | 'INACTIVE' | 'TERMINATED' | 'active' | 'pending' | 'leave'
+  status?: 'PERMANENT' | 'INACTIVE' | 'CONTRACTUAL' | 'TEMPORARY' | 'pending' | 'leave'
   department?: string
   employeeId?: string
   user?: {
@@ -198,11 +198,11 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
   const getStatusBadge = (status: string | undefined) => {
     const normalizedStatus = status?.toLowerCase()
     switch (normalizedStatus) {
-      case 'active':
+      case 'PERMANENT':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100/70">Active</Badge>
       case 'inactive':
         return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100/70">Inactive</Badge>
-      case 'terminated':
+      case 'contractual':
         return <Badge className="bg-red-100 text-red-800 hover:bg-red-100/70">Terminated</Badge>
       case 'pending':
         return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100/70">Pending</Badge>

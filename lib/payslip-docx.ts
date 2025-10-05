@@ -18,6 +18,7 @@ export interface PayslipData {
     hireDate?: Date | null
   }
   calculations: {
+    monthlySalary: number
     basePay: number
     overtimePay: number
     bonuses: number
@@ -77,6 +78,7 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
     employee_department: data.employee.department || '',
     employee_position: data.employee.position || '',
     employee_hire_date: data.employee.hireDate ? format(data.employee.hireDate, 'yyyy-MM-dd') : '',
+    monthly_salary: numberFmt(data.calculations.monthlySalary, currency),
 
     base_pay: numberFmt(data.calculations.basePay, currency),
     overtime_pay: numberFmt(data.calculations.overtimePay, currency),

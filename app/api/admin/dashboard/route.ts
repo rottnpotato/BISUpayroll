@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       
       // Active employees
       prisma.user.count({
-        where: { status: "ACTIVE" }
+        where: { status: { not: "INACTIVE" } }
       }),
 
       // New employees this month
@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
       by: ['department'],
       where: {
         department: { not: null },
-        status: "ACTIVE"
+        status: { not: "INACTIVE" }
       },
       _count: {
         id: true
