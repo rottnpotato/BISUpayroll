@@ -312,6 +312,33 @@ export default function PayslipDetailsPage() {
     }, 400)
   }
 
+  const handleDownloadDocx = async (recordId: string) => {
+    try {
+      const res = await fetch(`/api/employee/payslip/${recordId}`)
+      if (!res.ok) {
+        toast.error('Failed to download payslip')
+        return
+      }
+      const blob = await res.blob()
+      const contentDisposition = res.headers.get('Content-Disposition') || ''
+      let fileName = 'Payslip.docx'
+      const match = contentDisposition.match(/filename="?([^";]+)"?/)
+      if (match) fileName = match[1]
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Payslip downloaded')
+    } catch (e) {
+      console.error(e)
+      toast.error('Error downloading payslip')
+    }
+  }
+
   return (
     <motion.div 
       className="space-y-6"
@@ -612,14 +639,25 @@ export default function PayslipDetailsPage() {
                         <div className="mt-4 pt-4 border-t">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <span className="text-sm text-muted-foreground">Payment Status</span>
-                            <div className="flex items-center gap-2">
-                              <StatusIcon className="h-4 w-4" />
-                              <span className="font-medium">{status.label}</span>
-                              {record.isPaid && record.paidAt && (
-                                <span className="text-sm text-muted-foreground">
-                                  on {formatDate(record.paidAt)}
-                                </span>
-                              )}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <StatusIcon className="h-4 w-4" />
+                                <span className="font-medium">{status.label}</span>
+                                {record.isPaid && record.paidAt && (
+                                  <span className="text-sm text-muted-foreground">
+                                    on {formatDate(record.paidAt)}
+                                  </span>
+                                )}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadDocx(record.id)}
+                                className="border-bisu-purple-deep text-bisu-purple-deep hover:bg-bisu-purple-extralight"
+                              >
+                                Download DOCX
+                              </Button>
                             </div>
                           </div>
                         </div>
