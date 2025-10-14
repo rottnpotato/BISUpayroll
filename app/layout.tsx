@@ -1,17 +1,23 @@
 import type React from "react"
 import "./globals.css"
 import type { Metadata, Viewport } from "next"
-import { Poppins } from "next/font/google"
+import localFont from "next/font/local"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-poppins",
+const figtree = localFont({
+  variable: "--font-figtree",
   display: "swap",
+  src: [
+    { path: "../public/fonts/Figtree-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/Figtree-Regular.woff", weight: "400", style: "normal" },
+    { path: "../public/fonts/Figtree-Medium.woff2", weight: "500", style: "normal" },
+    { path: "../public/fonts/Figtree-Medium.woff", weight: "500", style: "normal" },
+    { path: "../public/fonts/Figtree-SemiBold.woff2", weight: "600", style: "normal" },
+    { path: "../public/fonts/Figtree-SemiBold.woff", weight: "600", style: "normal" },
+  ],
 })
 
 export const viewport: Viewport = {
@@ -38,8 +44,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={poppins.variable}>
-      <body className={`${poppins.className} min-h-screen flex flex-col text-base antialiased`}>
+    <html lang="en" suppressHydrationWarning className={figtree.variable}>
+      <body className={`${figtree.className} min-h-screen flex flex-col text-base antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light" disableTransitionOnChange>
           <AuthProvider>
             <main className="flex-1 w-full mx-auto">
