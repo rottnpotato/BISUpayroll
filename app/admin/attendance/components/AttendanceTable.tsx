@@ -119,17 +119,32 @@ export default function AttendanceTable({ records, onApprovalAction }: Attendanc
             <TableHead>Name</TableHead>
             <TableHead>Department</TableHead>
             <TableHead>Date</TableHead>
-            <TableHead>Time In</TableHead>
-            <TableHead>Time Out</TableHead>
+            <TableHead colSpan={2} className="text-center">Morning</TableHead>
+            <TableHead colSpan={2} className="text-center">Afternoon</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Approval Status</TableHead>
             <TableHead>Hours Worked</TableHead>
-            <TableHead>Actions</TableHead>
+          
+          </TableRow>
+          <TableRow>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead className="text-xs text-gray-500">In</TableHead>
+            <TableHead className="text-xs text-gray-500">Out</TableHead>
+            <TableHead className="text-xs text-gray-500">In</TableHead>
+            <TableHead className="text-xs text-gray-500">Out</TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={10} className="text-center py-10 text-gray-500">
+            <TableCell colSpan={12} className="text-center py-10 text-gray-500">
               No attendance records found matching the current filters
             </TableCell>
           </TableRow>
@@ -138,32 +153,53 @@ export default function AttendanceTable({ records, onApprovalAction }: Attendanc
     )
   }
 
+  // Ensure most recent days appear first in the UI (defensive in case API changes)
+  const sortedRecords = [...records].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
   return (
     <>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Employee ID</TableHead>
+            <TableHead className="text-xs">Employee ID</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Department</TableHead>
             <TableHead>Date</TableHead>
-            <TableHead>Time In</TableHead>
-            <TableHead>Time Out</TableHead>
+            <TableHead colSpan={2} className="text-center text-green-500">Morning</TableHead>
+            <TableHead colSpan={2} className="text-center text-orange-500 ">Afternoon</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Approval Status</TableHead>
             <TableHead>Hours Worked</TableHead>
-            <TableHead>Actions</TableHead>
+            {/* <TableHead>Actions</TableHead> */}
+          </TableRow>
+          <TableRow>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+              <TableHead></TableHead>
+     
+            <TableHead className="text-xs text-gray-500">In</TableHead>
+            <TableHead className="text-xs text-gray-500">Out</TableHead>
+            <TableHead className="text-xs text-gray-500">In</TableHead>
+            <TableHead className="text-xs text-gray-500">Out</TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {records.map((record) => (
+          {sortedRecords.map((record) => (
             <TableRow key={record.id} className="transition-colors hover:bg-gray-50">
               <TableCell className="font-medium">{record.user.employeeId}</TableCell>
               <TableCell>{`${record.user.firstName} ${record.user.lastName}`}</TableCell>
               <TableCell>{record.user.department}</TableCell>
-              <TableCell>{format(new Date(record.date), 'yyyy-MM-dd')}</TableCell>
-              <TableCell>{formatTime(record.timeIn)}</TableCell>
-              <TableCell>{formatTime(record.timeOut)}</TableCell>
+              {/*spell out the date format ex: May 1, 2023 */}
+              <TableCell>{format(new Date(record.date), 'MMMM d, yyyy')}</TableCell>
+              <TableCell className="text-green-600">{formatTime(record.morningTimeIn ?? null)}</TableCell>
+              <TableCell className="text-orange-600">{formatTime(record.morningTimeOut ?? null)}</TableCell>
+              <TableCell className="text-green-600">{formatTime(record.afternoonTimeIn ?? null)}</TableCell>
+              <TableCell className="text-orange-600">{formatTime(record.afternoonTimeOut ?? null)}</TableCell>
               <TableCell>{getStatusBadge(record)}</TableCell>
               <TableCell>
                 <div className="flex flex-col gap-1">
@@ -177,7 +213,7 @@ export default function AttendanceTable({ records, onApprovalAction }: Attendanc
                 </div>
               </TableCell>
               <TableCell>{formatHours(record.hoursWorked)}</TableCell>
-              <TableCell>
+              {/* <TableCell>
                 <div className="flex gap-2">
                   {record.status === "PENDING" && (
                     <>
@@ -220,7 +256,7 @@ export default function AttendanceTable({ records, onApprovalAction }: Attendanc
                     </span>
                   )}
                 </div>
-              </TableCell>
+              </TableCell> */}
             </TableRow>
           ))}
         </TableBody>

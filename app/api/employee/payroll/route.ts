@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
+import { fetchAllPunchAttendance } from '@/lib/attendance-punches'
 
 export async function GET(request: NextRequest) {
   try {
@@ -60,18 +61,11 @@ export async function GET(request: NextRequest) {
       take: limit
     })
 
-    // Get current month attendance for calculations
-    const attendanceRecords = await prisma.attendanceRecord.findMany({
-      where: {
-        userId: user.id,
-        date: {
-          gte: startOfMonth,
-          lte: endOfMonth
-        }
-      },
-      orderBy: {
-        date: 'asc'
-      }
+    // Get current month attendance derived from punches
+    const { records: attendanceRecords } = await fetchAllPunchAttendance({
+      userId: user.id,
+      startDate: startOfMonth,
+      endDate: endOfMonth
     })
 
     // Get applicable payroll rules for the user
@@ -127,7 +121,7 @@ export async function GET(request: NextRequest) {
     // Calculate current month statistics
     const workingDays = attendanceRecords.filter(record => !record.isAbsent).length
     const totalHoursWorked = attendanceRecords.reduce((sum, record) => {
-      return sum + (Number(record.hoursWorked) || 0)
+      return sum + (record.hoursWorked || 0)
     }, 0)
     const lateCount = attendanceRecords.filter(record => record.isLate).length
     const absentCount = attendanceRecords.filter(record => record.isAbsent).length
@@ -253,12 +247,11 @@ export async function GET(request: NextRequest) {
         ytdEarnings,
         latesThisMonth: lateCount,
         absencesThisMonth: absentCount,
-        hoursWorkedToday: attendanceRecords
-          .filter(record => {
-            const today = new Date()
-            const recordDate = new Date(record.date)
-            return recordDate.toDateString() === today.toDateString()
-          })[0]?.hoursWorked || 0
+        hoursWorkedToday: (() => {
+          const today = new Date()
+          const rec = attendanceRecords.find(r => new Date(r.date).toDateString() === today.toDateString())
+          return rec?.hoursWorked || 0
+        })()
       },
       payrollHistory: payrollRecords.map(record => ({
         id: record.id,

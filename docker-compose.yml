@@ -11,7 +11,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       NEXT_TELEMETRY_DISABLED: "1"
       HOSTNAME: 0.0.0.0
-      TZ: "Asia/Manila"
+      TZ: ${TZ:-Asia/Manila}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

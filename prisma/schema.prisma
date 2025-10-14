@@ -16,6 +16,7 @@ model User {
   role                         Role                    @default(EMPLOYEE)
   status                       EmploymentStatus        @default(CONTRACTUAL)
   employeeId                   String?                 @unique
+  biometricNo                  String?                 @unique
   department                   String?
   position                     String?
   hireDate                     DateTime?
@@ -28,6 +29,8 @@ model User {
   updatedAt                    DateTime                @updatedAt
   approvedAttendanceRecords    AttendanceRecord[]      @relation("AttendanceApprovedBy")
   attendanceRecords            AttendanceRecord[]
+  attendancePunches            AttendancePunch[]
+  uploadedAttendanceBatches    AttendanceImportBatch[]
   auditLogs                    AuditLog[]
   approvedLeaves               LeaveRequest[]          @relation("ApprovedBy")
   leaveRequests                LeaveRequest[]
@@ -47,12 +50,12 @@ model AttendanceRecord {
   date              DateTime         @default(now())
   timeIn            DateTime?
   timeOut           DateTime?
-  hoursWorked       Decimal?         @db.Decimal(4, 2)
+  hoursWorked       Decimal?         @db.Decimal(6, 2)
   isLate            Boolean          @default(false)
   isAbsent          Boolean          @default(false)
   
   // New fields for improved attendance tracking
-  sessionType       String?          // 'morning', 'afternoon', 'full_day'
+  sessionType       AttendanceSessionType?
   isHalfDay         Boolean          @default(false)
   isEarlyOut        Boolean          @default(false)
   earlyOutReason    String?
@@ -70,8 +73,53 @@ model AttendanceRecord {
   status            AttendanceStatus @default(PENDING)
   approvedBy        User?            @relation("AttendanceApprovedBy", fields: [approvedById], references: [id])
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  importBatchId     String?
+  importBatch       AttendanceImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
   @@map("attendance_records")
+  @@index([userId, date])
+  @@unique([userId, date])
+}
+
+// New: A record of each CSV import batch for traceability
+model AttendanceImportBatch {
+  id                  String             @id @default(cuid())
+  fileName            String
+  fileSize            Int?
+  checksum            String?            @unique
+  summary             String?            // JSON summary of import
+  notes               String?
+  uploadedById        String
+  uploadedAt          DateTime           @default(now())
+
+  // Relations
+  uploadedBy          User               @relation(fields: [uploadedById], references: [id])
+  attendanceRecords   AttendanceRecord[]
+  attendancePunches   AttendancePunch[]
+
+  @@map("attendance_import_batches")
+}
+
+// New: Store raw punch logs from biometric CSV
+model AttendancePunch {
+  id            String               @id @default(cuid())
+  userId        String
+  timestamp     DateTime
+  type          AttendancePunchType
+  rawStatus     String?
+  department    String?
+  locationId    String?
+  rawName       String?
+  importBatchId String?
+  createdAt     DateTime             @default(now())
+
+  // Relations
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  importBatch   AttendanceImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  @@map("attendance_punches")
+  @@unique([userId, timestamp, type])
+  @@index([userId, timestamp])
 }
 
 model PayrollRecord {
@@ -451,6 +499,16 @@ enum AttendanceStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum AttendancePunchType {
+  IN
+  OUT
+}
+
+enum AttendanceSessionType {
+  FULL_DAY
+  HALF_DAY
 }
 
 enum PayrollResultStatus {

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { format } from "date-fns"
-
-const prisma = new PrismaClient()
+import { fetchAllPunchAttendance } from "@/lib/attendance-punches"
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,40 +11,13 @@ export async function GET(request: NextRequest) {
     const department = searchParams.get("department")
     const includeHeaders = searchParams.get("includeHeaders") !== "false"
 
-    // Build where clause
-    const where: any = {}
+    const startDateValue = startDate ? new Date(startDate) : undefined
+    const endDateValue = endDate ? new Date(endDate) : undefined
 
-    if (startDate && endDate) {
-      where.date = {
-        gte: new Date(startDate),
-        lte: new Date(endDate)
-      }
-    }
-
-    if (department && department !== "all") {
-      where.user = {
-        department: department
-      }
-    }
-
-    // Fetch attendance records
-    const records = await prisma.attendanceRecord.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            employeeId: true,
-            firstName: true,
-            lastName: true,
-            department: true,
-            position: true
-          }
-        }
-      },
-      orderBy: [
-        { date: "desc" },
-        { user: { employeeId: "asc" } }
-      ]
+    const { records } = await fetchAllPunchAttendance({
+      startDate: startDateValue,
+      endDate: endDateValue,
+      department: department && department !== "all" ? department : undefined
     })
 
     if (exportFormat === "json") {
@@ -56,10 +27,10 @@ export async function GET(request: NextRequest) {
         employeeName: `${record.user.firstName} ${record.user.lastName}`,
         department: record.user.department,
         position: record.user.position,
-        date: format(record.date, 'yyyy-MM-dd'),
-        timeIn: record.timeIn ? format(record.timeIn, 'HH:mm:ss') : null,
-        timeOut: record.timeOut ? format(record.timeOut, 'HH:mm:ss') : null,
-        hoursWorked: record.hoursWorked ? parseFloat(record.hoursWorked.toString()) : null,
+        date: format(new Date(record.date), 'yyyy-MM-dd'),
+        timeIn: record.timeIn ? format(new Date(record.timeIn), 'HH:mm:ss') : null,
+        timeOut: record.timeOut ? format(new Date(record.timeOut), 'HH:mm:ss') : null,
+        hoursWorked: record.hoursWorked ?? null,
         isLate: record.isLate,
         isAbsent: record.isAbsent,
         status: record.isAbsent ? 'Absent' : record.isLate ? 'Late' : 'Present'
@@ -92,10 +63,10 @@ export async function GET(request: NextRequest) {
       `${record.user.firstName} ${record.user.lastName}`,
       record.user.department || '',
       record.user.position || '',
-      format(record.date, 'yyyy-MM-dd'),
-      record.timeIn ? format(record.timeIn, 'HH:mm:ss') : '',
-      record.timeOut ? format(record.timeOut, 'HH:mm:ss') : '',
-      record.hoursWorked ? parseFloat(record.hoursWorked.toString()).toFixed(2) : '',
+      format(new Date(record.date), 'yyyy-MM-dd'),
+      record.timeIn ? format(new Date(record.timeIn), 'HH:mm:ss') : '',
+      record.timeOut ? format(new Date(record.timeOut), 'HH:mm:ss') : '',
+      record.hoursWorked !== null && record.hoursWorked !== undefined ? record.hoursWorked.toFixed(2) : '',
       record.isAbsent ? 'Absent' : record.isLate ? 'Late' : 'Present',
       record.isLate ? 'Yes' : 'No',
       record.isAbsent ? 'Yes' : 'No'

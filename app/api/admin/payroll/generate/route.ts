@@ -13,12 +13,19 @@ import { cookies } from "next/headers"
 import { verifyToken } from "@/lib/auth"
 import fs from 'fs'
 import path from 'path'
-import { PayrollResultStatus } from '@prisma/client'
+import { PayrollResultStatus, EmploymentStatus } from '@prisma/client'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { payPeriodStart, payPeriodEnd, userIds, department, role } = body
+    const { payPeriodStart, payPeriodEnd, userIds, department, role, employmentStatus } = body as {
+      payPeriodStart: string
+      payPeriodEnd: string
+      userIds?: string[]
+      department?: string
+      role?: string
+      employmentStatus?: string
+    }
 
     if (!payPeriodStart || !payPeriodEnd) {
       return NextResponse.json(
@@ -66,9 +73,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Get users to generate payroll for
-    const whereClause: any = {
-      status: "ACTIVE"
-    }
+    const whereClause: any = {}
 
     // Filter by role (default to EMPLOYEE for payroll)
     if (role) {
@@ -80,6 +85,15 @@ export async function POST(request: NextRequest) {
     // Filter by department if specified
     if (department && department !== "all") {
       whereClause.department = department
+    }
+
+    // Filter by employment status if specified; otherwise exclude INACTIVE by default
+    const validEmploymentStatuses = Object.values(EmploymentStatus)
+    if (employmentStatus && typeof employmentStatus === 'string' && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) {
+      whereClause.status = employmentStatus as EmploymentStatus
+    } else {
+      // Default behavior: exclude INACTIVE users from payroll generation
+      whereClause.status = { not: EmploymentStatus.INACTIVE }
     }
 
     if (userIds && userIds.length > 0) {
@@ -123,7 +137,7 @@ export async function POST(request: NextRequest) {
           error: "No eligible users found for payroll generation",
           debug: {
             whereClause,
-            message: "Check if users have role 'EMPLOYEE' and status 'ACTIVE'"
+            message: "Check if users have role 'EMPLOYEE' and are not INACTIVE, or match the selected employment status"
           }
         },
         { status: 400 }
@@ -377,6 +391,7 @@ export async function POST(request: NextRequest) {
           payPeriodEnd: endDate.toISOString(),
           generatedAt: new Date().toISOString(),
           department: department || 'All Departments',
+          employmentStatus: (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? employmentStatus : 'All Statuses',
           employees: payrollResults.map((result: any) => ({
             employeeId: result.user?.employeeId || 'N/A',
             name: `${result.user?.firstName || ''} ${result.user?.lastName || ''}`.trim(),
@@ -412,8 +427,9 @@ export async function POST(request: NextRequest) {
         const tempDir = path.join(process.cwd(), 'temp')
         await fs.promises.mkdir(tempDir, { recursive: true })
         
-        const timestamp = Date.now()
-        const tempFileName = `payroll_${department || 'all'}_${timestamp}.json`
+  const timestamp = Date.now()
+  const statusSlug = (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? (employmentStatus as string).toLowerCase() : 'all'
+  const tempFileName = `payroll_${department || 'all'}_${statusSlug}_${timestamp}.json`
         const tempFilePath = path.join(tempDir, tempFileName)
         
         await fs.promises.writeFile(tempFilePath, JSON.stringify(payrollSummary, null, 2))
@@ -472,7 +488,8 @@ export async function POST(request: NextRequest) {
             metadata: JSON.stringify({
               encryptedAt: encryptionResult.metadata.encryptedAt,
               checksum: encryptionResult.metadata.checksum,
-              originalFileName: encryptionResult.metadata.originalFileName
+              originalFileName: encryptionResult.metadata.originalFileName,
+              employmentStatus: (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? employmentStatus : 'all'
             }),
             checksum: encryptionResult.metadata.checksum
             }

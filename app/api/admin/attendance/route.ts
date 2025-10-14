@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
+import { fetchAllPunchAttendance } from "@/lib/attendance-punches"
+import { AttendancePunchType } from "@prisma/client"
+import { manilaStartOfDayUTC, manilaEndOfDayUTC, parseManilaLocal } from "@/lib/timezone"
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,40 +14,47 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate")
     const department = searchParams.get("department")
 
-    const skip = (page - 1) * limit
+  const startDateValue = startDate ? manilaStartOfDayUTC(startDate) : undefined
+  const endDateValue = endDate ? manilaEndOfDayUTC(endDate) : undefined
 
-    const where: any = {}
+    const userIdValue = userId || undefined
 
-    if (userId) {
-      where.userId = userId
+    // Fetch normalized attendance from Prisma to include session fields
+    const whereClause: any = {
+      date: {
+        gte: startDateValue,
+        lte: endDateValue,
+      },
     }
+    if (userIdValue) whereClause.userId = userIdValue
 
-    if (startDate && endDate) {
-      // Create proper date range that covers full days
-      const start = new Date(startDate)
-      start.setHours(0, 0, 0, 0) // Start of day
-      
-      const end = new Date(endDate)
-      end.setHours(23, 59, 59, 999) // End of day
-      
-      where.date = {
-        gte: start,
-        lte: end
-      }
-    }
-
-    if (department && department !== "All Departments") {
-      where.user = {
-        department: department
-      }
-    }
-
-    const [records, total] = await Promise.all([
+    // Department filter via relation
+    const [recordsRaw, totalCount] = await Promise.all([
       prisma.attendanceRecord.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
+        where: department && department !== "All Departments"
+          ? { ...whereClause, user: { department } }
+          : whereClause,
+        select: {
+          id: true,
+          userId: true,
+          date: true,
+          timeIn: true,
+          timeOut: true,
+          hoursWorked: true,
+          isLate: true,
+          isAbsent: true,
+          status: true,
+          rejectionReason: true,
+          approvedById: true,
+          approvedAt: true,
+          morningTimeIn: true,
+          morningTimeOut: true,
+          afternoonTimeIn: true,
+          afternoonTimeOut: true,
+          isHalfDay: true,
+          isEarlyOut: true,
+          earlyOutReason: true,
+          totalSessions: true,
           user: {
             select: {
               id: true,
@@ -52,34 +62,72 @@ export async function GET(request: NextRequest) {
               lastName: true,
               employeeId: true,
               department: true,
-              position: true
-            }
+              position: true,
+            },
           },
-          approvedBy: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              employeeId: true
-            }
-          }
+          approvedBy: { select: { id: true, firstName: true, lastName: true } },
         },
-        orderBy: { date: "desc" }
+        orderBy: [{ date: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
       }),
-      prisma.attendanceRecord.count({ where })
+      prisma.attendanceRecord.count({
+        where: department && department !== "All Departments"
+          ? { ...whereClause, user: { department } }
+          : whereClause,
+      }),
     ])
+
+    const formatTime = (d?: Date | null) => (d ? d.toISOString() : null)
+    const toNumber = (val: any): number | null => {
+      if (val == null) return null
+      try {
+        if (typeof val === 'object' && typeof (val as any).toNumber === 'function') return (val as any).toNumber()
+      } catch {}
+      const n = Number(val)
+      return isNaN(n) ? null : n
+    }
+
+    const records = recordsRaw.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      date: r.date.toISOString(),
+      timeIn: r.timeIn ? r.timeIn.toISOString() : null,
+      timeOut: r.timeOut ? r.timeOut.toISOString() : null,
+      hoursWorked: toNumber((r as any).hoursWorked),
+      isLate: r.isLate,
+      isAbsent: r.isAbsent,
+      status: r.status as any,
+      rejectionReason: (r as any).rejectionReason || null,
+      approvedById: r.approvedById || null,
+      approvedAt: r.approvedAt ? r.approvedAt.toISOString() : null,
+      user: r.user,
+      approvedBy: r.approvedBy,
+      source: "MANUAL",
+      // Session fields
+      morningTimeIn: formatTime((r as any).morningTimeIn),
+      morningTimeOut: formatTime((r as any).morningTimeOut),
+      afternoonTimeIn: formatTime((r as any).afternoonTimeIn),
+      afternoonTimeOut: formatTime((r as any).afternoonTimeOut),
+      isHalfDay: (r as any).isHalfDay,
+      isEarlyOut: (r as any).isEarlyOut,
+      earlyOutReason: (r as any).earlyOutReason || null,
+      totalSessions: (r as any).totalSessions ?? 0,
+    }))
+
+    const pages = Math.max(1, Math.ceil(totalCount / (limit || 1)))
 
     return NextResponse.json({
       records,
       pagination: {
         page,
         limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
+        total: totalCount,
+        pages,
+      },
     })
   } catch (error) {
-    console.error("Error fetching attendance records:", error)
+    console.error("Error fetching attendance punch records:", error)
     return NextResponse.json(
       { error: "Failed to fetch attendance records" },
       { status: 500 }
@@ -90,7 +138,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, date, timeIn, timeOut, isLate, isAbsent } = body
+    const { userId, date, timeIn, timeOut } = body
 
     if (!userId || !date) {
       return NextResponse.json(
@@ -111,57 +159,42 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if attendance record already exists for this date
-    const existingRecord = await prisma.attendanceRecord.findFirst({
-      where: {
-        userId,
-        date: {
-          gte: new Date(date),
-          lt: new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000)
-        }
-      }
-    })
+    const punches = [] as Array<{ userId: string; timestamp: Date; type: AttendancePunchType }>
 
-    if (existingRecord) {
-      return NextResponse.json(
-        { error: "Attendance record already exists for this date" },
-        { status: 409 }
-      )
+    if (timeIn) {
+      punches.push({
+        userId,
+        timestamp: parseManilaLocal(`${date}T${timeIn}`),
+        type: AttendancePunchType.IN
+      })
     }
 
-    // Calculate hours worked if both timeIn and timeOut are provided
-    let hoursWorked = null
-    if (timeIn && timeOut) {
-      const timeInDate = new Date(`${date}T${timeIn}`)
-      const timeOutDate = new Date(`${date}T${timeOut}`)
-      hoursWorked = (timeOutDate.getTime() - timeInDate.getTime()) / (1000 * 60 * 60)
+    if (timeOut) {
+      punches.push({
+        userId,
+        timestamp: parseManilaLocal(`${date}T${timeOut}`),
+        type: AttendancePunchType.OUT
+      })
     }
 
-    const record = await prisma.attendanceRecord.create({
-      data: {
-        userId,
-        date: new Date(date),
-        timeIn: timeIn ? new Date(`${date}T${timeIn}`) : null,
-        timeOut: timeOut ? new Date(`${date}T${timeOut}`) : null,
-        hoursWorked: hoursWorked,
-        isLate: isLate || false,
-        isAbsent: isAbsent || false
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            employeeId: true,
-            department: true,
-            position: true
-          }
-        }
-      }
+    if (punches.length > 0) {
+      await prisma.attendancePunch.createMany({
+        data: punches,
+        skipDuplicates: true
+      })
+    }
+
+    // Return derived record for that day
+  const dayStart = manilaStartOfDayUTC(date)
+  const dayEnd = manilaEndOfDayUTC(date)
+
+    const { records } = await fetchAllPunchAttendance({
+      userId,
+      startDate: dayStart,
+      endDate: dayEnd
     })
 
-    return NextResponse.json({ record }, { status: 201 })
+    return NextResponse.json({ record: records[0] ?? null }, { status: 201 })
   } catch (error) {
     console.error("Error creating attendance record:", error)
     return NextResponse.json(

@@ -15,6 +15,8 @@ interface MonthlyPayrollGeneratorProps {
   onDateRangeChange: (range: DateRange | undefined) => void
   selectedDepartment: string
   onDepartmentChange: (department: string) => void
+  selectedEmploymentStatus: string
+  onEmploymentStatusChange: (status: string) => void
   onGenerate: () => void
   isGenerating: boolean
   schedules?: PayrollSchedule[]
@@ -25,6 +27,8 @@ export function MonthlyPayrollGenerator({
   onDateRangeChange,
   selectedDepartment,
   onDepartmentChange,
+  selectedEmploymentStatus,
+  onEmploymentStatusChange,
   onGenerate,
   isGenerating,
   schedules,
@@ -226,6 +230,21 @@ export function MonthlyPayrollGenerator({
                 <SelectItem value="CTE">CTE</SelectItem>
               </SelectContent>
             </Select>
+            <div className="mt-4">
+              <p className="text-xs text-gray-700 mb-2">Employment Status</p>
+              <Select value={selectedEmploymentStatus} onValueChange={onEmploymentStatusChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="PERMANENT">Permanent</SelectItem>
+                  <SelectItem value="TEMPORARY">Temporary</SelectItem>
+                  <SelectItem value="CONTRACTUAL">Contractual</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

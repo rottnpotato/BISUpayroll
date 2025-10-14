@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/database"
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns"
+import { fetchAllPunchAttendance } from "@/lib/attendance-punches"
+import { format, subDays } from "date-fns"
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get("period") || "30days" // 7days, 30days, 90days, year
     const department = searchParams.get("department")
 
-    let startDate: Date
-    let endDate: Date = new Date()
+  let startDate: Date
+  const endDate: Date = new Date()
 
     // Determine date range based on period
     switch (period) {
@@ -26,206 +26,163 @@ export async function GET(request: NextRequest) {
         startDate = subDays(endDate, 30)
     }
 
-    // Build where clause
-    const where: any = {
-      date: {
-        gte: startDate,
-        lte: endDate
-      }
-    }
-
-    if (department && department !== "all") {
-      where.user = {
-        department: department
-      }
-    }
-
-    // Fetch attendance records
-    const records = await prisma.attendanceRecord.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            department: true,
-            position: true
-          }
-        }
-      },
-      orderBy: { date: "asc" }
+    const { records } = await fetchAllPunchAttendance({
+      startDate,
+      endDate,
+      department: department && department !== "all" ? department : undefined
     })
 
-    // Daily attendance trends
-    const dailyTrends = records.reduce((acc, record) => {
-      const dateKey = format(record.date, 'yyyy-MM-dd')
-      if (!acc[dateKey]) {
-        acc[dateKey] = {
+    const recordsWithDates = records.map(record => ({
+      ...record,
+      recordDate: new Date(record.date),
+      timeInDate: record.timeIn ? new Date(record.timeIn) : null,
+      timeOutDate: record.timeOut ? new Date(record.timeOut) : null
+    }))
+
+    const dailyTrendsMap = new Map<string, { date: string; present: number; late: number; absent: number; totalHours: number }>()
+    const departmentMap = new Map<string, { department: string; totalRecords: number; presentCount: number; lateCount: number; absentCount: number; totalHours: number }>()
+    const weeklyMap = new Map<string, { day: string; totalRecords: number; presentCount: number; lateCount: number; absentCount: number }>()
+    const timeAnalysis: Record<string, number> = {}
+    const performanceMap = new Map<string, {
+      employee: {
+        id: string
+        name: string
+        employeeId: string | null
+        department: string | null
+      }
+      totalDays: number
+      presentDays: number
+      lateDays: number
+    }>()
+
+    recordsWithDates.forEach(record => {
+      const dateKey = format(record.recordDate, 'yyyy-MM-dd')
+      const departmentKey = record.user.department || "Unknown"
+      const weekDayKey = format(record.recordDate, 'EEEE')
+      const hasTimeIn = Boolean(record.timeInDate)
+      const hoursWorked = record.hoursWorked ?? 0
+
+      if (!dailyTrendsMap.has(dateKey)) {
+        dailyTrendsMap.set(dateKey, {
           date: dateKey,
           present: 0,
           late: 0,
           absent: 0,
           totalHours: 0
-        }
+        })
       }
 
-      if (record.timeIn) {
-        if (record.isLate) {
-          acc[dateKey].late++
-        } else {
-          acc[dateKey].present++
-        }
-        if (record.hoursWorked) {
-          acc[dateKey].totalHours += parseFloat(record.hoursWorked.toString())
-        }
-      }
-      if (record.isAbsent) acc[dateKey].absent++
-
-      return acc
-    }, {} as Record<string, any>)
-
-    // Department-wise analytics
-    const departmentAnalytics = records.reduce((acc, record) => {
-      const dept = record.user.department || "Unknown"
-      if (!acc[dept]) {
-        acc[dept] = {
-          department: dept,
+      if (!departmentMap.has(departmentKey)) {
+        departmentMap.set(departmentKey, {
+          department: departmentKey,
           totalRecords: 0,
           presentCount: 0,
           lateCount: 0,
           absentCount: 0,
-          totalHours: 0,
-          attendanceRate: 0,
-          punctualityRate: 0
-        }
+          totalHours: 0
+        })
       }
 
-      acc[dept].totalRecords++
-      if (record.timeIn) {
-        if (record.isLate) {
-          acc[dept].lateCount++
-        } else {
-          acc[dept].presentCount++
-        }
-      }
-      if (record.isAbsent) acc[dept].absentCount++
-      if (record.hoursWorked) {
-        acc[dept].totalHours += parseFloat(record.hoursWorked.toString())
-      }
-
-      return acc
-    }, {} as Record<string, any>)
-
-    // Calculate rates for departments
-    Object.values(departmentAnalytics).forEach((dept: any) => {
-      dept.attendanceRate = dept.totalRecords > 0 
-        ? (dept.presentCount / dept.totalRecords) * 100 
-        : 0
-      dept.punctualityRate = dept.presentCount > 0 
-        ? ((dept.presentCount - dept.lateCount) / dept.presentCount) * 100 
-        : 100
-    })
-
-    // Weekly patterns (day of week analysis)
-    const weeklyPatterns = records.reduce((acc, record) => {
-      const dayOfWeek = format(record.date, 'EEEE')
-      if (!acc[dayOfWeek]) {
-        acc[dayOfWeek] = {
-          day: dayOfWeek,
+      if (!weeklyMap.has(weekDayKey)) {
+        weeklyMap.set(weekDayKey, {
+          day: weekDayKey,
           totalRecords: 0,
           presentCount: 0,
           lateCount: 0,
           absentCount: 0
-        }
+        })
       }
 
-      acc[dayOfWeek].totalRecords++
-      if (record.timeIn) {
+      const daily = dailyTrendsMap.get(dateKey)!
+      const deptEntry = departmentMap.get(departmentKey)!
+      const weeklyEntry = weeklyMap.get(weekDayKey)!
+
+      daily.absent += record.isAbsent ? 1 : 0
+      deptEntry.absentCount += record.isAbsent ? 1 : 0
+      weeklyEntry.absentCount += record.isAbsent ? 1 : 0
+
+      if (hasTimeIn) {
         if (record.isLate) {
-          acc[dayOfWeek].lateCount++
+          daily.late++
+          deptEntry.lateCount++
+          weeklyEntry.lateCount++
         } else {
-          acc[dayOfWeek].presentCount++
+          daily.present++
+          deptEntry.presentCount++
+          weeklyEntry.presentCount++
         }
+
+        daily.totalHours += hoursWorked
+        deptEntry.totalHours += hoursWorked
       }
-      if (record.isAbsent) acc[dayOfWeek].absentCount++
 
-      return acc
-    }, {} as Record<string, any>)
+      deptEntry.totalRecords++
+      weeklyEntry.totalRecords++
 
-    // Time analysis (check common late arrival times)
-    const timeAnalysis = records
-      .filter(r => r.timeIn && r.isLate)
-      .reduce((acc, record) => {
-        if (record.timeIn) {
-          const hour = record.timeIn.getHours()
-          const timeSlot = `${hour}:00-${hour + 1}:00`
-          acc[timeSlot] = (acc[timeSlot] || 0) + 1
-        }
-        return acc
-      }, {} as Record<string, number>)
-
-    // Top performers (employees with best attendance)
-    const employeePerformance = await prisma.attendanceRecord.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            employeeId: true,
-            department: true
-          }
-        }
-      }
-    })
-
-    const performanceMap = employeePerformance.reduce((acc, record) => {
-      const empId = record.userId
-      if (!acc[empId]) {
-        acc[empId] = {
+      if (!performanceMap.has(record.userId)) {
+        performanceMap.set(record.userId, {
           employee: {
-            id: record.user.id,
+            id: record.userId,
             name: `${record.user.firstName} ${record.user.lastName}`,
-            employeeId: record.user.employeeId,
-            department: record.user.department
+            employeeId: record.user.employeeId || null,
+            department: record.user.department || null
           },
           totalDays: 0,
           presentDays: 0,
-          lateDays: 0,
-          attendanceRate: 0,
-          punctualityRate: 0
-        }
+          lateDays: 0
+        })
       }
 
-      acc[empId].totalDays++
-      if (record.timeIn) {
+      const performance = performanceMap.get(record.userId)!
+      performance.totalDays++
+
+      if (hasTimeIn) {
         if (record.isLate) {
-          acc[empId].lateDays++
+          performance.lateDays++
         } else {
-          acc[empId].presentDays++
+          performance.presentDays++
         }
       }
 
-      return acc
-    }, {} as Record<string, any>)
+      if (record.isLate && record.timeInDate) {
+        const hour = record.timeInDate.getHours()
+        const slot = `${hour}:00-${hour + 1}:00`
+        timeAnalysis[slot] = (timeAnalysis[slot] || 0) + 1
+      }
+    })
 
-    // Calculate rates and sort by performance
-    const topPerformers = Object.values(performanceMap)
-      .map((emp: any) => {
-        emp.attendanceRate = emp.totalDays > 0 ? (emp.presentDays / emp.totalDays) * 100 : 0
-        emp.punctualityRate = emp.presentDays > 0 ? ((emp.presentDays - emp.lateDays) / emp.presentDays) * 100 : 100
-        return emp
-      })
-      .sort((a: any, b: any) => b.attendanceRate - a.attendanceRate)
+    const dailyTrends = Array.from(dailyTrendsMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+
+    const departmentAnalytics = Array.from(departmentMap.values()).map(entry => {
+      const attendanceRate = entry.totalRecords > 0 ? (entry.presentCount / entry.totalRecords) * 100 : 0
+      const punctualityRate = entry.presentCount > 0 ? ((entry.presentCount - entry.lateCount) / entry.presentCount) * 100 : 100
+      return {
+        ...entry,
+        attendanceRate,
+        punctualityRate
+      }
+    })
+
+    const weeklyPatterns = Array.from(weeklyMap.values())
+
+    const topPerformers = Array.from(performanceMap.values())
+      .map(entry => ({
+        ...entry,
+        attendanceRate: entry.totalDays > 0 ? (entry.presentDays / entry.totalDays) * 100 : 0,
+        punctualityRate: entry.presentDays > 0 ? ((entry.presentDays - entry.lateDays) / entry.presentDays) * 100 : 100
+      }))
+      .sort((a, b) => b.attendanceRate - a.attendanceRate)
       .slice(0, 10)
 
-    // Overall statistics
     const overallStats = {
-      totalRecords: records.length,
-      totalEmployees: new Set(records.map(r => r.userId)).size,
-      averageAttendanceRate: departmentAnalytics ? 
-        Object.values(departmentAnalytics).reduce((sum: number, dept: any) => sum + dept.attendanceRate, 0) / Object.keys(departmentAnalytics).length : 0,
-      averagePunctualityRate: departmentAnalytics ?
-        Object.values(departmentAnalytics).reduce((sum: number, dept: any) => sum + dept.punctualityRate, 0) / Object.keys(departmentAnalytics).length : 0
+      totalRecords: recordsWithDates.length,
+      totalEmployees: new Set(recordsWithDates.map(r => r.userId)).size,
+      averageAttendanceRate: departmentAnalytics.length > 0
+        ? departmentAnalytics.reduce((sum, dept) => sum + dept.attendanceRate, 0) / departmentAnalytics.length
+        : 0,
+      averagePunctualityRate: departmentAnalytics.length > 0
+        ? departmentAnalytics.reduce((sum, dept) => sum + dept.punctualityRate, 0) / departmentAnalytics.length
+        : 0
     }
 
     return NextResponse.json({
@@ -237,9 +194,9 @@ export async function GET(request: NextRequest) {
           end: format(endDate, 'yyyy-MM-dd')
         },
         overallStats,
-        dailyTrends: Object.values(dailyTrends).sort((a: any, b: any) => a.date.localeCompare(b.date)),
-        departmentAnalytics: Object.values(departmentAnalytics),
-        weeklyPatterns: Object.values(weeklyPatterns),
+  dailyTrends,
+  departmentAnalytics,
+  weeklyPatterns,
         timeAnalysis,
         topPerformers
       }

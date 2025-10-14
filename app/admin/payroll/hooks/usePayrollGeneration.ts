@@ -14,7 +14,8 @@ export const usePayrollGeneration = () => {
   const generatePayroll = useCallback(async (
     template: ReportTemplate,
     templateDateRange: DateRange,
-    selectedDepartment: string
+    selectedDepartment: string,
+    selectedEmploymentStatus?: string
   ) => {
     if (!templateDateRange?.from || !templateDateRange?.to) {
       toast({
@@ -40,7 +41,8 @@ export const usePayrollGeneration = () => {
         payPeriodStart: start.toISOString(),
         payPeriodEnd: end.toISOString(),
         department: selectedDepartment === "all" ? undefined : selectedDepartment,
-        role: "EMPLOYEE"
+        role: "EMPLOYEE",
+        employmentStatus: selectedEmploymentStatus && selectedEmploymentStatus !== 'all' ? selectedEmploymentStatus : undefined
       })
 
       let response: Response
@@ -55,7 +57,8 @@ export const usePayrollGeneration = () => {
             payPeriodStart: start.toISOString(),
             payPeriodEnd: end.toISOString(),
             department: selectedDepartment === "all" ? undefined : selectedDepartment,
-            role: "EMPLOYEE"
+            role: "EMPLOYEE",
+            employmentStatus: selectedEmploymentStatus && selectedEmploymentStatus !== 'all' ? selectedEmploymentStatus : undefined
           }
           response = await fetch('/api/admin/payroll/generate', {
             method: 'POST',

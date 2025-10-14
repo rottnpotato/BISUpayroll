@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
+import { fetchAllPunchAttendance } from "@/lib/attendance-punches"
 import { checkPayrollDeadlineStatus, getUpcomingPayrollDeadlines, checkPayrollFileStatus } from "@/lib/payroll-deadline-utils"
 
 export async function GET(request: NextRequest) {
@@ -17,14 +18,15 @@ export async function GET(request: NextRequest) {
       totalEmployees,
       activeEmployees,
       newEmployeesThisMonth,
-      todayAttendance,
-      thisWeekAttendance,
+      // attendance metrics will be computed via punches below
+      _ignored1,
+      _ignored2,
       thisMonthPayroll,
       lastMonthPayroll,
       unpaidPayroll,
-      lateEmployeesToday,
-      absentToday,
-      recentAttendance,
+      _ignored3,
+      _ignored4,
+      _legacyRecentAttendance,
       recentPayroll,
       totalPayrollRecords,
       paidPayrolls,
@@ -51,24 +53,9 @@ export async function GET(request: NextRequest) {
         }
       }),
       
-      // Today's attendance
-      prisma.attendanceRecord.count({
-        where: {
-          date: {
-            gte: startOfToday,
-            lt: endOfToday
-          }
-        }
-      }),
-      
-      // This week's attendance
-      prisma.attendanceRecord.count({
-        where: {
-          date: {
-            gte: startOfWeek
-          }
-        }
-      }),
+      // placeholders for indices alignment
+      Promise.resolve(0),
+      Promise.resolve(0),
       
       // This month's payroll
       prisma.payrollRecord.aggregate({
@@ -106,43 +93,10 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // Late employees today
-      prisma.attendanceRecord.count({
-        where: {
-          date: {
-            gte: startOfToday,
-            lt: endOfToday
-          },
-          isLate: true
-        }
-      }),
-
-      // Absent employees today
-      prisma.attendanceRecord.count({
-        where: {
-          date: {
-            gte: startOfToday,
-            lt: endOfToday
-          },
-          isAbsent: true
-        }
-      }),
-      
-      // Recent attendance records
-      prisma.attendanceRecord.findMany({
-        take: 10,
-        orderBy: { date: "desc" },
-        include: {
-          user: {
-            select: {
-              firstName: true,
-              lastName: true,
-              employeeId: true,
-              department: true
-            }
-          }
-        }
-      }),
+      // placeholders; we'll compute using punches
+      Promise.resolve(0),
+      Promise.resolve(0),
+      Promise.resolve([]),
       
       // Recent payroll records
       prisma.payrollRecord.findMany({
@@ -229,6 +183,23 @@ export async function GET(request: NextRequest) {
       })
     ])
 
+    // Compute attendance metrics from punches
+    const todayPunchData = await fetchAllPunchAttendance({ startDate: startOfToday, endDate: endOfToday })
+    const todayAttendance = todayPunchData.records.length
+    const lateEmployeesToday = todayPunchData.records.filter(r => r.isLate).length
+    const absentToday = todayPunchData.records.filter(r => r.isAbsent).length
+
+    const thisWeekPunchData = await fetchAllPunchAttendance({ startDate: startOfWeek, endDate: endOfToday })
+    const thisWeekAttendance = thisWeekPunchData.records.length
+
+    // Recent attendance: last 10 records by day/user from punches
+    const sevenDaysAgo = new Date(endOfToday)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const recentRange = await fetchAllPunchAttendance({ startDate: sevenDaysAgo, endDate: endOfToday })
+    const recentAttendance = recentRange.records
+      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10)
+
     // Get enhanced department statistics with attendance rates
     const departments = await prisma.user.groupBy({
       by: ['department'],
@@ -245,17 +216,9 @@ export async function GET(request: NextRequest) {
     const departmentStats = await Promise.all(
       departments.map(async (dept: any) => {
         const totalEmployees = dept._count.id
-        const attendanceCount = await prisma.attendanceRecord.count({
-          where: {
-            user: {
-              department: dept.department
-            },
-            date: {
-              gte: startOfMonth
-            },
-            isAbsent: false
-          }
-        })
+        // Count attendance via punches (days with any punch)
+        const deptAttendance = await fetchAllPunchAttendance({ startDate: startOfMonth, endDate: new Date(), department: dept.department || undefined })
+        const attendanceCount = deptAttendance.records.filter(r => !r.isAbsent).length
 
         const avgSalary = await prisma.payrollRecord.aggregate({
           where: {
@@ -292,24 +255,9 @@ export async function GET(request: NextRequest) {
         const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
         const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
 
-        const count = await prisma.attendanceRecord.count({
-          where: {
-            date: {
-              gte: startOfDay,
-              lt: endOfDay
-            }
-          }
-        })
-
-        const presentCount = await prisma.attendanceRecord.count({
-          where: {
-            date: {
-              gte: startOfDay,
-              lt: endOfDay
-            },
-            isAbsent: false
-          }
-        })
+        const dayData = await fetchAllPunchAttendance({ startDate: startOfDay, endDate: endOfDay })
+        const count = dayData.records.length
+        const presentCount = dayData.records.filter(r => !r.isAbsent).length
 
         return {
           date: startOfDay.toISOString().split('T')[0],
@@ -369,23 +317,9 @@ export async function GET(request: NextRequest) {
     )
 
     // Calculate on-time rate
-    const onTimeCount = await prisma.attendanceRecord.count({
-      where: {
-        date: {
-          gte: startOfMonth
-        },
-        isLate: false,
-        isAbsent: false
-      }
-    })
-
-    const totalAttendanceRecords = await prisma.attendanceRecord.count({
-      where: {
-        date: {
-          gte: startOfMonth
-        }
-      }
-    })
+    const monthRange = await fetchAllPunchAttendance({ startDate: startOfMonth, endDate: new Date() })
+    const onTimeCount = monthRange.records.filter(r => !r.isLate && !r.isAbsent).length
+    const totalAttendanceRecords = monthRange.records.length
 
     const onTimeRate = totalAttendanceRecords > 0 
       ? Math.round((onTimeCount / totalAttendanceRecords) * 100)

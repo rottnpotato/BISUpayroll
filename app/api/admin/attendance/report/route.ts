@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import { format, startOfMonth, endOfMonth, subDays, addDays } from "date-fns"
-
-const prisma = new PrismaClient()
+import { fetchAllPunchAttendance } from "@/lib/attendance-punches"
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,52 +50,22 @@ export async function GET(request: NextRequest) {
         }
     }
 
-    // Build where clause
-    const where: any = {
-      date: {
-        gte: dateRange.start,
-        lte: dateRange.end
-      }
-    }
+    const departmentFilter = department && department !== "all" ? department : undefined
 
-    if (department) {
-      where.user = {
-        department: department
-      }
-    }
-
-    if (employeeId) {
-      where.userId = employeeId
-    }
-
-    // Fetch attendance records with user details
-    const records = await prisma.attendanceRecord.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            employeeId: true,
-            department: true,
-            position: true
-          }
-        }
-      },
-      orderBy: [
-        { date: "desc" },
-        { user: { employeeId: "asc" } }
-      ]
+    const { records } = await fetchAllPunchAttendance({
+      startDate: dateRange.start,
+      endDate: dateRange.end,
+      department: departmentFilter,
+      userId: employeeId || undefined
     })
 
     // Calculate analytics
     const analytics = {
       totalRecords: records.length,
-      presentCount: records.filter(r => r.timeIn && r.timeOut).length,
-      lateCount: records.filter(r => r.isLate).length,
-      absentCount: records.filter(r => r.isAbsent).length,
-      totalHours: records.reduce((sum, r) => sum + (r.hoursWorked ? parseFloat(r.hoursWorked.toString()) : 0), 0),
+  presentCount: records.filter(r => r.timeIn && r.timeOut).length,
+  lateCount: records.filter(r => r.isLate).length,
+  absentCount: records.filter(r => r.isAbsent).length,
+  totalHours: records.reduce((sum, r) => sum + (r.hoursWorked ?? 0), 0),
       averageHoursPerDay: 0,
       attendanceRate: 0,
       punctualityRate: 0
@@ -129,7 +97,7 @@ export async function GET(request: NextRequest) {
       if (record.isLate) acc[dept].lateCount++
       if (record.isAbsent) acc[dept].absentCount++
       if (record.hoursWorked) {
-        acc[dept].totalHours += parseFloat(record.hoursWorked.toString())
+        acc[dept].totalHours += record.hoursWorked
       }
       
       return acc
@@ -157,7 +125,7 @@ export async function GET(request: NextRequest) {
       if (record.isLate) acc[empId].lateDays++
       if (record.isAbsent) acc[empId].absentDays++
       if (record.hoursWorked) {
-        acc[empId].totalHours += parseFloat(record.hoursWorked.toString())
+        acc[empId].totalHours += record.hoursWorked
       }
       
       return acc
@@ -166,10 +134,10 @@ export async function GET(request: NextRequest) {
     // Format records for response
     const formattedRecords = records.map(record => ({
       id: record.id,
-      date: format(record.date, 'yyyy-MM-dd'),
-      timeIn: record.timeIn ? format(record.timeIn, 'HH:mm:ss') : null,
-      timeOut: record.timeOut ? format(record.timeOut, 'HH:mm:ss') : null,
-      hoursWorked: record.hoursWorked ? parseFloat(record.hoursWorked.toString()) : null,
+      date: format(new Date(record.date), 'yyyy-MM-dd'),
+      timeIn: record.timeIn ? format(new Date(record.timeIn), 'HH:mm:ss') : null,
+      timeOut: record.timeOut ? format(new Date(record.timeOut), 'HH:mm:ss') : null,
+      hoursWorked: record.hoursWorked ?? null,
       isLate: record.isLate,
       isAbsent: record.isAbsent,
       employee: {

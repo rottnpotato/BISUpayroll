@@ -39,8 +39,8 @@ export default function AttendanceFilters({
 }: AttendanceFiltersProps) {
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col md:flex-row justify-between items-center md:items-center gap-4">
+        <div className="flex items-center  flex-wrap gap-2">
           {/* Single Date Picker */}
           <Popover>
             <PopoverTrigger asChild>

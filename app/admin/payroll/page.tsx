@@ -68,7 +68,7 @@ const itemVariants = {
       damping: 24
     }
   }
-}
+} as const
 
 export default function PayrollPage() {
   // Use our custom hooks for data and state management
@@ -107,7 +107,9 @@ export default function PayrollPage() {
     templateDateRanges,
     updateTemplateDateRange,
     selectedDepartment,
-    setSelectedDepartment
+    setSelectedDepartment,
+    selectedEmploymentStatus,
+    setSelectedEmploymentStatus
   } = useReportsState()
 
   const {
@@ -237,7 +239,8 @@ export default function PayrollPage() {
     const result = await generatePayroll(
       { ...monthlyTemplate, icon: null } as any,
       templateDateRange!,
-      selectedDepartment
+      selectedDepartment,
+      selectedEmploymentStatus
     )
     if (result) setShowPreview(true)
   }
@@ -505,6 +508,8 @@ export default function PayrollPage() {
                   }}
                   selectedDepartment={selectedDepartment}
                   onDepartmentChange={setSelectedDepartment}
+                  selectedEmploymentStatus={selectedEmploymentStatus}
+                  onEmploymentStatusChange={setSelectedEmploymentStatus}
                   onGenerate={handleGenerateMonthlyPayroll}
                   isGenerating={isGenerating}
                   schedules={schedules}

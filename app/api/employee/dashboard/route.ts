@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { Decimal } from '@prisma/client/runtime/library'
 import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
+import { fetchAllPunchAttendance } from '@/lib/attendance-punches'
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,43 +33,24 @@ export async function GET(request: NextRequest) {
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999)
 
     // Get employee data from database
-    const employeeData = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        salary: true,
-      },
-    })
-
-    if (!employeeData || !employeeData.salary) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Employee data not found' 
-      }, { status: 404 })
+    const employeeData = await prisma.user.findUnique({ where: { id: user.id } })
+    if (!employeeData) {
+      return NextResponse.json({ success: false, message: 'Employee data not found' }, { status: 404 })
     }
 
-    // Get today's attendance
-    const todayAttendance = await prisma.attendanceRecord.findFirst({
-      where: {
-        userId: user.id,
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      },
-      orderBy: {
-        date: 'desc'
-      }
+    // Get today's attendance derived from punches
+    const { records: todayRecords } = await fetchAllPunchAttendance({
+      userId: user.id,
+      startDate: startOfDay,
+      endDate: endOfDay
     })
+    const todayAttendance = todayRecords[0]
 
-    // Calculate lates and absences for the current month
-    const monthlyAttendance = await prisma.attendanceRecord.findMany({
-      where: {
-        userId: user.id,
-        date: {
-          gte: startOfMonth,
-          lte: endOfMonth
-        }
-      }
+    // Calculate lates and absences for the current month from punches
+    const { records: monthlyAttendance } = await fetchAllPunchAttendance({
+      userId: user.id,
+      startDate: startOfMonth,
+      endDate: endOfMonth
     })
 
     const latesThisMonth = monthlyAttendance.filter(record => record.isLate).length
@@ -77,11 +59,11 @@ export async function GET(request: NextRequest) {
     // Calculate hours worked today
     let hoursWorkedToday = 0
     if (todayAttendance?.timeIn && todayAttendance?.timeOut) {
-      const timeIn = todayAttendance.timeIn.getTime()
-      const timeOut = todayAttendance.timeOut.getTime()
+      const timeIn = new Date(todayAttendance.timeIn).getTime()
+      const timeOut = new Date(todayAttendance.timeOut).getTime()
       hoursWorkedToday = parseFloat(((timeOut - timeIn) / (1000 * 60 * 60)).toFixed(2))
     } else if (todayAttendance?.hoursWorked) {
-      hoursWorkedToday = parseFloat(todayAttendance.hoursWorked.toString())
+      hoursWorkedToday = todayAttendance.hoursWorked
     }
 
     // Get system configurations for calculations
@@ -128,7 +110,7 @@ export async function GET(request: NextRequest) {
     ).length
 
     const totalHoursWorked = monthlyAttendance.reduce((sum, record) => {
-      return sum + (Number(record.hoursWorked) || 0)
+      return sum + (record.hoursWorked || 0)
     }, 0)
 
     const expectedDailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
@@ -183,9 +165,9 @@ export async function GET(request: NextRequest) {
       isTimedIn: todayAttendance?.timeIn != null && todayAttendance?.timeOut == null,
       lastTimeAction: todayAttendance 
         ? todayAttendance.timeOut 
-          ? `Timed Out at ${formatTime(todayAttendance.timeOut)}`
+          ? `Timed Out at ${formatTime(new Date(todayAttendance.timeOut))}`
           : todayAttendance.timeIn 
-            ? `Timed In at ${formatTime(todayAttendance.timeIn)}`
+            ? `Timed In at ${formatTime(new Date(todayAttendance.timeIn))}`
             : null
         : null,
     }

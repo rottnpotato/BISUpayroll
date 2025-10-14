@@ -9,6 +9,12 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (params.id.startsWith('punch:')) {
+      return NextResponse.json(
+        { error: "Approval applies to legacy attendance records only; punch-derived records are auto-approved by computation." },
+        { status: 400 }
+      )
+    }
     // Get token from cookie and verify admin access
     const token = request.cookies.get('auth-token')?.value
 

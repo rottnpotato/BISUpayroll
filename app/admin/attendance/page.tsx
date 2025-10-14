@@ -13,7 +13,8 @@ import {
   AttendanceStatsCards,
   AttendanceTable,
   AttendanceFilters,
-  AttendancePagination
+  AttendancePagination,
+  AttendanceImportDialog
 } from "./components"
 
 const containerVariants = {
@@ -24,7 +25,7 @@ const containerVariants = {
       staggerChildren: 0.1,
     },
   },
-}
+} as const
 
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
@@ -37,7 +38,7 @@ const itemVariants = {
       damping: 12,
     },
   },
-}
+} as const
 
 export default function AttendancePage() {
   const { filters, updateFilters, clearDateFilter, clearAllFilters, setDateRange } = useAttendanceFilters()
@@ -78,21 +79,24 @@ export default function AttendancePage() {
   })
 
   return (
-    <div className="p-6">
+    <div className="p-4">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="mb-8"
       >
-        <div>
-          <h1 className="text-3xl font-bold text-bisu-purple-deep mb-2">Attendance Monitoring</h1>
-          <p className="text-gray-600">Track employee attendance and time records</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-bisu-purple-deep mb-2">Attendance Monitoring</h1>
+            <p className="text-gray-600">Track employee attendance and time records</p>
+          </div>
+          <AttendanceImportDialog onImportComplete={refetch} />
         </div>
       </motion.div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <SkeletonCard hasHeader={false} lines={2} />
           <SkeletonCard hasHeader={false} lines={2} />
           <SkeletonCard hasHeader={false} lines={2} />
@@ -112,7 +116,7 @@ export default function AttendancePage() {
           <motion.div variants={itemVariants}>
             <Card className="shadow-md">
               <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg pb-4">
-                <CardTitle className="text-bisu-yellow mb-4">Attendance Records</CardTitle>
+                {/* <CardTitle className="text-bisu-yellow mb-4">Attendance Records</CardTitle> */}
                 
                 <AttendanceFilters
                   filters={filters}

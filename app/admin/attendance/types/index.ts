@@ -26,6 +26,16 @@ export interface AttendanceRecord {
     firstName: string
     lastName: string
   } | null
+  source?: "PUNCH" | "MANUAL"
+  // Session-based fields for double-entry days
+  morningTimeIn?: string | null
+  morningTimeOut?: string | null
+  afternoonTimeIn?: string | null
+  afternoonTimeOut?: string | null
+  isHalfDay?: boolean
+  isEarlyOut?: boolean
+  earlyOutReason?: string | null
+  totalSessions?: number
 }
 
 export interface AttendanceResponse {

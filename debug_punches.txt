@@ -1,0 +1,164 @@
+👤 User: Dela Cruz, Juan | Date: 2024-12-02 | Punch: IN @ Mon Dec 02 2024 05:15:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-03 | Punch: IN @ Tue Dec 03 2024 07:40:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-03 | Punch: OUT @ Tue Dec 03 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-04 | Punch: IN @ Wed Dec 04 2024 07:19:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-04 | Punch: OUT @ Wed Dec 04 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-05 | Punch: IN @ Thu Dec 05 2024 07:29:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-05 | Punch: OUT @ Thu Dec 05 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-06 | Punch: IN @ Fri Dec 06 2024 07:14:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-06 | Punch: OUT @ Fri Dec 06 2024 17:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-10 | Punch: IN @ Tue Dec 10 2024 07:53:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-10 | Punch: OUT @ Tue Dec 10 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-11 | Punch: IN @ Wed Dec 11 2024 12:04:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-11 | Punch: OUT @ Wed Dec 11 2024 17:37:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-18 | Punch: IN @ Wed Dec 18 2024 08:00:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-18 | Punch: OUT @ Wed Dec 18 2024 17:02:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-20 | Punch: IN @ Fri Dec 20 2024 07:59:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-27 | Punch: IN @ Fri Dec 27 2024 07:44:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-27 | Punch: OUT @ Fri Dec 27 2024 17:02:00 GMT+0800 (Philippine Standard Time)
+
+
+👤 User: Dela Cruz, Juan | Date: 2024-12-02 | Punch: IN @ Mon Dec 02 2024 05:15:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-03 | Punch: IN @ Tue Dec 03 2024 07:40:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-03 | Punch: OUT @ Tue Dec 03 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-04 | Punch: IN @ Wed Dec 04 2024 07:19:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-04 | Punch: OUT @ Wed Dec 04 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-05 | Punch: IN @ Thu Dec 05 2024 07:29:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-05 | Punch: OUT @ Thu Dec 05 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-06 | Punch: IN @ Fri Dec 06 2024 07:14:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-06 | Punch: OUT @ Fri Dec 06 2024 17:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-10 | Punch: IN @ Tue Dec 10 2024 07:53:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-10 | Punch: OUT @ Tue Dec 10 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-11 | Punch: IN @ Wed Dec 11 2024 12:04:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-11 | Punch: OUT @ Wed Dec 11 2024 17:37:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-18 | Punch: IN @ Wed Dec 18 2024 08:00:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-18 | Punch: OUT @ Wed Dec 18 2024 17:02:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-20 | Punch: IN @ Fri Dec 20 2024 07:59:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-27 | Punch: IN @ Fri Dec 27 2024 07:44:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-27 | Punch: OUT @ Fri Dec 27 2024 17:02:00 GMT+0800 (Philippine Standard Time)
+Dela Cruz, Juan | 2024-12-02 | IN@2024-12-01T21:15:00.000Z
+ ORIG: IN@2024-12-01T21:15:00.000Z
+
+Dela Cruz, Juan | 2024-12-03 | IN@2024-12-02T23:40:00.000Z, OUT@2024-12-03T10:31:00.000Z
+ ORIG: IN@2024-12-02T23:40:00.000Z, OUT@2024-12-03T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-04 | IN@2024-12-03T23:19:00.000Z, OUT@2024-12-04T10:31:00.000Z
+ ORIG: IN@2024-12-03T23:19:00.000Z, OUT@2024-12-04T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-05 | IN@2024-12-04T23:29:00.000Z, OUT@2024-12-05T10:31:00.000Z
+ ORIG: IN@2024-12-04T23:29:00.000Z, OUT@2024-12-05T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-06 | IN@2024-12-05T23:14:00.000Z, OUT@2024-12-06T09:31:00.000Z
+ ORIG: IN@2024-12-05T23:14:00.000Z, OUT@2024-12-06T09:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-10 | IN@2024-12-09T23:53:00.000Z, OUT@2024-12-10T10:31:00.000Z
+ ORIG: IN@2024-12-09T23:53:00.000Z, OUT@2024-12-10T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-11 | IN@2024-12-11T04:04:00.000Z, OUT@2024-12-11T09:37:00.000Z
+ ORIG: IN@2024-12-11T04:04:00.000Z, OUT@2024-12-11T09:37:00.000Z
+
+Dela Cruz, Juan | 2024-12-18 | IN@2024-12-18T00:00:00.000Z, OUT@2024-12-18T09:02:00.000Z
+ ORIG: IN@2024-12-18T00:00:00.000Z, OUT@2024-12-18T09:02:00.000Z
+
+Dela Cruz, Juan | 2024-12-20 | IN@2024-12-19T23:59:00.000Z
+ ORIG: IN@2024-12-19T23:59:00.000Z
+
+Dela Cruz, Juan | 2024-12-27 | IN@2024-12-26T23:44:00.000Z, OUT@2024-12-27T09:02:00.000Z
+ ORIG: IN@2024-12-26T23:44:00.000Z, OUT@2024-12-27T09:02:00.000Z
+
+👤 User: Dela Cruz, Juan | Date: 2024-12-02 | Punch: IN @ Mon Dec 02 2024 05:15:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-03 | Punch: IN @ Tue Dec 03 2024 07:40:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-03 | Punch: OUT @ Tue Dec 03 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-04 | Punch: IN @ Wed Dec 04 2024 07:19:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-04 | Punch: OUT @ Wed Dec 04 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-05 | Punch: IN @ Thu Dec 05 2024 07:29:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-05 | Punch: OUT @ Thu Dec 05 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-06 | Punch: IN @ Fri Dec 06 2024 07:14:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-06 | Punch: OUT @ Fri Dec 06 2024 17:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-10 | Punch: IN @ Tue Dec 10 2024 07:53:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-10 | Punch: OUT @ Tue Dec 10 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-11 | Punch: IN @ Wed Dec 11 2024 12:04:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-11 | Punch: OUT @ Wed Dec 11 2024 17:37:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-18 | Punch: IN @ Wed Dec 18 2024 08:00:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-18 | Punch: OUT @ Wed Dec 18 2024 17:02:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-20 | Punch: IN @ Fri Dec 20 2024 07:59:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-27 | Punch: IN @ Fri Dec 27 2024 07:44:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-27 | Punch: OUT @ Fri Dec 27 2024 17:02:00 GMT+0800 (Philippine Standard Time)
+Dela Cruz, Juan | 2024-12-02 | IN@2024-12-01T21:15:00.000Z
+ ORIG: IN@2024-12-01T21:15:00.000Z
+
+Dela Cruz, Juan | 2024-12-03 | IN@2024-12-02T23:40:00.000Z, OUT@2024-12-03T10:31:00.000Z
+ ORIG: IN@2024-12-02T23:40:00.000Z, OUT@2024-12-03T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-04 | IN@2024-12-03T23:19:00.000Z, OUT@2024-12-04T10:31:00.000Z
+ ORIG: IN@2024-12-03T23:19:00.000Z, OUT@2024-12-04T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-05 | IN@2024-12-04T23:29:00.000Z, OUT@2024-12-05T10:31:00.000Z
+ ORIG: IN@2024-12-04T23:29:00.000Z, OUT@2024-12-05T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-06 | IN@2024-12-05T23:14:00.000Z, OUT@2024-12-06T09:31:00.000Z
+ ORIG: IN@2024-12-05T23:14:00.000Z, OUT@2024-12-06T09:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-10 | IN@2024-12-09T23:53:00.000Z, OUT@2024-12-10T10:31:00.000Z
+ ORIG: IN@2024-12-09T23:53:00.000Z, OUT@2024-12-10T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-11 | IN@2024-12-11T04:04:00.000Z, OUT@2024-12-11T09:37:00.000Z
+ ORIG: IN@2024-12-11T04:04:00.000Z, OUT@2024-12-11T09:37:00.000Z
+
+Dela Cruz, Juan | 2024-12-18 | IN@2024-12-18T00:00:00.000Z, OUT@2024-12-18T09:02:00.000Z
+ ORIG: IN@2024-12-18T00:00:00.000Z, OUT@2024-12-18T09:02:00.000Z
+
+Dela Cruz, Juan | 2024-12-20 | IN@2024-12-19T23:59:00.000Z
+ ORIG: IN@2024-12-19T23:59:00.000Z
+
+Dela Cruz, Juan | 2024-12-27 | IN@2024-12-26T23:44:00.000Z, OUT@2024-12-27T09:02:00.000Z
+ ORIG: IN@2024-12-26T23:44:00.000Z, OUT@2024-12-27T09:02:00.000Z
+
+👤 User: Dela Cruz, Juan | Date: 2024-12-02 | Punch: IN @ Mon Dec 02 2024 05:15:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-03 | Punch: IN @ Tue Dec 03 2024 07:40:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-03 | Punch: OUT @ Tue Dec 03 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-04 | Punch: IN @ Wed Dec 04 2024 07:19:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-04 | Punch: OUT @ Wed Dec 04 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-05 | Punch: IN @ Thu Dec 05 2024 07:29:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-05 | Punch: OUT @ Thu Dec 05 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-06 | Punch: IN @ Fri Dec 06 2024 07:14:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-06 | Punch: OUT @ Fri Dec 06 2024 17:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-10 | Punch: IN @ Tue Dec 10 2024 07:53:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-10 | Punch: OUT @ Tue Dec 10 2024 18:31:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-11 | Punch: IN @ Wed Dec 11 2024 12:04:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-11 | Punch: OUT @ Wed Dec 11 2024 17:37:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-18 | Punch: IN @ Wed Dec 18 2024 08:00:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-18 | Punch: OUT @ Wed Dec 18 2024 17:02:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-20 | Punch: IN @ Fri Dec 20 2024 07:59:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-27 | Punch: IN @ Fri Dec 27 2024 07:44:00 GMT+0800 (Philippine Standard Time)
+👤 User: Dela Cruz, Juan | Date: 2024-12-27 | Punch: OUT @ Fri Dec 27 2024 17:02:00 GMT+0800 (Philippine Standard Time)
+Dela Cruz, Juan | 2024-12-02 | IN@2024-12-01T21:15:00.000Z
+ ORIG: IN@2024-12-01T21:15:00.000Z
+
+Dela Cruz, Juan | 2024-12-03 | IN@2024-12-02T23:40:00.000Z, OUT@2024-12-03T10:31:00.000Z
+ ORIG: IN@2024-12-02T23:40:00.000Z, OUT@2024-12-03T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-04 | IN@2024-12-03T23:19:00.000Z, OUT@2024-12-04T10:31:00.000Z
+ ORIG: IN@2024-12-03T23:19:00.000Z, OUT@2024-12-04T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-05 | IN@2024-12-04T23:29:00.000Z, OUT@2024-12-05T10:31:00.000Z
+ ORIG: IN@2024-12-04T23:29:00.000Z, OUT@2024-12-05T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-06 | IN@2024-12-05T23:14:00.000Z, OUT@2024-12-06T09:31:00.000Z
+ ORIG: IN@2024-12-05T23:14:00.000Z, OUT@2024-12-06T09:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-10 | IN@2024-12-09T23:53:00.000Z, OUT@2024-12-10T10:31:00.000Z
+ ORIG: IN@2024-12-09T23:53:00.000Z, OUT@2024-12-10T10:31:00.000Z
+
+Dela Cruz, Juan | 2024-12-11 | IN@2024-12-11T04:04:00.000Z, OUT@2024-12-11T09:37:00.000Z
+ ORIG: IN@2024-12-11T04:04:00.000Z, OUT@2024-12-11T09:37:00.000Z
+
+Dela Cruz, Juan | 2024-12-18 | IN@2024-12-18T00:00:00.000Z, OUT@2024-12-18T09:02:00.000Z
+ ORIG: IN@2024-12-18T00:00:00.000Z, OUT@2024-12-18T09:02:00.000Z
+
+Dela Cruz, Juan | 2024-12-20 | IN@2024-12-19T23:59:00.000Z
+ ORIG: IN@2024-12-19T23:59:00.000Z
+
+Dela Cruz, Juan | 2024-12-27 | IN@2024-12-26T23:44:00.000Z, OUT@2024-12-27T09:02:00.000Z
+ ORIG: IN@2024-12-26T23:44:00.000Z, OUT@2024-12-27T09:02:00.000Z
+

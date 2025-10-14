@@ -21,7 +21,7 @@ const itemVariants = {
       damping: 12,
     },
   },
-}
+} as const
 
 const containerVariants = {
   hidden: { opacity: 0 },

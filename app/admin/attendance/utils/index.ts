@@ -1,9 +1,17 @@
 import { format } from "date-fns"
 import type { AttendanceRecord, SummaryStats, AttendanceStatus } from "../types"
+import { MANILA_TZ_ID } from "@/lib/timezone"
+
+const manilaTimeFormatter = new Intl.DateTimeFormat('en-PH', {
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+  timeZone: MANILA_TZ_ID,
+})
 
 export const formatTime = (dateString: string | null): string => {
   if (!dateString) return "-"
-  return format(new Date(dateString), 'h:mm a')
+  return manilaTimeFormatter.format(new Date(dateString))
 }
 
 export const formatHours = (hours: number | null): string => {
@@ -21,7 +29,7 @@ export const getRecordStatus = (record: AttendanceRecord): AttendanceStatus => {
 }
 
 export const calculateSummaryStats = (
-  records: AttendanceRecord[], 
+  records: AttendanceRecord[],
   totalEmployees: number
 ): SummaryStats => {
   return records.reduce(
@@ -47,16 +55,16 @@ export const filterAttendanceRecords = (
   selectedStatus: string
 ): AttendanceRecord[] => {
   const filtered = records.filter(record => {
-    const matchesSearch = 
-      `${record.user.firstName} ${record.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch =
+      `${record.user.firstName} ${record.user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.user.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.user.department.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     const recordStatus = getRecordStatus(record)
     const matchesStatus = selectedStatus === "all" || recordStatus === selectedStatus
-    
+
     const result = matchesSearch && matchesStatus
-    
+
     // Debug logging for first few records
     if (records.indexOf(record) < 3) {
       console.log('Filter debug for record:', {
@@ -69,17 +77,17 @@ export const filterAttendanceRecords = (
         result
       })
     }
-    
+
     return result
   })
-  
+
   console.log('filterAttendanceRecords:', {
     input: records.length,
     output: filtered.length,
     searchTerm,
     selectedStatus
   })
-  
+
   return filtered
 }
 
@@ -118,9 +126,9 @@ export const buildApiParams = (
 export const exportToJson = (data: any[], filename: string): void => {
   const dataStr = JSON.stringify(data, null, 2)
   const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
-  
+
   const linkElement = document.createElement('a')
   linkElement.setAttribute('href', dataUri)
   linkElement.setAttribute('download', filename)
   linkElement.click()
-} 
+}

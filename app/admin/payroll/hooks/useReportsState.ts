@@ -16,6 +16,7 @@ export const useReportsState = () => {
   })
   const [templateDateRanges, setTemplateDateRanges] = useState<Record<string, DateRange | undefined>>({})
   const [selectedDepartment, setSelectedDepartment] = useState("all")
+  const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState("all")
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -69,6 +70,8 @@ export const useReportsState = () => {
     updateTemplateDateRange,
     selectedDepartment,
     setSelectedDepartment,
+    selectedEmploymentStatus,
+    setSelectedEmploymentStatus,
     resetFilters
   }
 } 

@@ -1,44 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/database"
+import { fetchAllPunchAttendance } from "@/lib/attendance-punches"
 
 export async function GET(request: NextRequest) {
   try {
-    // Get all attendance records without any filtering
-    const records = await prisma.attendanceRecord.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            employeeId: true,
-            department: true,
-            position: true
-          }
-        }
-      },
-      orderBy: { date: "desc" },
-      take: 50 // Limit to 50 records for testing
-    })
+    // Get attendance records derived from punch data
+    const { records } = await fetchAllPunchAttendance({})
 
-    // Also get total count
-    const totalCount = await prisma.attendanceRecord.count()
+    const limitedRecords = records.slice(0, 50)
+
+    const totalCount = records.length
 
     return NextResponse.json({
       success: true,
       totalCount,
-      records: records.map(record => ({
+      records: limitedRecords.map(record => ({
         id: record.id,
         userId: record.userId,
-        date: record.date.toISOString(),
-        timeIn: record.timeIn?.toISOString() || null,
-        timeOut: record.timeOut?.toISOString() || null,
-        hoursWorked: record.hoursWorked ? parseFloat(record.hoursWorked.toString()) : null,
+        date: record.date,
+        timeIn: record.timeIn,
+        timeOut: record.timeOut,
+        hoursWorked: record.hoursWorked,
         isLate: record.isLate,
         isAbsent: record.isAbsent,
         user: record.user,
-        createdAt: record.createdAt.toISOString(),
-        updatedAt: record.updatedAt.toISOString()
+        status: record.status
       }))
     })
   } catch (error) {

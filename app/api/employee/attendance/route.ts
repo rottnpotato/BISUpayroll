@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
+import { AttendancePunchType } from '@prisma/client'
 
 const ADMIN_APPROVED_STATUS = 'APPROVED'
 const ADMIN_REJECTED_STATUS = 'REJECTED'
@@ -54,62 +55,126 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(year, month - 1, 1)
     const endDate = new Date(year, month, 0, 23, 59, 59, 999)
 
-    // Get attendance records for the specified month
+    // Fetch normalized attendance records with session details for the specified month
     const attendanceRecords = await prisma.attendanceRecord.findMany({
       where: {
         userId: user.id,
         date: {
           gte: startDate,
-          lte: endDate
-        }
+          lte: endDate,
+        },
       },
-      orderBy: {
-        date: 'asc'
-      }
+      orderBy: { date: 'asc' },
     })
+
+    // Helpers
+    const calcHours = (start?: Date | null, end?: Date | null) => {
+      if (!start || !end) return 0
+      const diff = end.getTime() - start.getTime()
+      if (diff <= 0) return 0
+      return Math.round((diff / (1000 * 60 * 60)) * 100) / 100
+    }
+
+    const toNumber = (val: any): number => {
+      if (val == null) return 0
+      try {
+        if (typeof val === 'object' && typeof val.toNumber === 'function') return val.toNumber()
+      } catch {}
+      const n = Number(val)
+      return isNaN(n) ? 0 : n
+    }
 
     // Calculate summary statistics
     const totalDays = attendanceRecords.length
-    const presentDays = attendanceRecords.filter(record => record.timeIn && record.timeOut).length
-    const absentDays = attendanceRecords.filter(record => record.isAbsent).length
-    const lateDays = attendanceRecords.filter(record => record.isLate).length
-    
-    let totalHours = 0
-    attendanceRecords.forEach(record => {
-      if (record.hoursWorked) {
-        totalHours += parseFloat(record.hoursWorked.toString())
-      }
-    })
-    
+    const presentDays = attendanceRecords.filter((r) => {
+      const anyCompletedSession = Boolean(
+        (r.morningTimeIn && r.morningTimeOut) ||
+          (r.afternoonTimeIn && r.afternoonTimeOut) ||
+          (r.timeIn && r.timeOut)
+      )
+      const hours = toNumber((r as any).hoursWorked)
+      return anyCompletedSession || hours > 0
+    }).length
+
+    const absentDays = attendanceRecords.filter((r) => {
+      if (typeof (r as any).isAbsent === 'boolean') return (r as any).isAbsent
+      const anyCompletedSession = Boolean(
+        (r.morningTimeIn && r.morningTimeOut) ||
+          (r.afternoonTimeIn && r.afternoonTimeOut) ||
+          (r.timeIn && r.timeOut)
+      )
+      return !anyCompletedSession
+    }).length
+
+    const lateDays = attendanceRecords.filter((r) => (r as any).isLate).length
+
+    let totalHours = attendanceRecords.reduce((sum, r) => {
+      const stored = toNumber((r as any).hoursWorked)
+      if (stored > 0) return sum + stored
+      // Fallback: compute from sessions
+      const morning = calcHours((r as any).morningTimeIn, (r as any).morningTimeOut)
+      const afternoon = calcHours((r as any).afternoonTimeIn, (r as any).afternoonTimeOut)
+      const combined = morning + afternoon
+      return sum + combined
+    }, 0)
+
     const averageHoursPerDay = totalDays > 0 ? parseFloat((totalHours / totalDays).toFixed(2)) : 0
 
     // Format the records for the response
-    const formattedRecords = attendanceRecords.map(record => {
-      const date = record.date
-      const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(date)
-      const timeIn = record.timeIn 
-        ? new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).format(record.timeIn) 
-        : null
-      const timeOut = record.timeOut 
-        ? new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).format(record.timeOut) 
-        : null
-      
+    const formattedRecords = attendanceRecords.map((r) => {
+      const dateObj = new Date(r.date)
+      const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(dateObj)
+
+      const fmt = (d?: Date | null) => (d ? formatTime(d) : null)
+
+      const morningIn = fmt((r as any).morningTimeIn)
+      const morningOut = fmt((r as any).morningTimeOut)
+      const afternoonIn = fmt((r as any).afternoonTimeIn)
+      const afternoonOut = fmt((r as any).afternoonTimeOut)
+
+      // Backward-compat overall time in/out (earliest in, latest out)
+      const overallInDate: Date | null = (r as any).timeIn || (r as any).morningTimeIn || (r as any).afternoonTimeIn || null
+      const overallOutDate: Date | null = (r as any).timeOut || (r as any).afternoonTimeOut || (r as any).morningTimeOut || null
+
+      const timeIn = fmt(overallInDate)
+      const timeOut = fmt(overallOutDate)
+
+      const storedHours = toNumber((r as any).hoursWorked)
+      const computedHours = calcHours((r as any).morningTimeIn, (r as any).morningTimeOut) +
+        calcHours((r as any).afternoonTimeIn, (r as any).afternoonTimeOut)
+      const hours = storedHours > 0 ? storedHours : computedHours
+
       let status = 'Absent'
-      if (record.timeIn) {
-        status = record.isLate ? 'Late' : 'On Time'
+      const isHalfDay = Boolean((r as any).isHalfDay)
+      const isLate = Boolean((r as any).isLate)
+      const hasAnyIn = Boolean((r as any).timeIn || (r as any).morningTimeIn || (r as any).afternoonTimeIn)
+      if ((r as any).isAbsent) {
+        status = 'Absent'
+      } else if (isHalfDay) {
+        status = 'Half-Day'
+      } else if (hasAnyIn) {
+        status = isLate ? 'Late' : 'On Time'
       }
 
       return {
-        id: record.id,
-        date: date.toISOString().split('T')[0],
+        id: r.id,
+        date: dateObj.toISOString().split('T')[0],
         dayOfWeek,
         timeIn,
         timeOut,
         status,
-        hours: record.hoursWorked ? parseFloat(record.hoursWorked.toString()) : 0,
-        approvalStatus: record.status || 'PENDING',
-        rejectionReason: (record as any).rejectionReason || null,
-        approvedAt: (record as any).approvedAt ? new Date((record as any).approvedAt).toISOString() : null
+        hours,
+        approvalStatus: (r as any).status || 'APPROVED',
+        rejectionReason: (r as any).rejectionReason || null,
+        approvedAt: (r as any).approvedAt ? new Date((r as any).approvedAt).toISOString() : null,
+        // Session fields for UI
+        morningTimeIn: morningIn,
+        morningTimeOut: morningOut,
+        afternoonTimeIn: afternoonIn,
+        afternoonTimeOut: afternoonOut,
+        isHalfDay,
+        isEarlyOut: Boolean((r as any).isEarlyOut),
+        earlyOutReason: (r as any).earlyOutReason || null,
       }
     })
 
@@ -375,7 +440,8 @@ export async function POST(request: NextRequest) {
         const sessionData: any = {
           userId: user.id,
           date: now,
-          sessionType: sessionType,
+          // sessionType represents classification (HALF_DAY/FULL_DAY), decide at timeout or when both sessions complete
+          sessionType: null,
           isLate: isLate,
           status: determineStatusAfterAutoDecision(null, shouldAutoApproveTimeIn),
           totalSessions: 1
@@ -393,6 +459,14 @@ export async function POST(request: NextRequest) {
         attendanceRecord = await prisma.attendanceRecord.create({
           data: sessionData
         })
+
+        // Also record a punch for this time-in
+        try {
+          await prisma.attendancePunch.createMany({
+            data: [{ userId: user.id, timestamp: now, type: AttendancePunchType.IN }],
+            skipDuplicates: true
+          })
+        } catch {}
 
         const wasAutoApproved = sessionData.status === ADMIN_APPROVED_STATUS
 
@@ -445,7 +519,7 @@ export async function POST(request: NextRequest) {
 
         // Update data for the new session
         const updateData: any = {
-          sessionType: 'full_day', // Now both sessions
+          sessionType: 'FULL_DAY', // Now both sessions
           totalSessions: attendanceRecord.totalSessions + 1,
           status: determineStatusAfterAutoDecision(attendanceRecord.status, shouldAutoApproveTimeIn)
         }
@@ -460,6 +534,14 @@ export async function POST(request: NextRequest) {
           where: { id: attendanceRecord.id },
           data: updateData
         })
+
+        // Record a punch for this afternoon time-in
+        try {
+          await prisma.attendancePunch.createMany({
+            data: [{ userId: user.id, timestamp: now, type: AttendancePunchType.IN }],
+            skipDuplicates: true
+          })
+        } catch {}
 
         const wasAutoApproved = updateData.status === ADMIN_APPROVED_STATUS
 
@@ -657,7 +739,8 @@ export async function POST(request: NextRequest) {
           hoursWorked: totalHoursWorked,
           status: determineStatusAfterAutoDecision(attendanceRecord.status, shouldAutoApprove),
           isHalfDay: isHalfDay,
-          isEarlyOut: isEarlyOut
+          isEarlyOut: isEarlyOut,
+          sessionType: isHalfDay ? 'HALF_DAY' : 'FULL_DAY'
         }
 
         // Set session-specific time-out fields
@@ -679,6 +762,14 @@ export async function POST(request: NextRequest) {
           where: { id: attendanceRecord.id },
           data: updateData
         })
+
+        // Also record a punch for this time-out
+        try {
+          await prisma.attendancePunch.createMany({
+            data: [{ userId: user.id, timestamp: now, type: AttendancePunchType.OUT }],
+            skipDuplicates: true
+          })
+        } catch {}
 
         // Calculate earnings for the day
         const regularHours = Math.min(totalHoursWorked, dailyHours)
