@@ -1,0 +1,468 @@
+# Database-Level Payroll Calculation System
+
+This system uses PostgreSQL stored procedures and triggers to calculate payroll at the database level, providing automatic recalculation when data changes.
+
+## Features
+
+✅ **Automatic Recalculation**: Payroll updates automatically when:
+- Attendance records are approved
+- Payroll rules are modified
+- System configurations change
+- Tax/contribution rates are updated
+
+✅ **Real-time Tracking**: View payroll calculations throughout the month as attendance is recorded
+
+✅ **Performance**: Calculations happen at database level (faster than application-level)
+
+✅ **Consistency**: Single source of truth for all payroll calculations
+
+✅ **Idempotent**: Safe to recalculate multiple times without side effects
+
+## Database Setup
+
+### 1. Run the Migration
+
+```bash
+# Apply the stored procedures to your database
+npm run prisma db execute -- --file ./prisma/migrations/create_payroll_stored_procedures.sql
+
+# Or using psql directly
+psql -U your_username -d your_database -f ./prisma/migrations/create_payroll_stored_procedures.sql
+```
+
+### 2. Verify Installation
+
+```sql
+-- Check if functions are created
+SELECT routine_name, routine_type
+FROM information_schema.routines
+WHERE routine_schema = 'public'
+AND routine_name LIKE '%payroll%';
+
+-- Check if triggers are created
+SELECT trigger_name, event_manipulation, event_object_table
+FROM information_schema.triggers
+WHERE trigger_schema = 'public'
+AND trigger_name LIKE '%payroll%';
+```
+
+## Usage
+
+### API Endpoints
+
+#### 1. Recalculate Payroll for a Single User
+
+```bash
+POST /api/admin/payroll/recalculate
+Content-Type: application/json
+
+{
+  "scope": "user",
+  "userId": "clx1234567890abcdef",
+  "payPeriodStart": "2025-10-01",
+  "payPeriodEnd": "2025-10-31"
+}
+```
+
+#### 2. Recalculate Payroll for All Employees
+
+```bash
+POST /api/admin/payroll/recalculate
+Content-Type: application/json
+
+{
+  "scope": "all",
+  "payPeriodStart": "2025-10-01",
+  "payPeriodEnd": "2025-10-31"
+}
+```
+
+#### 3. Recalculate Current Month
+
+```bash
+POST /api/admin/payroll/recalculate
+Content-Type: application/json
+
+{
+  "scope": "current_month"
+}
+```
+
+#### 4. Get Current Month Summary
+
+```bash
+GET /api/admin/payroll/recalculate
+```
+
+Response:
+```json
+{
+  "success": true,
+  "currentMonth": {
+    "totalEmployees": 150,
+    "totalGrossPay": 3500000.00,
+    "totalNetPay": 2800000.00,
+    "totalDeductions": 700000.00,
+    "avgNetPay": 18666.67
+  },
+  "period": {
+    "start": "2025-10-01T00:00:00.000Z",
+    "end": "2025-10-31T23:59:59.999Z"
+  }
+}
+```
+
+### Direct Database Usage
+
+#### Calculate Payroll for One User
+
+```sql
+-- Calculate payroll for a specific user and period
+SELECT * FROM calculate_payroll_for_period(
+    'user_id_here',
+    '2025-10-01'::date,
+    '2025-10-31'::date
+);
+```
+
+Returns complete payroll breakdown:
+- Base salary, rates
+- Attendance data (days/hours worked, overtime, late, etc.)
+- All earnings (regular pay, overtime, holiday, allowances, bonuses)
+- All deductions (GSIS, PhilHealth, Pag-IBIG, tax, late, loans)
+- Net pay
+
+#### Recalculate All Employees
+
+```sql
+-- Recalculate and update payroll_results for all employees
+SELECT * FROM recalculate_all_payroll_for_period(
+    '2025-10-01'::date,
+    '2025-10-31'::date
+);
+```
+
+Returns:
+```
+users_processed | users_updated | users_failed
+----------------|---------------|-------------
+      150       |      148      |      2
+```
+
+#### Get Current Month Summary
+
+```sql
+SELECT * FROM get_current_month_payroll_summary();
+```
+
+## Automatic Triggers
+
+### 1. Attendance Import/Update Trigger
+
+When attendance records are imported or updated, payroll is automatically recalculated:
+
+```sql
+-- Trigger: auto_recalculate_payroll_on_attendance
+-- Fires: AFTER INSERT OR UPDATE on attendance_records
+-- Action: Recalculates payroll when attendance data changes
+```
+
+**Example Flow:**
+1. Admin imports attendance CSV
+2. Attendance records created with status='APPROVED' (auto-approved on import)
+3. **Trigger fires automatically**
+4. Payroll results are updated in real-time
+5. Dashboard shows updated payroll data
+
+### 2. Configuration Change Trigger
+
+When system settings affecting payroll are modified:
+
+```sql
+-- Trigger: auto_recalculate_payroll_on_config
+-- Fires: AFTER UPDATE on system_settings
+-- Action: Logs notice when rates/hours settings change
+```
+
+**Affected Settings:**
+- `rates_overtimeRate1`
+- `rates_overtimeRate2`
+- `rates_regularHolidayRate`
+- `rates_specialHolidayRate`
+- `working_hours_dailyHours`
+- `working_hours_lateDeductionAmount`
+- `working_hours_lateDeductionBasis`
+
+**Recommended Action:** After changing configs, manually trigger recalculation:
+```bash
+POST /api/admin/payroll/recalculate
+{ "scope": "current_month" }
+```
+
+### 3. Payroll Rule Change Trigger
+
+When payroll rules are modified:
+
+```sql
+-- Trigger: auto_recalculate_payroll_on_rule
+-- Fires: AFTER INSERT OR UPDATE on payroll_rules
+-- Action: Recalculates affected users' payroll
+```
+
+**Example Flow:**
+1. Admin adds new allowance rule for IT department
+2. **Trigger fires automatically**
+3. All users with this rule are recalculated
+4. Payroll results reflect new allowance immediately
+
+## Calculation Components
+
+### Helper Functions
+
+| Function | Purpose | Parameters |
+|----------|---------|------------|
+| `calculate_hourly_rate()` | Convert daily to hourly rate | daily_rate, daily_hours |
+| `calculate_overtime_pay()` | Compute overtime earnings | overtime_hours, hourly_rate, rates |
+| `calculate_holiday_pay()` | Compute holiday premium | holiday_hours, hourly_rate, type |
+| `calculate_late_deductions()` | Compute late penalties | late_hours, rates, basis |
+| `calculate_gsis_contribution()` | Compute GSIS deduction | salary_base, rate, limits |
+| `calculate_philhealth_contribution()` | Compute PhilHealth | salary_base, rate, limits |
+| `calculate_pagibig_contribution()` | Compute Pag-IBIG | salary_base, rate, limits |
+| `calculate_withholding_tax()` | Compute income tax | annual_taxable_income |
+
+### Calculation Flow
+
+```
+1. Load System Configurations
+   ├─ Daily hours (default: 8)
+   ├─ Overtime rates (1.25x, 1.5x)
+   ├─ Holiday rates (2.0x, 1.3x)
+   └─ Late deduction settings
+
+2. Get Base Salary from Payroll Rules
+   ├─ User-specific rules
+   └─ Global rules (applyToAll=true)
+
+3. Calculate Rates
+   ├─ Daily rate = base salary
+   └─ Hourly rate = daily rate / daily hours
+
+4. Aggregate Attendance Data
+   ├─ Days worked
+   ├─ Total hours worked
+   ├─ Overtime hours (> daily hours)
+   ├─ Undertime hours (< daily hours)
+   ├─ Late hours
+   └─ Holiday hours
+
+5. Calculate Earnings
+   ├─ Regular pay = (hours - overtime - holiday) × hourly_rate
+   ├─ Overtime pay = overtime formula
+   ├─ Holiday pay = holiday formula
+   ├─ Allowances from payroll rules
+   ├─ Bonuses from payroll rules
+   ├─ 13th month pay
+   ├─ Service incentive leave
+   └─ Total earnings = sum of all
+
+6. Calculate Contributions
+   ├─ Contribution base = daily_rate × days_worked
+   ├─ GSIS = contribution formula
+   ├─ PhilHealth = contribution formula
+   └─ Pag-IBIG = contribution formula
+
+7. Calculate Tax
+   ├─ Taxable income = gross - contributions - exempt benefits
+   ├─ Annualized taxable = taxable × 12
+   └─ Withholding tax = tax bracket formula / 12
+
+8. Calculate Deductions
+   ├─ Late deductions
+   ├─ Undertime deductions
+   ├─ Loan deductions from payroll rules
+   └─ Other deductions
+
+9. Calculate Net Pay
+   └─ Net pay = gross pay - total deductions
+```
+
+## Benefits Over Application-Level Calculation
+
+### ✅ Performance
+- **Database**: Calculations use optimized SQL queries
+- **Application**: Multiple round-trips, data transfer overhead
+
+### ✅ Real-time Updates
+- **Database**: Triggers auto-update when data changes
+- **Application**: Manual recalculation required
+
+### ✅ Consistency
+- **Database**: Single source of truth, no version conflicts
+- **Application**: Multiple codebases may have different logic
+
+### ✅ Auditability
+- **Database**: All calculations logged in database
+- **Application**: Logs scattered across services
+
+### ✅ Scalability
+- **Database**: Parallel processing, connection pooling
+- **Application**: Limited by application server resources
+
+## Maintenance
+
+### Update Tax Brackets
+
+Currently using simplified tax brackets in `calculate_withholding_tax()`. For production:
+
+```sql
+-- TODO: Replace hardcoded brackets with table lookup
+CREATE OR REPLACE FUNCTION calculate_withholding_tax(
+    p_annual_taxable_income DECIMAL
+) RETURNS DECIMAL AS $$
+DECLARE
+    v_bracket RECORD;
+    v_monthly_tax DECIMAL := 0;
+BEGIN
+    -- Load from tax_bracket_configs table
+    SELECT * INTO v_bracket
+    FROM "tax_bracket_configs"
+    WHERE "isActive" = true
+    AND p_annual_taxable_income > "salaryMin"
+    AND p_annual_taxable_income <= "salaryMax"
+    ORDER BY priority DESC
+    LIMIT 1;
+    
+    IF v_bracket IS NOT NULL THEN
+        v_monthly_tax := (v_bracket."fixedAmount" + 
+            ((p_annual_taxable_income - v_bracket."salaryMin") * 
+             v_bracket."taxRate")) / 12;
+    END IF;
+    
+    RETURN ROUND(v_monthly_tax, 2);
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Update Contribution Formulas
+
+To use bracket-based contributions from `contribution_brackets` table:
+
+```sql
+-- TODO: Enhance to use contribution_brackets table
+-- Example for GSIS:
+SELECT "employeeRate" INTO v_rate
+FROM "contribution_brackets"
+WHERE "contributionType" = 'gsis'
+AND "isActive" = true
+AND p_salary_base >= "salaryMin"
+AND p_salary_base <= "salaryMax"
+ORDER BY priority DESC
+LIMIT 1;
+```
+
+## Troubleshooting
+
+### Issue: Payroll not updating after attendance approval
+
+**Check:**
+```sql
+-- Verify trigger exists
+SELECT * FROM pg_trigger WHERE tgname = 'auto_recalculate_payroll_on_attendance';
+
+-- Check trigger function
+\df trigger_recalculate_payroll_on_attendance
+```
+
+**Solution:**
+```sql
+-- Recreate trigger
+DROP TRIGGER IF EXISTS auto_recalculate_payroll_on_attendance ON "attendance_records";
+CREATE TRIGGER auto_recalculate_payroll_on_attendance
+    AFTER INSERT OR UPDATE ON "attendance_records"
+    FOR EACH ROW
+    EXECUTE FUNCTION trigger_recalculate_payroll_on_attendance();
+```
+
+### Issue: Calculations seem incorrect
+
+**Debug:**
+```sql
+-- Test calculation for one user
+SELECT * FROM calculate_payroll_for_period(
+    'problematic_user_id',
+    '2025-10-01'::date,
+    '2025-10-31'::date
+);
+
+-- Check system settings
+SELECT * FROM "system_settings" WHERE key LIKE 'rates_%' OR key LIKE 'working_hours_%';
+
+-- Check payroll rules
+SELECT * FROM "payroll_rules" WHERE "isActive" = true;
+```
+
+### Issue: Performance degradation
+
+**Optimize:**
+```sql
+-- Add indexes if missing
+CREATE INDEX IF NOT EXISTS idx_attendance_userid_date ON "attendance_records"("userId", date);
+CREATE INDEX IF NOT EXISTS idx_payroll_rules_active ON "payroll_rules"("isActive", "applyToAll");
+CREATE INDEX IF NOT EXISTS idx_payroll_results_period ON "payroll_results"("payPeriodStart", "payPeriodEnd");
+
+-- Analyze tables
+ANALYZE "attendance_records";
+ANALYZE "payroll_rules";
+ANALYZE "payroll_results";
+```
+
+## Migration from Application-Level Calculation
+
+### Step 1: Deploy Stored Procedures
+```bash
+npm run prisma db execute -- --file ./prisma/migrations/create_payroll_stored_procedures.sql
+```
+
+### Step 2: Backfill Existing Data
+```bash
+POST /api/admin/payroll/recalculate
+{
+  "scope": "all",
+  "payPeriodStart": "2025-01-01",
+  "payPeriodEnd": "2025-01-31"
+}
+```
+
+### Step 3: Enable Triggers
+Already enabled by migration. Verify:
+```sql
+SELECT * FROM pg_trigger WHERE tgname LIKE '%payroll%';
+```
+
+### Step 4: Test
+1. Approve an attendance record
+2. Check if payroll_results updated
+3. Verify calculations match expected values
+
+### Step 5: Monitor
+```sql
+-- Check for failed calculations (warnings in logs)
+-- Monitor query performance
+SELECT * FROM pg_stat_user_functions WHERE funcname LIKE '%payroll%';
+```
+
+## Next Steps
+
+1. **Scheduled Recalculation**: Set up cron job for nightly recalculation
+2. **Advanced Tax Brackets**: Integrate `tax_bracket_configs` table
+3. **Contribution Brackets**: Integrate `contribution_brackets` table
+4. **Audit Trail**: Log all recalculations with timestamps and triggers
+5. **Notifications**: Alert admins when payroll changes significantly
+6. **Batch Processing**: Optimize for large employee counts (1000+)
+
+## Support
+
+For issues or questions:
+1. Check database logs: `SELECT * FROM pg_stat_activity WHERE query LIKE '%payroll%';`
+2. Review trigger logs: Stored procedure emits NOTICE/WARNING messages
+3. Test calculations: Use helper functions directly to debug

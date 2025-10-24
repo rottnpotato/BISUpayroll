@@ -10,7 +10,7 @@ import {
   Search, Plus, Edit, Trash2, CheckCircle, XCircle, 
   RefreshCcw, DownloadCloud, Filter, UserPlus, AlertTriangle,
   Save, X, Lock, Mail, FileText, CheckSquare, ChevronLeft, ChevronRight,
-  Clock, Phone
+  Clock, Phone, Upload, Users, Minus
 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -55,6 +55,26 @@ interface FormErrors {
   password?: string
 }
 
+interface BulkEmployee {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  role: string
+  department: string
+  position: string
+  phone: string
+  employeeId: string
+  hireDate: string
+  salary: string
+  address: string
+  emergencyContactName: string
+  emergencyContactRelationship: string
+  emergencyContactPhone: string
+  errors?: FormErrors
+}
+
 interface ApiResponse {
   users: User[]
   pagination: {
@@ -67,12 +87,9 @@ interface ApiResponse {
 
 // Department options
 const departments = [
-  "Information Technology",
-  "Human Resources", 
-  "Accounting",
-  "Faculty",
-  "Maintenance",
-  "Administration"
+  "CTAS",
+  "CCJ",
+  "CCIS"
 ]
 
 // Role options
@@ -83,13 +100,17 @@ const roles = [
 
 // Positions by department
 const positionsByDepartment = {
-  "Information Technology": ["System Administrator", "Network Specialist", "Software Developer", "Database Administrator", "IT Support"],
-  "Human Resources": ["HR Manager", "HR Specialist", "Recruitment Officer", "Training Coordinator", "Employee Relations"],
-  "Accounting": ["Accountant", "Senior Accountant", "Bookkeeper", "Payroll Specialist", "Financial Analyst"],
-  "Faculty": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Research Associate"],
-  "Maintenance": ["Facilities Manager", "Maintenance Technician", "Custodian", "Groundskeeper", "Electrician"],
-  "Administration": ["Office Manager", "Administrative Assistant", "Records Officer", "Executive Secretary", "Office Coordinator"]
+  "CTAS": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Lecturer", "Dean", "Department Head"],
+  "CCJ": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Lecturer", "Dean", "Department Head"],
+  "CCIS": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Lecturer", "Dean", "Department Head", "System Administrator", "IT Support"]
 }
+
+// Status options
+const employmentStatuses = [
+  "PERMANENT",
+  "TEMPORARY",
+  "CONTRACTUAL"
+]
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -104,9 +125,15 @@ export default function AdminUsersPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showBulkImportDialog, setShowBulkImportDialog] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [bulkEmployees, setBulkEmployees] = useState<BulkEmployee[]>([])
+  const [bulkImportTab, setBulkImportTab] = useState<"csv" | "manual">("csv")
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -361,6 +388,241 @@ export default function AdminUsersPage() {
     }
   }
 
+  // Download CSV Template
+  const downloadCsvTemplate = () => {
+    const headers = [
+      "firstName",
+      "lastName", 
+      "email",
+      "password",
+      "department",
+      "position",
+      "status",
+      "phone",
+      "employeeId",
+      "hireDate",
+      "address",
+      "emergencyContactName",
+      "emergencyContactRelationship",
+      "emergencyContactPhone"
+    ]
+    
+    const sampleRow = [
+      "Juan",
+      "Dela Cruz",
+      "juan.delacruz@bisu.edu.ph",
+      "password123",
+      "CCIS",
+      "Professor",
+      "PERMANENT",
+      "09123456789",
+      "BISU-2024-001",
+      "2024-01-15",
+      "Tagbilaran City",
+      "Maria Dela Cruz",
+      "Spouse",
+      "09987654321"
+    ]
+
+    const csvContent = [headers.join(","), sampleRow.join(",")].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute("href", url)
+    link.setAttribute("download", "employee_import_template.csv")
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast({
+      title: "Template Downloaded",
+      description: "Employee import template has been downloaded.",
+    })
+  }
+
+  // Parse CSV file
+  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setCsvFile(file)
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      const lines = text.split("\n").filter(line => line.trim())
+      
+      if (lines.length < 2) {
+        toast({
+          title: "Invalid CSV",
+          description: "CSV file must contain headers and at least one data row.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const headers = lines[0].split(",").map(h => h.trim())
+      const employees: BulkEmployee[] = []
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map(v => v.trim())
+        
+        if (values.length !== headers.length) continue
+
+        const employee: BulkEmployee = {
+          id: `bulk-${Date.now()}-${i}`,
+          firstName: values[0] || "",
+          lastName: values[1] || "",
+          email: values[2] || "",
+          password: values[3] || "",
+          role: "EMPLOYEE",
+          department: values[4] || "",
+          position: values[5] || "",
+          phone: values[7] || "",
+          employeeId: values[8] || "",
+          hireDate: values[9] || "",
+          salary: values[6] || "", // Status field
+          address: values[10] || "",
+          emergencyContactName: values[11] || "",
+          emergencyContactRelationship: values[12] || "",
+          emergencyContactPhone: values[13] || ""
+        }
+
+        employees.push(employee)
+      }
+
+      setBulkEmployees(employees)
+      toast({
+        title: "CSV Parsed",
+        description: `${employees.length} employees loaded from CSV.`,
+      })
+    }
+
+    reader.readAsText(file)
+  }
+
+  // Add new manual entry to bulk list
+  const addManualEmployee = () => {
+    const newEmployee: BulkEmployee = {
+      id: `bulk-${Date.now()}`,
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      role: "EMPLOYEE",
+      department: "",
+      position: "",
+      phone: "",
+      employeeId: "",
+      hireDate: "",
+      salary: "",
+      address: "",
+      emergencyContactName: "",
+      emergencyContactRelationship: "",
+      emergencyContactPhone: ""
+    }
+
+    setBulkEmployees([...bulkEmployees, newEmployee])
+    setExpandedEmployee(newEmployee.id)
+  }
+
+  // Update bulk employee
+  const updateBulkEmployee = (id: string, field: keyof BulkEmployee, value: string) => {
+    setBulkEmployees(bulkEmployees.map(emp => 
+      emp.id === id ? { ...emp, [field]: value } : emp
+    ))
+  }
+
+  // Remove bulk employee
+  const removeBulkEmployee = (id: string) => {
+    setBulkEmployees(bulkEmployees.filter(emp => emp.id !== id))
+  }
+
+  // Validate bulk employee
+  const validateBulkEmployee = (employee: BulkEmployee): FormErrors => {
+    const errors: FormErrors = {}
+
+    if (!employee.firstName.trim()) errors.firstName = "Required"
+    if (!employee.lastName.trim()) errors.lastName = "Required"
+    if (!employee.email.trim()) errors.email = "Required"
+    if (!employee.email.includes('@')) errors.email = "Invalid email"
+    if (!employee.password.trim()) errors.password = "Required"
+    if (!employee.employeeId.trim()) errors.employeeId = "Required"
+
+    return errors
+  }
+
+  // Submit bulk employees
+  const handleBulkImport = async () => {
+    if (bulkEmployees.length === 0) {
+      toast({
+        title: "No Employees",
+        description: "Please add employees to import.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate all employees
+    const validatedEmployees = bulkEmployees.map(emp => ({
+      ...emp,
+      errors: validateBulkEmployee(emp)
+    }))
+
+    const hasErrors = validatedEmployees.some(emp => 
+      emp.errors && Object.keys(emp.errors).length > 0
+    )
+
+    if (hasErrors) {
+      setBulkEmployees(validatedEmployees)
+      toast({
+        title: "Validation Errors",
+        description: "Please fix all errors before importing.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+
+      const response = await fetch('/api/admin/users/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ employees: bulkEmployees }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to import employees')
+      }
+
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${result.created} employees.`,
+      })
+
+      setShowBulkImportDialog(false)
+      setBulkEmployees([])
+      setCsvFile(null)
+      fetchUsers()
+    } catch (error) {
+      console.error('Error importing employees:', error)
+      toast({
+        title: "Import Failed",
+        description: error instanceof Error ? error.message : "Failed to import employees.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -490,14 +752,14 @@ export default function AdminUsersPage() {
                         <Button 
                           variant="outline" 
                           className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
-                          onClick={() => setShowAddDialog(true)}
+                          onClick={() => setShowBulkImportDialog(true)}
                         >
-                    <UserPlus size={16} className="mr-2" />
-                    Add User
+                    <Users size={16} className="mr-2" />
+                    Bulk Import
                   </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Add new user</p>
+                        <p>Import multiple employees</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1279,6 +1541,398 @@ export default function AdminUsersPage() {
               disabled={isSubmitting}
             >
               {isSubmitting ? "Deleting..." : "Delete User"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Dialog */}
+      <Dialog open={showBulkImportDialog} onOpenChange={setShowBulkImportDialog}>
+        <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-bisu-purple-deep" />
+              Bulk Employee Import
+            </DialogTitle>
+            <DialogDescription>
+              Import multiple employees at once using CSV file or manual entry.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs value={bulkImportTab} onValueChange={(v) => setBulkImportTab(v as "csv" | "manual")} className="flex-1 flex flex-col">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="csv" className="flex items-center gap-2">
+                <Upload size={16} />
+                CSV Upload
+              </TabsTrigger>
+              <TabsTrigger value="manual" className="flex items-center gap-2">
+                <UserPlus size={16} />
+                Manual Entry
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="csv" className="flex-1 overflow-auto mt-4">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 text-blue-600" />
+                    <div>
+                      <p className="font-semibold text-blue-900">Download CSV Template</p>
+                      <p className="text-sm text-blue-700">Get the template with required columns</p>
+                    </div>
+                  </div>
+                  <Button onClick={downloadCsvTemplate} variant="outline" size="sm">
+                    <DownloadCloud size={16} className="mr-2" />
+                    Download Template
+                  </Button>
+                </div>
+
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleCsvUpload}
+                    accept=".csv"
+                    className="hidden"
+                  />
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-700 mb-2">
+                    {csvFile ? csvFile.name : "Upload CSV File"}
+                  </p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Click to select or drag and drop your CSV file here
+                  </p>
+                  <Button onClick={() => fileInputRef.current?.click()} variant="outline">
+                    <Upload size={16} className="mr-2" />
+                    Select CSV File
+                  </Button>
+                </div>
+
+                {bulkEmployees.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-semibold text-lg">
+                        Preview ({bulkEmployees.length} employees)
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => { setBulkEmployees([]); setCsvFile(null); }}
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                    <div className="border rounded-lg overflow-auto max-h-96">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Employee ID</TableHead>
+                            <TableHead>Department</TableHead>
+                            <TableHead>Position</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {bulkEmployees.map((emp) => (
+                            <TableRow key={emp.id} className={emp.errors && Object.keys(emp.errors).length > 0 ? "bg-red-50" : ""}>
+                              <TableCell>
+                                {emp.firstName} {emp.lastName}
+                                {emp.errors?.firstName && (
+                                  <span className="text-xs text-red-500 block">{emp.errors.firstName}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {emp.email}
+                                {emp.errors?.email && (
+                                  <span className="text-xs text-red-500 block">{emp.errors.email}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {emp.employeeId}
+                                {emp.errors?.employeeId && (
+                                  <span className="text-xs text-red-500 block">{emp.errors.employeeId}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>{emp.department}</TableCell>
+                              <TableCell>{emp.position}</TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeBulkEmployee(emp.id)}
+                                >
+                                  <Trash2 size={16} className="text-red-500" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="manual" className="flex-1 overflow-auto mt-4">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-lg">
+                    Manual Entries ({bulkEmployees.length})
+                  </h3>
+                  <Button onClick={addManualEmployee} size="sm">
+                    <Plus size={16} className="mr-2" />
+                    Add Employee
+                  </Button>
+                </div>
+
+                {bulkEmployees.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                    <UserPlus className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600">No employees added yet</p>
+                    <Button onClick={addManualEmployee} variant="outline" size="sm" className="mt-4">
+                      <Plus size={16} className="mr-2" />
+                      Add First Employee
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-auto">
+                    {bulkEmployees.map((emp, index) => (
+                      <Card key={emp.id} className="overflow-hidden">
+                        <div 
+                          className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => setExpandedEmployee(expandedEmployee === emp.id ? null : emp.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center h-8 w-8 rounded-full bg-bisu-purple-deep text-white font-semibold text-sm">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-bisu-purple-deep">
+                                {emp.firstName || emp.lastName ? `${emp.firstName} ${emp.lastName}` : `Employee ${index + 1}`}
+                              </h4>
+                              {emp.email && (
+                                <p className="text-xs text-gray-500">{emp.email}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {emp.errors && Object.keys(emp.errors).length > 0 && (
+                              <Badge variant="destructive" className="text-xs">
+                                {Object.keys(emp.errors).length} error(s)
+                              </Badge>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeBulkEmployee(emp.id)
+                              }}
+                            >
+                              <Trash2 size={16} className="text-red-500" />
+                            </Button>
+                            <ChevronRight 
+                              size={20} 
+                              className={`transition-transform ${expandedEmployee === emp.id ? 'rotate-90' : ''}`}
+                            />
+                          </div>
+                        </div>
+                        
+                        {expandedEmployee === emp.id && (
+                          <div className="p-4 pt-0 border-t">
+                            <div className="grid grid-cols-3 gap-3 mt-3">
+                              <div>
+                                <Label className="text-xs">First Name *</Label>
+                                <Input
+                                  value={emp.firstName}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "firstName", e.target.value)}
+                                  placeholder="First Name"
+                                  className={emp.errors?.firstName ? "border-red-500" : ""}
+                                />
+                                {emp.errors?.firstName && (
+                                  <p className="text-xs text-red-500 mt-1">{emp.errors.firstName}</p>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-xs">Last Name *</Label>
+                                <Input
+                                  value={emp.lastName}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "lastName", e.target.value)}
+                                  placeholder="Last Name"
+                                  className={emp.errors?.lastName ? "border-red-500" : ""}
+                                />
+                                {emp.errors?.lastName && (
+                                  <p className="text-xs text-red-500 mt-1">{emp.errors.lastName}</p>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-xs">Email *</Label>
+                                <Input
+                                  value={emp.email}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "email", e.target.value)}
+                                  placeholder="email@bisu.edu.ph"
+                                  className={emp.errors?.email ? "border-red-500" : ""}
+                                />
+                                {emp.errors?.email && (
+                                  <p className="text-xs text-red-500 mt-1">{emp.errors.email}</p>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-xs">Password *</Label>
+                                <Input
+                                  type="password"
+                                  value={emp.password}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "password", e.target.value)}
+                                  placeholder="Password"
+                                  className={emp.errors?.password ? "border-red-500" : ""}
+                                />
+                                {emp.errors?.password && (
+                                  <p className="text-xs text-red-500 mt-1">{emp.errors.password}</p>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-xs">Employee ID *</Label>
+                                <Input
+                                  value={emp.employeeId}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "employeeId", e.target.value)}
+                                  placeholder="BISU-2024-XXX"
+                                  className={emp.errors?.employeeId ? "border-red-500" : ""}
+                                />
+                                {emp.errors?.employeeId && (
+                                  <p className="text-xs text-red-500 mt-1">{emp.errors.employeeId}</p>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-xs">Department *</Label>
+                                <Select
+                                  value={emp.department}
+                                  onValueChange={(value) => updateBulkEmployee(emp.id, "department", value)}
+                                >
+                                  <SelectTrigger className={emp.errors?.department ? "border-red-500" : ""}>
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {departments.map((dept) => (
+                                      <SelectItem key={dept} value={dept}>
+                                        {dept}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Position</Label>
+                                <Select
+                                  value={emp.position}
+                                  onValueChange={(value) => updateBulkEmployee(emp.id, "position", value)}
+                                  disabled={!emp.department}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={emp.department ? "Select" : "Select department first"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {emp.department && positionsByDepartment[emp.department as keyof typeof positionsByDepartment]?.map((position) => (
+                                      <SelectItem key={position} value={position}>
+                                        {position}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Status *</Label>
+                                <Select
+                                  value={emp.salary}
+                                  onValueChange={(value) => updateBulkEmployee(emp.id, "salary", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {employmentStatuses.map((status) => (
+                                      <SelectItem key={status} value={status}>
+                                        {status}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Phone</Label>
+                                <Input
+                                  value={emp.phone}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "phone", e.target.value)}
+                                  placeholder="09XXXXXXXXX"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Hire Date</Label>
+                                <Input
+                                  type="date"
+                                  value={emp.hireDate}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "hireDate", e.target.value)}
+                                />
+                              </div>
+                              <div className="col-span-3">
+                                <Label className="text-xs">Address</Label>
+                                <Input
+                                  value={emp.address}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "address", e.target.value)}
+                                  placeholder="Complete Address"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Emergency Contact Name</Label>
+                                <Input
+                                  value={emp.emergencyContactName}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "emergencyContactName", e.target.value)}
+                                  placeholder="Full Name"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Relationship</Label>
+                                <Input
+                                  value={emp.emergencyContactRelationship}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "emergencyContactRelationship", e.target.value)}
+                                  placeholder="e.g., Spouse, Parent"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Emergency Contact Phone</Label>
+                                <Input
+                                  value={emp.emergencyContactPhone}
+                                  onChange={(e) => updateBulkEmployee(emp.id, "emergencyContactPhone", e.target.value)}
+                                  placeholder="09XXXXXXXXX"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="flex justify-between mt-4">
+            <Button variant="outline" onClick={() => {
+              setShowBulkImportDialog(false)
+              setBulkEmployees([])
+              setCsvFile(null)
+            }}>
+              <X className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleBulkImport}
+              disabled={isSubmitting || bulkEmployees.length === 0}
+            >
+              {isSubmitting ? "Importing..." : `Import ${bulkEmployees.length} Employee${bulkEmployees.length !== 1 ? 's' : ''}`}
             </Button>
           </DialogFooter>
         </DialogContent>
