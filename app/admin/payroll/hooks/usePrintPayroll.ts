@@ -74,7 +74,8 @@ export const usePrintPayroll = () => {
     reportType: string = 'custom',
     scheduleId?: string,
     scheduleName?: string,
-    selectedTemplate?: ReportTemplate | null
+    selectedTemplate?: ReportTemplate | null,
+    employmentStatus?: string
   ): Promise<boolean> => {
     try {
       if (!data || data.length === 0) {
@@ -96,7 +97,7 @@ export const usePrintPayroll = () => {
       }
 
       // Generate HTML content
-  const htmlContent = generatePrintHTML(data, templateDateRange, selectedTemplate || null)
+  const htmlContent = generatePrintHTML(data, templateDateRange, selectedTemplate || null, employmentStatus)
       
       // Create a new window for printing
       const printWindow = window.open('', '_blank')

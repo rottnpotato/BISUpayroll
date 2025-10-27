@@ -84,7 +84,7 @@ export function PayrollRuleDialog({
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="base">Base Pay</SelectItem>
+                  <SelectItem value="daily_rate">Daily Rate</SelectItem>
                   <SelectItem value="additional">Additional Income</SelectItem>
                   <SelectItem value="deduction">Deduction</SelectItem>
                   <SelectItem value="tax">Tax & Benefits</SelectItem>
@@ -114,7 +114,7 @@ export function PayrollRuleDialog({
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="base_pay">Base Pay</SelectItem>
+                  <SelectItem value="daily_rate">Daily Rate</SelectItem>
                   <SelectItem value="overtime">Overtime</SelectItem>
                   <SelectItem value="differential">Differential</SelectItem>
                   <SelectItem value="holiday_pay">Holiday Pay</SelectItem>
@@ -123,6 +123,11 @@ export function PayrollRuleDialog({
                   <SelectItem value="mandatory_benefit">Mandatory Benefit</SelectItem>
                   <SelectItem value="leave_benefit">Leave Benefit</SelectItem>
                   <SelectItem value="attendance">Attendance</SelectItem>
+                  <SelectItem value="loan">Loan Deduction</SelectItem>
+                  <SelectItem value="undertime">Undertime Deduction</SelectItem>
+                  <SelectItem value="allowance">Allowance</SelectItem>
+                  <SelectItem value="bonus">Bonus</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>

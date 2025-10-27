@@ -18,7 +18,7 @@ export interface DashboardData {
     userId: string
     payPeriodStart: Date
     payPeriodEnd: Date
-    baseSalary: number
+    dailyRate: number
     overtime: number
     deductions: number
     bonuses: number

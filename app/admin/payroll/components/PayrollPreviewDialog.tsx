@@ -14,6 +14,7 @@ interface PayrollPreviewDialogProps {
   templateDateRange: DateRange | undefined
   selectedTemplate: ReportTemplate | null
   onPrint: () => void
+  employmentStatus?: string
 }
 
 export const PayrollPreviewDialog = ({
@@ -22,7 +23,8 @@ export const PayrollPreviewDialog = ({
   payrollData,
   templateDateRange,
   selectedTemplate,
-  onPrint
+  onPrint,
+  employmentStatus
 }: PayrollPreviewDialogProps) => {
   const getReportTitle = () => {
     switch (selectedTemplate?.type) {
@@ -33,7 +35,11 @@ export const PayrollPreviewDialog = ({
       case "custom":
         return "CUSTOM PERIOD PAYROLL REPORT"
       default:
-        return "PAYROLL - CONTRACT OF SERVICE INSTRUCTORS - of BISU Balilihan Campus"
+        // Dynamic header based on employment status
+        const statusLabel = employmentStatus && employmentStatus !== 'all' 
+          ? employmentStatus.toUpperCase()
+          : 'ALL STATUS'
+        return `PAYROLL - ${statusLabel} EMPLOYEES - OF BISU BALILIHAN CAMPUS`
     }
   }
 
@@ -124,10 +130,10 @@ export const PayrollPreviewDialog = ({
         .sort((a, b) => `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`))
         .map((employee, index) => {
           console.log(employee)
-          const salary = parseFloat(employee.baseSalary?.toString() || '0')
+          const salary = parseFloat(employee.dailyRate?.toString() || '0')
           
           // Use the detailed data from PayrollResult if available
-          const regularPay = parseFloat(employee.earningsBreakdown?.regularPay?.toString() || employee.baseSalary?.toString() || '0')
+          const regularPay = parseFloat(employee.earningsBreakdown?.regularPay?.toString() || employee.dailyRate?.toString() || '0')
           const overtimePay = parseFloat(employee.earningsBreakdown?.overtimePay?.toString() || employee.overtime?.toString() || '0')
           const holidayPay = parseFloat(employee.earningsBreakdown?.holidayPay?.toString() || '0')
           const allowances = parseFloat(employee.earningsBreakdown?.allowances?.toString() || '0')
@@ -240,7 +246,7 @@ export const PayrollPreviewDialog = ({
       payrollData
         .sort((a, b) => `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`))
         .map((employee, index) => {
-          const salary = parseFloat(employee.baseSalary?.toString() || '0')
+          const salary = parseFloat(employee.dailyRate?.toString() || '0')
           const grossPay = parseFloat(employee.grossPay?.toString() || '0')
           const deductions = parseFloat(employee.deductions?.toString() || '0')
           const netPay = parseFloat(employee.netPay?.toString() || '0')

@@ -6,10 +6,11 @@ import { format } from 'date-fns'
 
 // Shape of data expected by the generator
 export interface PayslipData {
-  payrollRecordId: string
+  payrollRecordId: string | null
   payPeriodStart: Date
   payPeriodEnd: Date
   generatedAt?: Date
+  scheduleType?: string // 'monthly' | 'bi-monthly' | 'weekly' | etc
   employee: {
     name: string
     employeeId?: string | null
@@ -59,53 +60,135 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
 
   const templateBinary = fs.readFileSync(templatePath, 'binary')
   const zip = new PizZip(templateBinary)
-  const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true })
+  const doc = new Docxtemplater(zip, { 
+    paragraphLoop: true, 
+    linebreaks: true
+  })
 
   const currency = data.currency || 'PHP'
 
-  // Prepare applied rules tables (earnings & deductions separated)
-  const earningsRules = (data.appliedRules || []).filter(r => ['bonus','allowance','additional','base'].includes(r.type))
-  const deductionRules = (data.appliedRules || []).filter(r => r.type === 'deduction')
+  // Extract individual deduction amounts from breakdown
+  const deductionBreakdown = data.deductionBreakdown || {}
+  
+  // Parse applied rules to get specific deduction amounts
+  const appliedRules = data.appliedRules || []
+  
+  // Check if schedule is monthly to determine if net amounts should be shown
+  const isMonthlySchedule = data.scheduleType?.toLowerCase().includes('monthly') ?? true // default to true if not specified
+  
+  // Calculate net pay for each half (simple division by 2) - only for NON-monthly schedules
+  const netPayFirstHalf = data.calculations.netPay / 2
+  const netPaySecondHalf = data.calculations.netPay / 2
+
+  // Get allowances and others from applied rules
+  const allowanceRules = appliedRules.filter(r => r.type === 'allowance')
+  const allowanceTotal = allowanceRules.reduce((sum, r) => sum + (r.calculatedAmount ?? r.amount), 0)
+  
+  const otherEarningsRules = appliedRules.filter(r => ['bonus', 'additional'].includes(r.type))
+  const othersTotal = otherEarningsRules.reduce((sum, r) => sum + (r.calculatedAmount ?? r.amount), 0)
+
+  // Build deductions list dynamically
+  const deductionsList: Array<{ name: string; amount: string }> = []
+  
+  // Add standard government deductions (check if breakdown exists and has values)
+  if (deductionBreakdown?.withholdingTax && deductionBreakdown.withholdingTax > 0) {
+    deductionsList.push({
+      name: 'Withholding Tax',
+      amount: numberFmt(deductionBreakdown.withholdingTax, currency)
+    })
+  }
+  
+  if (deductionBreakdown?.gsisContribution && deductionBreakdown.gsisContribution > 0) {
+    deductionsList.push({
+      name: 'GSIS Premium',
+      amount: numberFmt(deductionBreakdown.gsisContribution, currency)
+    })
+  }
+  
+  if (deductionBreakdown?.pagibigContribution && deductionBreakdown.pagibigContribution > 0) {
+    deductionsList.push({
+      name: 'Pag-IBIG Premium',
+      amount: numberFmt(deductionBreakdown.pagibigContribution, currency)
+    })
+  }
+  
+  if (deductionBreakdown?.philHealthContribution && deductionBreakdown.philHealthContribution > 0) {
+    deductionsList.push({
+      name: 'PhilHealth',
+      amount: numberFmt(deductionBreakdown.philHealthContribution, currency)
+    })
+  }
+  
+  if (deductionBreakdown?.sssContribution && deductionBreakdown.sssContribution > 0) {
+    deductionsList.push({
+      name: 'SSS Premium',
+      amount: numberFmt(deductionBreakdown.sssContribution, currency)
+    })
+  }
+
+  // Add late/undertime deductions
+  if (data.calculations.lateDeductions > 0) {
+    deductionsList.push({
+      name: 'Undertime/Absences',
+      amount: numberFmt(data.calculations.lateDeductions, currency)
+    })
+  }
+
+  // Add user-defined deductions from applied rules
+  const customDeductions = appliedRules.filter(r => r.type === 'deduction')
+  customDeductions.forEach(deduction => {
+    // Check if this deduction was already added from breakdown to avoid duplicates
+    const alreadyAdded = deductionsList.some(d => 
+      d.name.toLowerCase().includes(deduction.name.toLowerCase())
+    )
+    if (!alreadyAdded) {
+      deductionsList.push({
+        name: deduction.name,
+        amount: numberFmt(deduction.calculatedAmount ?? deduction.amount, currency)
+      })
+    }
+  })
 
   const ctx = {
     company_name: 'BISU Payroll System',
-    payslip_title: 'Employee Payslip',
-    period_start: format(data.payPeriodStart, 'yyyy-MM-dd'),
-    period_end: format(data.payPeriodEnd, 'yyyy-MM-dd'),
+    payslip_title: 'PAY SLIP',
+    period_start: format(data.payPeriodStart, 'MMMM yyyy'),
+    period_end: format(data.payPeriodEnd, 'MMMM yyyy'),
     generated_at: format(data.generatedAt || new Date(), 'yyyy-MM-dd HH:mm'),
+    
+    // Employee Information
     employee_name: data.employee.name,
     employee_id: data.employee.employeeId || '',
     employee_department: data.employee.department || '',
     employee_position: data.employee.position || '',
     employee_hire_date: data.employee.hireDate ? format(data.employee.hireDate, 'yyyy-MM-dd') : '',
+    
+    // Earnings
     monthly_salary: numberFmt(data.calculations.monthlySalary, currency),
-
-    base_pay: numberFmt(data.calculations.basePay, currency),
-    overtime_pay: numberFmt(data.calculations.overtimePay, currency),
-    bonuses_pay: numberFmt(data.calculations.bonuses, currency),
+    allowance: numberFmt(allowanceTotal, currency),
+    others: numberFmt(othersTotal, currency),
     gross_pay: numberFmt(data.calculations.grossPay, currency),
-    net_pay: numberFmt(data.calculations.netPay, currency),
-    late_deductions: numberFmt(data.calculations.lateDeductions, currency),
-    govt_deductions: numberFmt(data.calculations.governmentDeductions, currency),
-    loan_deductions: numberFmt(data.calculations.loanDeductions, currency),
-    other_deductions: numberFmt(data.calculations.otherDeductions, currency),
+    
+    // Deductions - Array for template loop (for table rows)
+    deductions: deductionsList,
+    // Deductions as formatted string with actual line breaks for single cell
+    deductions_formatted: deductionsList.map(d => `${d.name}: ${d.amount}`).join('\n'),
     total_deductions: numberFmt(data.calculations.totalDeductions, currency),
+    
+    // Net Pay
+    net_pay: numberFmt(data.calculations.netPay, currency),
     net_pay_words: amountInWords(data.calculations.netPay).toUpperCase(),
-
-    // Rule tables
-    earnings_rules: earningsRules.map(r => ({
-      rule_name: r.name,
-      rule_amount: numberFmt(r.calculatedAmount ?? r.amount, currency),
-      rule_rate: r.isPercentage ? `${r.amount}%` : ''
-    })),
-    deduction_rules: deductionRules.map(r => ({
-      rule_name: r.name,
-      rule_amount: numberFmt(r.calculatedAmount ?? r.amount, currency),
-      rule_rate: r.isPercentage ? `${r.amount}%` : ''
-    })),
-
+    net_amount_first_half: numberFmt(netPayFirstHalf, currency),
+    net_amount_second_half: numberFmt(netPaySecondHalf, currency),
+    // Conditionals for template
+    show_half_payments: !isMonthlySchedule, // Show split payments only for non-monthly schedules
+    is_monthly: isMonthlySchedule, // Alternative: show if monthly
+    is_bimonthly: !isMonthlySchedule, // Alternative: show if NOT monthly
+    
     reference_id: data.payrollRecordId
   }
+
+  console.log('Payslip generation - Schedule type:', data.scheduleType, 'isMonthly:', isMonthlySchedule, 'show_half_payments:', !isMonthlySchedule)
 
   try {
     // New API: pass context directly into render (setData deprecated)

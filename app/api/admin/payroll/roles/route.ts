@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       description,
       department,
       position,
-      baseSalary,
+      dailyRate,
       overtimeEligible,
   // Night differential removed
       holidayPayEligible,
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
         description,
         department,
         position,
-        baseSalary: baseSalary ? parseFloat(baseSalary) : null,
+        dailyRate: dailyRate ? parseFloat(dailyRate) : null,
         overtimeEligible: overtimeEligible ?? true,
   // Night differential removed
         holidayPayEligible: holidayPayEligible ?? true,

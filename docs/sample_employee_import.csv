@@ -1,0 +1,6 @@
+firstName,lastName,email,password,department,position,status,phone,employeeId,hireDate,address,emergencyContactName,emergencyContactRelationship,emergencyContactPhone
+Juan,Dela Cruz,juan.delacruz@bisu.edu.ph,ChangeMe123,CCIS,Professor,PERMANENT,09123456789,BISU-2024-001,2024-01-15,123 Main St Tagbilaran City,Maria Dela Cruz,Spouse,09987654321
+Maria,Santos,maria.santos@bisu.edu.ph,ChangeMe123,CTAS,Associate Professor,PERMANENT,09123456788,BISU-2024-002,2024-02-01,456 Oak Ave Dauis Bohol,Pedro Santos,Spouse,09987654322
+Pedro,Reyes,pedro.reyes@bisu.edu.ph,ChangeMe123,CCJ,Instructor,TEMPORARY,09123456787,BISU-2024-003,2024-03-01,789 Pine Rd Panglao Bohol,Ana Reyes,Sister,09987654323
+Ana,Garcia,ana.garcia@bisu.edu.ph,ChangeMe123,CCIS,Assistant Professor,PERMANENT,09123456786,BISU-2024-004,2024-01-20,321 Elm St Tagbilaran City,Jose Garcia,Father,09987654324
+Jose,Martinez,jose.martinez@bisu.edu.ph,ChangeMe123,CTAS,Lecturer,CONTRACTUAL,09123456785,BISU-2024-005,2024-04-01,654 Maple Dr Cortes Bohol,Rosa Martinez,Mother,09987654325

@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id
     const body = await request.json()
-    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, paymentMethod, description } = body
+    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, description } = body
 
     if (!name || !days || !Array.isArray(days)) {
       return NextResponse.json(
@@ -79,9 +79,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     if (cutoffType) {
       updateData.cutoffType = cutoffType
-    }
-    if (paymentMethod) {
-      updateData.paymentMethod = paymentMethod
     }
     if (description) {
       updateData.description = description

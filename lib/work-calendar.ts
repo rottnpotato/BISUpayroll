@@ -82,4 +82,34 @@ export async function getWorkingDaysInYear(year: number): Promise<number> {
   return working
 }
 
+/**
+ * Get a set of date keys (YYYY-MM-DD format) for all valid working days in a month
+ * Excludes weekends, holidays, and overridden no-work days
+ * Includes overridden working weekend days
+ */
+export async function getWorkingDayKeysInMonth(year: number, month: number): Promise<Set<string>> {
+  const overrides = await loadOverrides(year, month)
+  const holidayDates = await loadHolidayDateSetForMonth(year, month)
+  const monthStart = startOfMonthUTC(year, month)
+  const monthEnd = endOfMonthUTC(year, month)
+  const workingDayKeys = new Set<string>()
+  
+  for (let d = new Date(monthStart); d <= monthEnd; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1))) {
+    const dayNum = d.getUTCDate()
+    const weekend = isWeekendUTC(d)
+    const isHoliday = holidayDates.has(toISODateUTC(d))
+    const isNoWork = overrides.noWorkDays.includes(dayNum)
+    const isWorkingWeekend = overrides.workingWeekendDays.includes(dayNum)
+    const isWorkingDay = (!weekend && !isHoliday && !isNoWork) || (weekend && isWorkingWeekend)
+    
+    if (isWorkingDay) {
+      // Format as YYYY-MM-DD
+      const dateKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      workingDayKeys.add(dateKey)
+    }
+  }
+  
+  return workingDayKeys
+}
+
 

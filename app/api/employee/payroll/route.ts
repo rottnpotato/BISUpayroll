@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
-import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
 import { fetchAllPunchAttendance } from '@/lib/attendance-punches'
 
 export async function GET(request: NextRequest) {
@@ -132,10 +131,10 @@ export async function GET(request: NextRequest) {
     const overtimeHours = Math.max(0, totalHoursWorked - expectedTotalHours)
     const regularHours = Math.min(totalHoursWorked, expectedTotalHours)
 
-    // Determine daily rate directly from payroll rules (base pay == daily rate)
-    const baseRule = payrollRules.find((rule: any) => rule.type === 'base' || rule.category === 'base_pay')
-    const dailyRate = baseRule ? Number(baseRule.amount) : (calculateBaseSalaryFromRules(payrollRules) / 22)
-    const monthlySalary = dailyRate * 22
+    // Get daily rate directly from payroll rules (type=daily_rate)
+    const dailyRateRule = payrollRules.find((rule: any) => rule.type === 'daily_rate')
+    const dailyRate = dailyRateRule ? Number(dailyRateRule.amount) : 0
+    const monthlySalary = dailyRate * 22 // Standard monthly rate for reference
     const hourlyRate = dailyRate / expectedDailyHours
 
     // Calculate overtime pay
@@ -153,8 +152,8 @@ export async function GET(request: NextRequest) {
       lateDeductions = lateCount * hourlyRate * lateDeductionAmount
     }
 
-    // Calculate base pay
-    const basePay = regularHours * hourlyRate
+    // Calculate base pay based on actual days worked
+    const basePay = workingDays * dailyRate
 
     // Calculate rule-based deductions and bonuses
     let governmentDeductions = 0

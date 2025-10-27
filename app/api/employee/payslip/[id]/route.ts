@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const payrollRecordId = await params.id
 
-    // Fetch payroll record and ensure ownership
+    // Fetch payroll record to get the period info
     const record = await prisma.payrollRecord.findUnique({
       where: { id: payrollRecordId },
       include: {
@@ -39,68 +39,114 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ success: false, message: 'Payroll record not found' }, { status: 404 })
     }
 
-    // Pull related rules to show detailed breakdown (optional)
-    const payrollRules = await prisma.payrollRule.findMany({
-      where: {
-        OR: [
-          { applyToAll: true },
-          { assignedUsers: { some: { userId: user.id } } }
-        ],
-        isActive: true
-      },
-      include: {
-        assignedUsers: true
-      }
+    // Get active payroll schedule to determine schedule type
+    const activeSchedule = await prisma.payrollSchedule.findFirst({
+      where: { isActive: true },
+      select: { name: true }
     })
 
-    // Basic calculations (record already holds gross, deductions, net). We reconstruct pieces as placeholders if available via metadata later.
-    const grossPay = num(record.grossPay)
-    const deductions = num(record.deductions)
-    const netPay = num(record.netPay)
+    // Trigger payroll generation to ensure latest calculations using the centralized endpoint
+    // This ensures consistency with ledger generation
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      const generateResponse = await fetch(`${baseUrl}/api/admin/payroll/generate`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cookie': `auth-token=${token}`
+        },
+        body: JSON.stringify({
+          payPeriodStart: record.payPeriodStart.toISOString(),
+          payPeriodEnd: record.payPeriodEnd.toISOString(),
+          userIds: [user.id],
+          role: 'EMPLOYEE'
+        })
+      })
 
-    // Attempt to categorize deductions via rule names (simple heuristic)
-    let governmentDeductions = 0
-    let loanDeductions = 0
-    let otherDeductions = 0
-
-    const appliedRules = payrollRules.map(r => {
-      let calculatedAmount = 0
-      const amt = num(r.amount)
-      if (r.isPercentage) {
-        calculatedAmount = grossPay * amt / 100
-      } else {
-        calculatedAmount = amt
+      if (!generateResponse.ok) {
+        console.warn('Payroll generation for payslip failed, will try to use existing data')
       }
+    } catch (error) {
+      console.warn('Error triggering payroll generation for payslip:', error)
+      // Continue anyway - we'll try to use existing PayrollResult data
+    }
 
-      if (r.type === 'deduction') {
-        if (/sss|philhealth|pagibig|tax/i.test(r.name)) {
-          governmentDeductions += calculatedAmount
-        } else if (/loan/i.test(r.name)) {
-          loanDeductions += calculatedAmount
-        } else {
-          otherDeductions += calculatedAmount
+    // Try to get the detailed PayrollResult for this period (contains actual calculated breakdown)
+    const payrollResult = await prisma.payrollResult.findUnique({
+      where: {
+        userId_payPeriodStart_payPeriodEnd: {
+          userId: user.id,
+          payPeriodStart: record.payPeriodStart,
+          payPeriodEnd: record.payPeriodEnd
         }
       }
-
-      return {
-        name: r.name,
-        type: r.type,
-        amount: amt,
-        calculatedAmount,
-        isPercentage: r.isPercentage
-      }
     })
 
-    // Derive earnings components heuristically (since not all stored). This can be enhanced if you persist detailed breakdown later.
-    const bonuses = appliedRules.filter(r => ['bonus','allowance','additional'].includes(r.type)).reduce((s, r) => s + r.calculatedAmount, 0)
-    const basePay = appliedRules.filter(r => r.type === 'base').reduce((s, r) => s + r.calculatedAmount, 0)
-    const basePayApprox = Math.max(0, grossPay - bonuses) // naive assumption
+    // Use PayrollResult if available (has detailed breakdown), otherwise fall back to PayrollRecord
+    let grossPay: number
+    let netPay: number
+    let basePay: number
+    let overtimePay: number
+    let holidayPay: number
+    let allowances: number
+    let bonuses: number
+    let governmentDeductions: number
+    let lateDeductions: number
+    let loanDeductions: number
+    let otherDeductions: number
+    let totalDeductions: number
+    let appliedRules: any[] = []
+
+    if (payrollResult) {
+      // Use actual calculated values from PayrollResult
+      grossPay = num(payrollResult.grossPay)
+      netPay = num(payrollResult.netPay)
+      basePay = num(payrollResult.regularPay)
+      overtimePay = num(payrollResult.overtimePay)
+      holidayPay = num(payrollResult.holidayPay)
+      allowances = num(payrollResult.allowances)
+      bonuses = num(payrollResult.bonuses)
+      
+      // Deductions breakdown from actual calculation
+      governmentDeductions = num(payrollResult.gsisContribution) + 
+                            num(payrollResult.philHealthContribution) + 
+                            num(payrollResult.pagibigContribution) +
+                            num(payrollResult.withholdingTax)
+      lateDeductions = num(payrollResult.lateDeductions) + num(payrollResult.undertimeDeductions)
+      loanDeductions = num(payrollResult.loanDeductions)
+      otherDeductions = num(payrollResult.otherDeductions)
+      totalDeductions = num(payrollResult.totalDeductions)
+
+      // Parse applied rules if available
+      try {
+        appliedRules = payrollResult.appliedRules ? JSON.parse(payrollResult.appliedRules) : []
+      } catch {
+        appliedRules = []
+      }
+    } else {
+      // Fallback to old PayrollRecord (less detailed) - should rarely happen now
+      grossPay = num(record.grossPay)
+      netPay = num(record.netPay)
+      basePay = 0
+      overtimePay = num(record.overtime)
+      holidayPay = 0
+      allowances = 0
+      bonuses = num(record.bonuses)
+      totalDeductions = num(record.deductions)
+      
+      // Can't break down deductions accurately without PayrollResult
+      governmentDeductions = 0
+      lateDeductions = 0
+      loanDeductions = 0
+      otherDeductions = totalDeductions
+    }
 
     const payslipData = {
       payrollRecordId: record.id,
       payPeriodStart: record.payPeriodStart,
       payPeriodEnd: record.payPeriodEnd,
       generatedAt: new Date(),
+      scheduleType: activeSchedule?.name || 'monthly', // Include schedule type
       employee: {
         name: `${record.user.firstName} ${record.user.lastName}`,
         employeeId: record.user.employeeId,
@@ -110,16 +156,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       },
       calculations: {
         monthlySalary: basePay * 22, // Approximation
-        basePay: basePay || basePayApprox,
-        overtimePay: 0, // Not persisted; requires attendance reconstruction
-        bonuses: bonuses,
+        basePay: basePay,
+        overtimePay: overtimePay,
+        bonuses: bonuses + holidayPay + allowances,
         grossPay: grossPay,
         netPay: netPay,
-        lateDeductions: 0, // Unknown without attendance details (could be improved)
-        governmentDeductions,
-        loanDeductions,
-        otherDeductions,
-        totalDeductions: deductions
+        lateDeductions: lateDeductions,
+        governmentDeductions: governmentDeductions,
+        loanDeductions: loanDeductions,
+        otherDeductions: otherDeductions,
+        totalDeductions: totalDeductions
       },
       appliedRules
     }

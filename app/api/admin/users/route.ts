@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
           lastName: true,
           role: true,
           status: true,
+          employeeType: true,
           employeeId: true,
           department: true,
           position: true,
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
       firstName,
       lastName,
       role,
+      employeeType,
       employeeId,
       department,
       position,
@@ -100,6 +102,15 @@ export async function POST(request: NextRequest) {
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
+    // Validate employeeType if provided
+    const validEmployeeTypes = ['TEACHING_PERSONNEL', 'NON_TEACHING_PERSONNEL', 'CASUAL', 'PLANTILLA']
+    if (employeeType && employeeType !== "" && !validEmployeeTypes.includes(employeeType)) {
+      return NextResponse.json(
+        { error: `Invalid employee type. Must be one of: ${validEmployeeTypes.join(', ')}` },
         { status: 400 }
       )
     }
@@ -141,6 +152,7 @@ export async function POST(request: NextRequest) {
         firstName,
         lastName,
         role: role || "EMPLOYEE",
+        employeeType: employeeType && employeeType !== "" ? employeeType : null,
         employeeId,
         department,
         position,
@@ -158,6 +170,7 @@ export async function POST(request: NextRequest) {
         lastName: true,
         role: true,
         status: true,
+        employeeType: true,
         employeeId: true,
         department: true,
         position: true,

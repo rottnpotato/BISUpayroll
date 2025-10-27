@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, paymentMethod, description } = body
+    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, description } = body
 
     if (!name || !Array.isArray(days)) {
       return NextResponse.json(
@@ -70,9 +70,6 @@ export async function POST(request: NextRequest) {
     }
     if (cutoffType) {
       scheduleData.cutoffType = cutoffType
-    }
-    if (paymentMethod) {
-      scheduleData.paymentMethod = paymentMethod
     }
     if (description) {
       scheduleData.description = description

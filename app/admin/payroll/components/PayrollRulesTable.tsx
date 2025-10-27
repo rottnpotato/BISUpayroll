@@ -43,7 +43,7 @@ export function PayrollRulesTable({
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case "base": return "bg-blue-100 text-blue-800"
+      case "daily_rate": return "bg-blue-100 text-blue-800"
       case "additional": return "bg-green-100 text-green-800"
       case "deduction": return "bg-red-100 text-red-800"
       case "tax": return "bg-orange-100 text-orange-800"
@@ -93,10 +93,10 @@ export function PayrollRulesTable({
                 All Calculations
               </TabsTrigger>
               <TabsTrigger 
-                value="base" 
+                value="daily_rate" 
                 className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep"
               >
-                Base Pay
+                Daily Rate
               </TabsTrigger>
               <TabsTrigger 
                 value="additional" 
@@ -143,7 +143,16 @@ export function PayrollRulesTable({
                 ) : (
                   filteredRules.map((rule) => (
                     <TableRow key={rule.id} className="hover:bg-gray-50 transition-colors">
-                      <TableCell className="font-medium">{rule.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{rule.name}</span>
+                          {rule.createdByRole === 'EMPLOYEE' && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              Employee Added
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge className={`${getTypeColor(rule.type)} capitalize`}>
                           {rule.type}

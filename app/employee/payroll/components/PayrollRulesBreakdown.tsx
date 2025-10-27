@@ -76,13 +76,13 @@ export function PayrollRulesBreakdown({
     }).format(amount)
   }
 
-  // Separate rules by type
-  const earningsRules = appliedRules.filter(rule => 
-    ['base', 'additional', 'bonus', 'allowance'].includes(rule.type)
-  )
-  
+  // Separate rules by type - earnings are everything that's NOT a deduction
   const deductionRules = appliedRules.filter(rule => 
     rule.type === 'deduction'
+  )
+  
+  const earningsRules = appliedRules.filter(rule => 
+    rule.type !== 'deduction'
   )
 
   // Calculate total earnings from rules

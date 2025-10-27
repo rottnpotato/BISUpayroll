@@ -19,19 +19,17 @@ import {
   TrendingDown,
   User,
   Building,
-  Briefcase,
-  Printer
+  Briefcase
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/use-auth"
-import { PayrollRulesBreakdown } from "./components"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { PayrollRulesBreakdown, ManualDeductionsCard, PastPayslipsCard } from "./components"
 
 interface PayrollRecord {
   id: string
   payPeriodStart: string
   payPeriodEnd: string
-  baseSalary: number
+  dailyRate: number
   overtime: number
   deductions: number
   bonuses: number
@@ -136,9 +134,7 @@ interface DetailedPayrollData {
 export default function PayslipDetailsPage() {
   const [payrollData, setPayrollData] = useState<DetailedPayrollData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
-  const [showPdf, setShowPdf] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isGeneratingCurrentPayslip, setIsGeneratingCurrentPayslip] = useState(false)
   const { user } = useAuth()
 
   const fetchPayrollData = async () => {
@@ -177,10 +173,75 @@ export default function PayslipDetailsPage() {
     })
   }
 
-  const getPayrollStatus = (record: PayrollRecord) => {
-    if (record.isPaid) return { label: 'Paid', color: 'bg-green-100 text-green-800', icon: CheckCircle }
-    if (record.isGenerated) return { label: 'Awaiting Payment', color: 'bg-orange-100 text-orange-800', icon: Clock }
-    return { label: 'Processing', color: 'bg-gray-100 text-gray-800', icon: AlertCircle }
+  const handleGenerateCurrentPayslip = async () => {
+    try {
+      setIsGeneratingCurrentPayslip(true)
+      toast.message('Generating current month payslip…')
+      
+      // Get current month date range
+      const now = new Date()
+      const payPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const payPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+      
+      // Use the new on-demand generation API
+      const res = await fetch('/api/employee/payslip/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payPeriodStart: payPeriodStart.toISOString(),
+          payPeriodEnd: payPeriodEnd.toISOString(),
+          format: 'pdf'
+        })
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to generate payslip')
+      }
+      
+      const blob = await res.blob()
+      const isPdf = blob.type === 'application/pdf'
+      
+      if (isPdf) {
+        // Open PDF in new window for printing
+        const objectUrl = URL.createObjectURL(blob)
+        const printWindow = window.open(objectUrl, '_blank')
+        if (printWindow) {
+          printWindow.onload = () => {
+            setTimeout(() => {
+              printWindow.print()
+            }, 250)
+          }
+          toast.success('Payslip opened for printing')
+        } else {
+          // Fallback to download if popup blocked
+          const a = document.createElement('a')
+          a.href = objectUrl
+          a.download = `Payslip_Current_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.pdf`
+          document.body.appendChild(a)
+          a.click()
+          a.remove()
+          toast.success('Payslip downloaded')
+        }
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000)
+      } else {
+        // Fallback to download DOCX
+        const objectUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = objectUrl
+        a.download = `Payslip_Current_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.docx`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        toast.success('Payslip downloaded')
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : 'Error generating current payslip')
+    } finally {
+      setIsGeneratingCurrentPayslip(false)
+    }
   }
 
   useEffect(() => {
@@ -228,62 +289,6 @@ export default function PayslipDetailsPage() {
     )
   }
 
-  const handleGeneratePayslip = async () => {
-    if (!payrollData || payrollData.payrollHistory.length === 0) {
-      toast.error('No payroll record available to generate payslip')
-      return
-    }
-    const latest = payrollData.payrollHistory[0]
-    try {
-      setIsGenerating(true)
-      toast.message('Generating payslip…')
-      // Request PDF (server will fallback to DOCX if conversion fails)
-      const res = await fetch(`/api/employee/payslip/${latest.id}?format=pdf`)
-      if (!res.ok) {
-        toast.error('Failed to generate payslip')
-        setIsGenerating(false)
-        return
-      }
-      const blob = await res.blob()
-      const isPdf = blob.type === 'application/pdf'
-      const ext = isPdf ? 'pdf' : 'docx'
-      const fileName = `Payslip_${latest.payPeriodStart}_${latest.payPeriodEnd}.${ext}`
-
-      const navAny = window.navigator as any
-      if (navAny && typeof navAny.msSaveOrOpenBlob === 'function') {
-        navAny.msSaveOrOpenBlob(blob, fileName)
-        toast.success('Payslip ready')
-        return
-      }
-
-      const objectUrl = URL.createObjectURL(blob)
-      if (isPdf) {
-        // Show inline dialog with iframe
-        setPdfUrl(prev => {
-          if (prev) URL.revokeObjectURL(prev)
-          return objectUrl
-        })
-        setShowPdf(true)
-        toast.success('Payslip ready')
-      } else {
-        // Fallback to download if PDF not produced
-        const a = document.createElement('a')
-        a.href = objectUrl
-        a.download = fileName
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        toast.success('Payslip (DOCX) download started')
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
-      }
-    } catch (err) {
-      console.error(err)
-      toast.error('Error generating payslip')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
   return (
     <motion.div 
       className="space-y-6"
@@ -291,60 +296,10 @@ export default function PayslipDetailsPage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
-          <p className="text-muted-foreground">Your current payroll, rules, and payment history</p>
-        </div>
-        <Button 
-          onClick={handleGeneratePayslip} 
-          disabled={isGenerating || !payrollData || payrollData.payrollHistory.length === 0}
-          className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Printer className="h-4 w-4 mr-2" /> {isGenerating ? 'Generating…' : 'Generate Payslip'}
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
+        <p className="text-muted-foreground">View your current payroll calculations and generate payslips for any period</p>
       </div>
-
-      <Dialog open={showPdf} onOpenChange={(o)=>{ if(!o){ setShowPdf(false); if(pdfUrl){ URL.revokeObjectURL(pdfUrl); setPdfUrl(null);} } }}>
-        <DialogContent className="max-w-5xl w-full h-[90vh] p-4 flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between w-full">
-              <span>Payslip PDF Preview</span>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={()=>{
-                    const iframe = document.getElementById('payslip-pdf-frame') as HTMLIFrameElement | null
-                    try { iframe?.contentWindow?.focus(); iframe?.contentWindow?.print(); } catch {}
-                  }}
-                >Print</Button>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 border rounded bg-muted overflow-hidden">
-            {pdfUrl ? (
-              <iframe
-                id="payslip-pdf-frame"
-                src={pdfUrl}
-                className="w-full h-full"
-                onLoad={(e)=>{
-                  // Auto attempt print once after load
-                  setTimeout(()=>{
-                    try { (e.target as HTMLIFrameElement).contentWindow?.focus(); (e.target as HTMLIFrameElement).contentWindow?.print(); } catch {}
-                  }, 400);
-                }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">Loading PDF…</div>
-            )}
-          </div>
-          <div className="mt-3 text-xs text-muted-foreground">
-            If the print dialog does not appear automatically, click the Print button.
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Employee Information Card */}
       <Card>
@@ -404,7 +359,7 @@ export default function PayslipDetailsPage() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="current" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="current" className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
             Current Payroll
@@ -413,9 +368,13 @@ export default function PayslipDetailsPage() {
             <FileText className="h-4 w-4" />
             Payroll Calculations
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Payment History
+          <TabsTrigger value="deductions" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            My Deductions
+          </TabsTrigger>
+          <TabsTrigger value="payslips" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Past Payslips
           </TabsTrigger>
         </TabsList>
 
@@ -559,6 +518,42 @@ export default function PayslipDetailsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Generate Current Payslip Button */}
+          <Card className="border-bisu-purple-light">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-bisu-purple-deep mb-2">Download Current Payslip</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Generate and download your current month's payslip based on real-time attendance data.
+                    No need to wait for payroll processing!
+                  </p>
+                </div>
+                <Button
+                  onClick={handleGenerateCurrentPayslip}
+                  disabled={isGeneratingCurrentPayslip}
+                  className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
+                  size="lg"
+                >
+                  {isGeneratingCurrentPayslip ? (
+                    <>
+                      <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin mr-2" />
+                      Generating Payslip...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generate Current Payslip
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center max-w-md">
+                  💡 <strong>Tip:</strong> You can also generate payslips for any past period using the "Past Payslips" tab
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="rules">
@@ -569,87 +564,12 @@ export default function PayslipDetailsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-6">
-          {payrollData.payrollHistory.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <FileText className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Payment History</h3>
-                <p className="text-gray-500 text-center">
-                  You don't have any payment history yet. Your payroll records will appear here once payments are processed.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {payrollData.payrollHistory.map((record, index) => {
-                const status = getPayrollStatus(record)
-                const StatusIcon = status.icon
-                
-                return (
-                  <motion.div
-                    key={record.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Card className="hover:shadow-md transition-shadow">
-                      <CardHeader>
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                          <div>
-                            <CardTitle className="flex items-center gap-2 text-bisu-purple-deep">
-                              <Calendar className="h-5 w-5" />
-                              {formatDate(record.payPeriodStart)} - {formatDate(record.payPeriodEnd)}
-                            </CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Generated {record.generatedAt ? `on ${formatDate(record.generatedAt)}` : '— Pending'}
-                            </p>
-                          </div>
-                          <Badge className={`${status.color} rounded-full px-3 py-1 text-xs` }>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {status.label}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid md:grid-cols-3 gap-4">
-                          <div className="p-4 rounded-lg border bg-green-50/50">
-                            <p className="text-xs text-muted-foreground">Gross Pay</p>
-                            <p className="text-xl font-semibold text-green-700">{formatCurrency(record.grossPay)}</p>
-                          </div>
-                          <div className="p-4 rounded-lg border bg-red-50/50">
-                            <p className="text-xs text-muted-foreground">Deductions</p>
-                            <p className="text-xl font-semibold text-red-700">{formatCurrency(record.deductions)}</p>
-                          </div>
-                          <div className="p-4 rounded-lg border bg-blue-50/50">
-                            <p className="text-xs text-muted-foreground">Net Pay</p>
-                            <p className="text-xl font-semibold text-bisu-purple-deep">{formatCurrency(record.netPay)}</p>
-                          </div>
-                        </div>
-                        <div className="mt-4 pt-4 border-t">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <span className="text-sm text-muted-foreground">Payment Status</span>
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <div className="flex items-center gap-2">
-                                <StatusIcon className="h-4 w-4" />
-                                <span className="font-medium">{status.label}</span>
-                                {record.isPaid && record.paidAt && (
-                                  <span className="text-sm text-muted-foreground">
-                                    on {formatDate(record.paidAt)}
-                                  </span>
-                                )}
-                              </div>
-                              {/* Per-record download removed; unified into main Generate Payslip button */}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </div>
-          )}
+        <TabsContent value="deductions">
+          <ManualDeductionsCard onDeductionChange={fetchPayrollData} />
+        </TabsContent>
+
+        <TabsContent value="payslips" className="space-y-6">
+          <PastPayslipsCard payrollHistory={payrollData.payrollHistory} />
         </TabsContent>
       </Tabs>
     </motion.div>

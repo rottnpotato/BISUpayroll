@@ -7,6 +7,8 @@ export interface PayrollRule {
   isActive: boolean
   description: string | null
   applyToAll: boolean
+  createdBy?: string | null
+  createdByRole?: string | null
   assignedUsers?: PayrollRuleAssignment[]
   category?: string
   computationBasis?: string
@@ -53,7 +55,6 @@ export interface PayrollSchedule {
   days: number[]
   isActive: boolean
   cutoffDays?: number[]
-  paymentMethod?: string
   payrollReleaseDay?: number
   processHour?: number
   processMinute?: number
@@ -220,7 +221,6 @@ export interface ScheduleFormData {
   processingDays: number[]
   cutoffType: 'bi-monthly' | 'monthly' | 'weekly'
   isActive: boolean
-  paymentMethod: string
   description: string
 }
 
@@ -251,7 +251,7 @@ export interface PayrollRole {
   department: string | null
   position: string | null
   isActive: boolean
-  baseSalary: number | null
+  dailyRate: number | null
   overtimeEligible: boolean
   holidayPayEligible: boolean
   gsisEligible: boolean
@@ -287,7 +287,7 @@ export interface PayrollRoleFormData {
   description: string
   department: string
   position: string
-  baseSalary: string
+  dailyRate: string
   overtimeEligible: boolean
   holidayPayEligible: boolean
   gsisEligible: boolean
@@ -311,7 +311,7 @@ export interface PayrollData {
   }
   
   // Legacy fields for backward compatibility
-  baseSalary?: number
+  dailyRate?: number
   overtime?: number
   deductions?: number
   bonuses?: number
@@ -377,7 +377,6 @@ export interface PayrollData {
   isApproved?: boolean
   
   // Additional calculation fields
-  dailyRate?: number
   hourlyRate?: number
   totalEarnings?: number
   totalDeductions?: number

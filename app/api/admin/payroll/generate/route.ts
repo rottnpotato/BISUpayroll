@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
-import { 
-  calculateCompletePayroll, 
-  PayrollCalculationData,
-  PayrollCalculationResult,
-  calculateBaseSalaryFromRules
-} from "@/lib/payroll-calculations"
-import { PayrollConfigurationService } from "@/app/admin/payroll/configuration/service"
-import type { ContributionsConfig, TaxBracketsConfig } from "@/app/admin/payroll/types"
 import { encryptPayrollFile } from "@/lib/crypto-utils"
 import { cookies } from "next/headers"
 import { verifyToken } from "@/lib/auth"
@@ -36,41 +28,6 @@ export async function POST(request: NextRequest) {
 
     const startDate = new Date(payPeriodStart)
     const endDate = new Date(payPeriodEnd)
-
-    // Get system configurations for payroll calculations
-    const systemConfigs = await prisma.systemSettings.findMany({
-      where: {
-        key: {
-          in: [
-            'working_hours_dailyHours',
-            'working_hours_weeklyHours',
-            'working_hours_lateGraceMinutes',
-            'working_hours_lateDeductionBasis',
-            'working_hours_lateDeductionAmount',
-            'rates_overtimeRate1',
-            'rates_overtimeRate2',
-            'rates_regularHolidayRate',
-            'rates_specialHolidayRate',
-            'rates_currency'
-          ]
-        }
-      }
-    })
-
-    const configs = systemConfigs.reduce((acc: { [x: string]: any }, config: { key: string | number; value: any }) => {
-      acc[config.key] = config.value
-      return acc
-    }, {} as Record<string, string>)
-
-    // Get holidays within the pay period
-    const holidays = await prisma.holiday.findMany({
-      where: {
-        date: {
-          gte: startDate,
-          lte: endDate
-        }
-      }
-    })
 
     // Get users to generate payroll for
     const whereClause: any = {}
@@ -104,28 +61,15 @@ export async function POST(request: NextRequest) {
 
     const users = await prisma.user.findMany({
       where: whereClause,
-      include: {
-        attendanceRecords: {
-          where: {
-            date: {
-              gte: startDate,
-              lte: endDate
-            }
-          }
-        },
-        payrollRules: {
-          include: {
-            payrollRule: true
-          }
-        }
-      }
-    })
-
-    // Also get global payroll rules that apply to all users
-    const globalRules = await prisma.payrollRule.findMany({
-      where: {
-        applyToAll: true,
-        isActive: true
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        employeeId: true,
+        department: true,
+        position: true,
+        status: true,
+        role: true
       }
     })
 
@@ -147,171 +91,116 @@ export async function POST(request: NextRequest) {
     const payrollResults = []
     const errors = []
 
-    // Parse configuration values with defaults
-    const [contributionConfig, taxConfig] = await Promise.all([
-      PayrollConfigurationService.loadType('contributions'),
-      PayrollConfigurationService.loadType('taxBrackets')
-    ]) as [ContributionsConfig, TaxBracketsConfig]
-
-    const configurations = {
-      dailyHours: parseFloat(configs['working_hours_dailyHours'] || '8'),
-      overtimeRate1: parseFloat(configs['rates_overtimeRate1'] || '1.25'),
-      overtimeRate2: parseFloat(configs['rates_overtimeRate2'] || '1.5'),
-      regularHolidayRate: parseFloat(configs['rates_regularHolidayRate'] || '2.0'),
-      specialHolidayRate: parseFloat(configs['rates_specialHolidayRate'] || '1.3'),
-      lateDeductionAmount: parseFloat(configs['working_hours_lateDeductionAmount'] || '0'),
-      lateDeductionBasis: configs['working_hours_lateDeductionBasis'] || 'fixed',
-      contributions: contributionConfig,
-      tax: taxConfig
-    }
-
+    // Use stored procedure to calculate payroll for each user
     for (const user of users) {
       try {
-        // Determine base salary from applicable rules
-        const baseSalary = calculateBaseSalaryFromRules([
-          ...user.payrollRules.map(ur => ur.payrollRule),
-          ...globalRules
-        ])
+        // Call stored procedure for payroll calculation
+        const calculation = await prisma.$queryRaw<any[]>`
+          SELECT * FROM calculate_payroll_for_period(
+            ${user.id}::text,
+            ${startDate}::date,
+            ${endDate}::date
+          )
+        `
+
+        if (!calculation || calculation.length === 0) {
+          throw new Error('No payroll calculation returned from stored procedure')
+        }
+
+        const calc = calculation[0]
         
-        // Calculate attendance data from records
-        let totalHoursWorked = 0
-        let overtimeHours = 0
-        let lateHours = 0
-        let undertimeHours = 0
-        let holidayHours = 0
-  // Night shift removed
-        let daysWorked = 0
-        // console.log("user.attendanceRecords", user.attendanceRecords)
-        user.attendanceRecords.forEach((record: any) => {
-          console.log("record", record)
-          if (record.timeIn && record.timeOut) {
-            daysWorked++
-            const hoursWorked = Number(record.hoursWorked || 0)
-            totalHoursWorked += hoursWorked
-            
-            // Check if overtime (more than daily hours)
-            if (hoursWorked > configurations.dailyHours) {
-              overtimeHours += hoursWorked - configurations.dailyHours
-            }
-            
-            // Check if undertime (less than daily hours and not absent)
-            if (hoursWorked < configurations.dailyHours && !record.isAbsent) {
-              undertimeHours += configurations.dailyHours - hoursWorked
-            }
-            
-            if (record.isLate) {
-              lateHours += 1 // Simplified: count late instances
-            }
-            
-            // Check for holiday work
-            const recordDate = new Date(record.date)
-            const holiday = holidays.find((h: any) => {
-              const holidayDate = new Date(h.date)
-              return holidayDate.toDateString() === recordDate.toDateString()
-            })
-            
-            if (holiday) {
-              holidayHours += hoursWorked
-            }
-            
-            // Night shift removed
-          }
-        })
-
-        // Combine user-specific and global rules
-  const userSpecificRules = user.payrollRules.map((ur: any) => ur.payrollRule).filter((rule: any) => rule.isActive)
-  const allApplicableRules = [...userSpecificRules, ...globalRules]
-
-        // Prepare calculation data
-    const calculationData: PayrollCalculationData = {
-          baseSalary,
-          daysWorked,
-          hoursWorked: totalHoursWorked,
-          overtimeHours,
-          lateHours,
-          undertimeHours,
-          holidayHours,
-          // Night shift removed from calculation input
-          holidayType: 'REGULAR', // Default, could be enhanced
-          appliedRules: allApplicableRules,
-      configurations
-        }
-
-        // Calculate complete payroll using our new utility
-        const result: PayrollCalculationResult = await calculateCompletePayroll(calculationData)
-
-        // Upsert PayrollResult record (idempotent for repeated generations on the same period)
-        const updatableFields = {
-          // Basic salary information
-          baseSalary: baseSalary,
-          dailyRate: result.dailyRate,
-          hourlyRate: result.hourlyRate,
-
-          // Attendance data
-          daysWorked,
-          hoursWorked: totalHoursWorked,
-          overtimeHours,
-          undertimeHours,
-          lateHours,
-          holidayHours,
-          nightShiftHours: 0,
-
-          // Earnings breakdown
-          regularPay: result.regularPay,
-          overtimePay: result.overtimePay,
-          holidayPay: result.holidayPay,
-          nightDifferential: 0,
-          allowances: result.allowances,
-          bonuses: result.bonuses,
-          thirteenthMonthPay: result.thirteenthMonthPay,
-          serviceIncentiveLeave: result.serviceIncentiveLeave,
-          otherEarnings: result.otherEarnings,
-
-          // Gross pay
-          grossPay: result.grossPay,
-
-          // Mandatory contributions
-          gsisContribution: result.gsisContribution,
-          philHealthContribution: result.philHealthContribution,
-          pagibigContribution: result.pagibigContribution,
-
-          // Tax calculations
-          taxableIncome: result.taxableIncome,
-          withholdingTax: result.withholdingTax,
-
-          // Other deductions
-          lateDeductions: result.lateDeductions,
-          undertimeDeductions: result.undertimeDeductions,
-          loanDeductions: result.loanDeductions,
-          otherDeductions: result.otherDeductions,
-
-          // Totals
-          totalEarnings: result.totalEarnings,
-          totalDeductions: result.totalDeductions,
-          netPay: result.netPay,
-
-          // Applied rules as JSON
-          appliedRules: JSON.stringify(result.appliedRulesBreakdown)
-        }
-
+        // Ensure required fields have valid values
+        const dailyRate = calc.daily_rate || 0
+        const hourlyRate = calc.hourly_rate || (dailyRate / 8) || 0
+        const regularPay = calc.regular_pay || 0
+        const totalEarnings = calc.total_earnings || 0
+        const grossPay = calc.gross_pay || 0
+        const totalDeductions = calc.total_deductions || 0
+        const netPay = calc.net_pay || 0
+        
+        // Upsert PayrollResult record
         const payrollResult = await prisma.payrollResult.upsert({
           where: {
             userId_payPeriodStart_payPeriodEnd: {
-              userId: user.id,
+              userId: calc.user_id,
               payPeriodStart: startDate,
               payPeriodEnd: endDate
             }
           },
           create: {
-            userId: user.id,
+            user: {
+              connect: { id: calc.user_id }
+            },
             payPeriodStart: startDate,
             payPeriodEnd: endDate,
-            ...updatableFields,
-            status: PayrollResultStatus.GENERATED
+            dailyRate: dailyRate,
+            hourlyRate: hourlyRate,
+            daysWorked: calc.days_worked || 0,
+            hoursWorked: calc.hours_worked || 0,
+            overtimeHours: calc.overtime_hours || 0,
+            undertimeHours: calc.undertime_hours || 0,
+            lateHours: calc.late_hours || 0,
+            holidayHours: calc.holiday_hours || 0,
+            nightShiftHours: 0,
+            regularPay: regularPay,
+            overtimePay: calc.overtime_pay || 0,
+            holidayPay: calc.holiday_pay || 0,
+            nightDifferential: 0,
+            allowances: calc.allowances || 0,
+            bonuses: calc.bonuses || 0,
+            thirteenthMonthPay: calc.thirteenth_month_pay || 0,
+            serviceIncentiveLeave: calc.service_incentive_leave || 0,
+            otherEarnings: calc.other_earnings || 0,
+            totalEarnings: totalEarnings,
+            grossPay: grossPay,
+            gsisContribution: calc.gsis_contribution || 0,
+            philHealthContribution: calc.philhealth_contribution || 0,
+            pagibigContribution: calc.pagibig_contribution || 0,
+            taxableIncome: calc.taxable_income || 0,
+            withholdingTax: calc.withholding_tax || 0,
+            lateDeductions: calc.late_deductions || 0,
+            undertimeDeductions: calc.undertime_deductions || 0,
+            loanDeductions: calc.loan_deductions || 0,
+            otherDeductions: calc.other_deductions || 0,
+            totalDeductions: totalDeductions,
+            netPay: netPay,
+            status: PayrollResultStatus.GENERATED,
+            appliedRules: '[]'
           },
           update: {
-            // Avoid changing keys; only update the computed fields
-            ...updatableFields
+            user: {
+              connect: { id: calc.user_id }
+            },
+            dailyRate: dailyRate,
+            hourlyRate: hourlyRate,
+            daysWorked: calc.days_worked || 0,
+            hoursWorked: calc.hours_worked || 0,
+            overtimeHours: calc.overtime_hours || 0,
+            undertimeHours: calc.undertime_hours || 0,
+            lateHours: calc.late_hours || 0,
+            holidayHours: calc.holiday_hours || 0,
+            regularPay: regularPay,
+            overtimePay: calc.overtime_pay || 0,
+            holidayPay: calc.holiday_pay || 0,
+            allowances: calc.allowances || 0,
+            bonuses: calc.bonuses || 0,
+            thirteenthMonthPay: calc.thirteenth_month_pay || 0,
+            serviceIncentiveLeave: calc.service_incentive_leave || 0,
+            otherEarnings: calc.other_earnings || 0,
+            totalEarnings: totalEarnings,
+            grossPay: grossPay,
+            gsisContribution: calc.gsis_contribution || 0,
+            philHealthContribution: calc.philhealth_contribution || 0,
+            pagibigContribution: calc.pagibig_contribution || 0,
+            taxableIncome: calc.taxable_income || 0,
+            withholdingTax: calc.withholding_tax || 0,
+            lateDeductions: calc.late_deductions || 0,
+            undertimeDeductions: calc.undertime_deductions || 0,
+            loanDeductions: calc.loan_deductions || 0,
+            otherDeductions: calc.other_deductions || 0,
+            totalDeductions: totalDeductions,
+            netPay: netPay,
+            updatedAt: new Date()
           },
           include: {
             user: {
@@ -321,7 +210,8 @@ export async function POST(request: NextRequest) {
                 lastName: true,
                 employeeId: true,
                 department: true,
-                position: true
+                position: true,
+                status: true
               }
             }
           }
@@ -340,12 +230,11 @@ export async function POST(request: NextRequest) {
           await prisma.payrollRecord.update({
             where: { id: existingPayrollRecord.id },
             data: {
-              baseSalary: result.regularPay,
-              overtime: result.overtimePay,
-              deductions: result.totalDeductions,
-              bonuses: result.bonuses + result.holidayPay,
-              grossPay: result.grossPay,
-              netPay: result.netPay,
+              overtime: calc.overtime_pay || 0,
+              deductions: totalDeductions,
+              bonuses: (calc.bonuses || 0) + (calc.holiday_pay || 0),
+              grossPay: grossPay,
+              netPay: netPay,
               isGenerated: true,
               generatedAt: new Date()
             }
@@ -356,12 +245,11 @@ export async function POST(request: NextRequest) {
               userId: user.id,
               payPeriodStart: startDate,
               payPeriodEnd: endDate,
-              baseSalary: result.regularPay,
-              overtime: result.overtimePay,
-              deductions: result.totalDeductions,
-              bonuses: result.bonuses + result.holidayPay,
-              grossPay: result.grossPay,
-              netPay: result.netPay,
+              overtime: calc.overtime_pay || 0,
+              deductions: totalDeductions,
+              bonuses: (calc.bonuses || 0) + (calc.holiday_pay || 0),
+              grossPay: grossPay,
+              netPay: netPay,
               isGenerated: true,
               generatedAt: new Date(),
               isPaid: false
@@ -397,7 +285,11 @@ export async function POST(request: NextRequest) {
             name: `${result.user?.firstName || ''} ${result.user?.lastName || ''}`.trim(),
             department: result.user?.department || 'Unassigned',
             position: result.user?.position || 'N/A',
-            baseSalary: Number(result.baseSalary),
+            dailyRate: Number(result.dailyRate),
+            hourlyRate: Number(result.hourlyRate),
+            daysPresent: Number(result.daysWorked),
+            hoursWorked: Number(result.hoursWorked),
+            totalEarnings: Number(result.totalEarnings),
             grossPay: Number(result.grossPay),
             netPay: Number(result.netPay),
             totalDeductions: Number(result.totalDeductions),
@@ -406,6 +298,9 @@ export async function POST(request: NextRequest) {
             holidayPay: Number(result.holidayPay),
             allowances: Number(result.allowances),
             bonuses: Number(result.bonuses),
+            thirteenthMonthPay: Number(result.thirteenthMonthPay),
+            serviceIncentiveLeave: Number(result.serviceIncentiveLeave),
+            otherEarnings: Number(result.otherEarnings),
             deductions: {
               gsisContribution: Number(result.gsisContribution),
               philHealthContribution: Number(result.philHealthContribution),

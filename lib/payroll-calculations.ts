@@ -1,3 +1,25 @@
+// =====================================================
+// DEPRECATED: This file contains legacy payroll calculation functions
+// =====================================================
+// These functions have been replaced by PostgreSQL stored procedures
+// that handle all payroll calculations at the database level.
+//
+// New system: See prisma/migrations/20251026000002_update_payroll_stored_procedures.sql
+// Documentation: See PAYROLL_STORED_PROCEDURES.md
+//
+// Key changes:
+// 1. All calculations now done via calculate_payroll_for_period() stored procedure
+// 2. baseSalary concept replaced with dailyRate from payroll_rules
+// 3. Payroll results stored in payroll_results table with automatic triggers
+// 4. Real-time updates when attendance or rules change
+//
+// Migration guide:
+// - Old: calculateBaseSalaryFromRules(rules) / 22 for daily rate
+// - New: Get daily_rate directly from payroll_rules where type='daily_rate'
+// - Old: Call calculateCompletePayroll() in application
+// - New: Use stored procedure via /api/admin/payroll/recalculate
+// =====================================================
+
 import { ContributionsConfig, TaxBracket, TaxBracketsConfig } from "@/app/admin/payroll/types"
 import { PayrollConfigurationService } from "@/app/admin/payroll/configuration/service"
 import { getWorkingDaysInMonth, getWorkingDaysInYear } from "./work-calendar"
@@ -312,7 +334,7 @@ export async function calculateCompletePayroll(data: PayrollCalculationData): Pr
   const taxConfig = configurations.tax || await getTaxConfig()
 
   const dailyRate = calculateDailyRate(baseSalary)
-  const hourlyRate = calculateHourlyRate(baseSalary, configurations.dailyHours)
+  const hourlyRate = calculateHourlyRate(dailyRate, configurations.dailyHours)
   
   // Calculate earnings
   const regularPay = (hoursWorked - overtimeHours - holidayHours) * hourlyRate

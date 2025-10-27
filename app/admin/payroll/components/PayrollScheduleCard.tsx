@@ -427,16 +427,6 @@ export function PayrollScheduleCard({
                         <p className="text-gray-600 ml-4">{formatCutoffType(schedule.cutoffType)}</p>
                       </div>
 
-                      {schedule.paymentMethod && (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-bisu-purple-medium" />
-                            <span className="font-medium text-gray-700">Payment Method</span>
-                          </div>
-                          <p className="text-gray-600 ml-4 capitalize">{schedule.paymentMethod.replace('_', ' ')}</p>
-                        </div>
-                      )}
-
                       {schedule.cutoffType === 'bi-monthly' && schedule.processingDays && schedule.processingDays.length > 0 ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">

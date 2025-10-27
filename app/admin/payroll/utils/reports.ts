@@ -3,7 +3,7 @@ import { format } from "date-fns"
 import { DateRange } from "react-day-picker"
  
 // Build report title mirroring the preview dialog logic
-const getReportTitle = (selectedTemplate: ReportTemplate | null, payrollData: PayrollData[]) => {
+const getReportTitle = (selectedTemplate: ReportTemplate | null, payrollData: PayrollData[], employmentStatus?: string) => {
   switch (selectedTemplate?.type) {
     case 'department':
       return `DEPARTMENT PAYROLL REPORT - ${payrollData[0]?.user?.department || 'UNKNOWN'} DEPARTMENT`
@@ -12,26 +12,32 @@ const getReportTitle = (selectedTemplate: ReportTemplate | null, payrollData: Pa
     case 'custom':
       return 'CUSTOM PERIOD PAYROLL REPORT'
     default:
-      return 'PAYROLL - CONTRACT OF SERVICE INSTRUCTORS - of BISU Balilihan Campus'
+      // Dynamic header based on employment status
+      const statusLabel = employmentStatus && employmentStatus !== 'all' 
+        ? employmentStatus.toUpperCase()
+        : 'ALL STATUS'
+      return `PAYROLL - ${statusLabel} EMPLOYEES - OF BISU BALILIHAN CAMPUS`
   }
 }
 
 // Rows for the standard payroll table (parity with preview calculations/columns)
 const buildStandardRows = (sortedData: PayrollData[]) => {
   return sortedData.map((employee, index) => {
-    const salary = parseFloat(employee.baseSalary?.toString() || '0')
-
-    const regularPay = parseFloat(employee.earningsBreakdown?.regularPay?.toString() || employee.baseSalary?.toString() || '0')
+    const salary = parseFloat(employee.dailyRate?.toString() || '0')
+    
+    // Use the detailed data from PayrollResult if available - EXACTLY as in PayrollPreviewDialog
+    const regularPay = parseFloat(employee.earningsBreakdown?.regularPay?.toString() || employee.dailyRate?.toString() || '0')
     const overtimePay = parseFloat(employee.earningsBreakdown?.overtimePay?.toString() || employee.overtime?.toString() || '0')
     const holidayPay = parseFloat(employee.earningsBreakdown?.holidayPay?.toString() || '0')
     const allowances = parseFloat(employee.earningsBreakdown?.allowances?.toString() || '0')
     const bonuses = parseFloat(employee.earningsBreakdown?.bonuses?.toString() || employee.bonuses?.toString() || '0')
     const thirteenthMonthPay = parseFloat(employee.earningsBreakdown?.thirteenthMonthPay?.toString() || '0')
     const serviceIncentiveLeave = parseFloat(employee.earningsBreakdown?.serviceIncentiveLeave?.toString() || '0')
-
+    
     const grossPay = parseFloat(employee.grossPay?.toString() || '0')
     const netPay = parseFloat(employee.netPay?.toString() || '0')
-
+    
+    // Use detailed deduction breakdown - EXACTLY as in PayrollPreviewDialog
     const gsisContribution = parseFloat(employee.deductionBreakdown?.gsisContribution?.toString() || '0')
     const philHealthContribution = parseFloat(employee.deductionBreakdown?.philHealthContribution?.toString() || '0')
     const pagibigContribution = parseFloat(employee.deductionBreakdown?.pagibigContribution?.toString() || '0')
@@ -39,15 +45,21 @@ const buildStandardRows = (sortedData: PayrollData[]) => {
     const lateDeductions = parseFloat(employee.deductionBreakdown?.lateDeductions?.toString() || '0')
     const loanDeductions = parseFloat(employee.deductionBreakdown?.loanDeductions?.toString() || '0')
     const otherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
-
+    
+    // Attendance data - EXACTLY as in PayrollPreviewDialog
     const hoursWorked = parseFloat(employee.attendanceData?.hoursWorked?.toString() || '0')
     const daysWorked = parseFloat(employee.attendanceData?.daysPresent?.toString() || '0')
-
+    const lateHours = parseFloat(employee.attendanceData?.lateHours?.toString() || '0')
+    
+    // Calculate rates for display - EXACTLY as in PayrollPreviewDialog
     const dailyRate = employee.dailyRate ? parseFloat(employee.dailyRate.toString()) : (salary > 0 ? salary / 22 : 0)
     const hourlyRate = employee.hourlyRate ? parseFloat(employee.hourlyRate.toString()) : (salary > 0 ? salary / (22 * 8) : 0)
-
-    const totalEarnings = regularPay + overtimePay + holidayPay + allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave
-    const totalDeductions = gsisContribution + philHealthContribution + pagibigContribution + withholdingTax + lateDeductions + loanDeductions + otherDeductions
+    
+    // Total earnings and deductions - EXACTLY as in PayrollPreviewDialog
+    const totalEarnings = regularPay + overtimePay + holidayPay + 
+                         allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave
+    const totalDeductions = gsisContribution + philHealthContribution + pagibigContribution + 
+                           withholdingTax + lateDeductions + loanDeductions + otherDeductions
 
     return `
       <tr style="border-bottom: 1px solid #ccc;">
@@ -107,7 +119,7 @@ const buildTaxRows = (sortedData: PayrollData[]) => {
 // Rows for department payroll
 const buildDepartmentRows = (sortedData: PayrollData[]) => {
   return sortedData.map((employee, index) => {
-    const salary = parseFloat(employee.baseSalary?.toString() || '0')
+    const salary = parseFloat(employee.dailyRate?.toString() || '0')
     const grossPay = parseFloat(employee.grossPay?.toString() || '0')
     const deductions = parseFloat(employee.deductions?.toString() || '0')
     const netPay = parseFloat(employee.netPay?.toString() || '0')
@@ -131,12 +143,12 @@ const buildDepartmentRows = (sortedData: PayrollData[]) => {
   }).join('')
 }
 
-export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange, selectedTemplate: ReportTemplate | null) => {
+export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange, selectedTemplate: ReportTemplate | null, employmentStatus?: string) => {
   const sortedData = data.sort((a, b) => 
     `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`)
   )
 
-  const reportTitle = getReportTitle(selectedTemplate, data)
+  const reportTitle = getReportTitle(selectedTemplate, data, employmentStatus)
 
   const isTax = selectedTemplate?.type === 'tax'
   const isDepartment = selectedTemplate?.type === 'department'
@@ -449,10 +461,12 @@ export const parseSavedLedgerJsonToPayrollData = (
         department: emp.department || parsed.department || null,
         position: emp.position || null
       },
-      baseSalary: Number(emp.baseSalary || 0),
+      dailyRate: Number(emp.dailyRate || 0),
+      hourlyRate: Number(emp.hourlyRate || 0),
       grossPay: Number(emp.grossPay || 0),
       netPay: Number(emp.netPay || 0),
       totalDeductions: Number(emp.totalDeductions || 0),
+      totalEarnings: Number(emp.totalEarnings || 0),
       earningsBreakdown: {
         regularPay: Number(emp.regularPay || 0),
         overtimePay: Number(emp.overtimePay || 0),
@@ -475,7 +489,7 @@ export const parseSavedLedgerJsonToPayrollData = (
         sssContribution: deductions.sssContribution ?? 0
       },
       attendanceData: {
-        daysPresent: Number(emp.daysPresent || 0),
+        daysPresent: Number(emp.daysPresent || emp.daysWorked || 0),
         hoursWorked: Number(emp.hoursWorked || 0),
         lateHours: Number(emp.lateHours || 0)
       },

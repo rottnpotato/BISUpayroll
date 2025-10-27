@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
-import { calculateBaseSalaryFromRules } from '@/lib/payroll-calculations'
 import { AttendancePunchType } from '@prisma/client'
 
 const ADMIN_APPROVED_STATUS = 'APPROVED'
@@ -792,8 +791,9 @@ export async function POST(request: NextRequest) {
           }
         })
         
-        const monthlySalary = calculateBaseSalaryFromRules(payrollRules)
-        const dailyRate = monthlySalary / 22 // Standard working days per month
+        // Get daily rate from payroll rules (type=daily_rate)
+        const dailyRateRule = payrollRules.find((rule: any) => rule.type === 'daily_rate')
+        const dailyRate = dailyRateRule ? Number(dailyRateRule.amount) : 0
         const hourlyRate = dailyRate / dailyHours
         
         // Calculate base pay for regular hours

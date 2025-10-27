@@ -3,7 +3,7 @@ import { PayrollRole, UserPayrollRole, PayrollRule } from '../types'
 export interface RoleBasedPayrollContext {
   userId: string
   userRoles: PayrollRole[]
-  baseSalary: number
+  dailyRate: number
   hoursWorked: number
   overtimeHours: number
   holidayHours: number
@@ -186,14 +186,14 @@ export function calculateRoleBasedSalary(userRoles: PayrollRole[]): number {
     return 0
   }
 
-  const activeRoles = userRoles.filter(role => role.isActive && role.baseSalary)
+  const activeRoles = userRoles.filter(role => role.isActive && role.dailyRate)
   
   if (activeRoles.length === 0) {
     return 0
   }
 
-  // Use the highest base salary from active roles
-  return Math.max(...activeRoles.map(role => role.baseSalary || 0))
+  // Use the highest daily rate from active roles
+  return Math.max(...activeRoles.map(role => role.dailyRate || 0))
 }
 
 /**
@@ -246,13 +246,13 @@ export function validateRoleConfiguration(roles: PayrollRole[]): {
     warnings.push(`Active roles without assigned users: ${rolesWithoutUsers.map(r => r.name).join(', ')}`)
   }
 
-  // Check for roles with no base salary
+  // Check for roles with no daily rate
   const rolesWithoutSalary = roles.filter(role => 
-    role.isActive && !role.baseSalary
+    role.isActive && !role.dailyRate
   )
   
   if (rolesWithoutSalary.length > 0) {
-    warnings.push(`Active roles without base salary: ${rolesWithoutSalary.map(r => r.name).join(', ')}`)
+    warnings.push(`Active roles without daily rate: ${rolesWithoutSalary.map(r => r.name).join(', ')}`)
   }
 
   // Check for overly restrictive roles

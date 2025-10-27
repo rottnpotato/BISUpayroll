@@ -6,6 +6,8 @@ A modern, secure payroll management system built for Bohol Island State Universi
 
 - **Secure Authentication**: JWT-based authentication with bcrypt password hashing
 - **Role-Based Access Control**: Separate admin and employee dashboards
+- **User Management**: Add users individually or bulk import via CSV
+- **CSV Bulk Import**: Import multiple employees at once with validation
 - **Database-Driven**: PostgreSQL with Prisma ORM for robust data management
 - **Modern UI**: Beautiful, responsive design with Tailwind CSS and Radix UI
 - **Real-time Updates**: Live session management and automatic route protection
@@ -151,7 +153,38 @@ payroll-system-bisu/
 - Company information
 - Payroll rules and rates
 
-## 🚀 Deployment
+## � Bulk User Import
+
+The system supports importing multiple employees at once using CSV files.
+
+### Quick Start
+
+1. Navigate to **Admin > Users**
+2. Click **Bulk Import** button
+3. Download the CSV template
+4. Fill in your employee data
+5. Upload the CSV file
+6. Review and import
+
+### Documentation
+
+- **Detailed Guide**: See [Employee CSV Import Guide](docs/EMPLOYEE_CSV_IMPORT_GUIDE.md)
+- **Sample CSV**: Use [sample_employee_import.csv](docs/sample_employee_import.csv) as reference
+
+### CSV Format
+
+Required columns (in order):
+```
+firstName,lastName,email,password,department,position,status,phone,employeeId,hireDate,address,emergencyContactName,emergencyContactRelationship,emergencyContactPhone
+```
+
+**Key Points**:
+- Required fields: firstName, lastName, email, password, employeeId
+- Status must be: PERMANENT, TEMPORARY, or CONTRACTUAL
+- Date format: YYYY-MM-DD
+- Email and employeeId must be unique
+
+## �🚀 Deployment
 
 ### Environment Variables for Production
 

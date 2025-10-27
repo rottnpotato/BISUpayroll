@@ -35,7 +35,7 @@ interface Employee {
   deductions?: number
   other?: number
   salary?: number
-  baseSalary?: number
+  dailyRate?: number
   overtime?: number
   bonuses?: number
   status?: 'PERMANENT' | 'INACTIVE' | 'CONTRACTUAL' | 'TEMPORARY' | 'pending' | 'leave'
@@ -81,7 +81,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
     lastName: payroll.user?.lastName || 'Employee',
     grossPay: Number(payroll.grossPay || 0),
     netPay: Number(payroll.netPay || 0),
-    baseSalary: Number(payroll.baseSalary || 0),
+    dailyRate: Number(payroll.dailyRate || 0),
     overtime: Number(payroll.overtime || 0),
     bonuses: Number(payroll.bonuses || 0),
     deductions: Number(payroll.deductions || 0),
@@ -313,7 +313,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                             <div 
                               className="w-2 rounded-sm bg-purple-400" 
                               style={{ 
-                                height: `${Math.max(12, Math.min(32, (employee.baseSalary || 0) / 2000))}px` 
+                                height: `${Math.max(12, Math.min(32, (employee.dailyRate || 0) / 100))}px` 
                               }}
                             ></div>
                             <div 
@@ -340,7 +340,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                           <div className="text-xs space-y-1">
                             <div className="flex items-center">
                               <div className="w-2 h-2 bg-purple-400 mr-2 rounded"></div>
-                              <span>Base Salary: {formatCurrency(employee.baseSalary || 0)}</span>
+                              <span>Daily Rate: {formatCurrency(employee.dailyRate || 0)}</span>
                             </div>
                             <div className="flex items-center">
                               <div className="w-2 h-2 bg-amber-400 mr-2 rounded"></div>

@@ -17,6 +17,7 @@ export async function GET(
         lastName: true,
         role: true,
         status: true,
+        employeeType: true,
         employeeId: true,
         department: true,
         position: true,
@@ -61,6 +62,7 @@ export async function PUT(
       email,
       password,
       role,
+      employeeType,
       employeeId,
       department,
       position,
@@ -72,6 +74,33 @@ export async function PUT(
       emergencyContactPhone,
       status
     } = body
+
+    // Validate employeeType if provided
+    const validEmployeeTypes = ['TEACHING_PERSONNEL', 'NON_TEACHING_PERSONNEL', 'CASUAL', 'PLANTILLA']
+    if (employeeType && employeeType !== "" && !validEmployeeTypes.includes(employeeType)) {
+      return NextResponse.json(
+        { error: `Invalid employee type. Must be one of: ${validEmployeeTypes.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    // Validate status if provided
+    const validStatuses = ['PERMANENT', 'TEMPORARY', 'CONTRACTUAL', 'INACTIVE']
+    if (status && !validStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: `Invalid employment status. Must be one of: ${validStatuses.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    // Validate status if provided
+    const validStatuses = ['PERMANENT', 'TEMPORARY', 'CONTRACTUAL', 'INACTIVE']
+    if (status && !validStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: `Invalid employment status. Must be one of: ${validStatuses.join(', ')}` },
+        { status: 400 }
+      )
+    }
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -119,6 +148,7 @@ export async function PUT(
       lastName,
       email,
       role: role || existingUser.role,
+      employeeType: employeeType !== undefined ? (employeeType === "" ? null : employeeType) : existingUser.employeeType,
       employeeId: employeeId || existingUser.employeeId,
       department: department || existingUser.department,
       position: position || existingUser.position,
@@ -147,6 +177,7 @@ export async function PUT(
         lastName: true,
         role: true,
         status: true,
+        employeeType: true,
         employeeId: true,
         department: true,
         position: true,

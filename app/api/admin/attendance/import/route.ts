@@ -7,6 +7,7 @@ import crypto from "crypto"
 import { AttendancePunchType, Prisma } from "@prisma/client"
 import * as XLSX from "xlsx"
 import { getManilaHours, getManilaMinutes, isLateInManila } from "@/lib/timezone"
+import { getWorkingDayKeysInMonth } from "@/lib/work-calendar"
 
 const MANILA_TIME_ZONE = "Asia/Manila"
 const MANILA_TIME_OFFSET_HOURS = 8
@@ -558,7 +559,7 @@ export async function POST(request: NextRequest) {
             isEarlyOut,
             totalSessions,
             sessionType: isAbsent ? null : (isHalfDay ? 'HALF_DAY' : 'FULL_DAY'),
-            status: AttendanceStatus.APPROVED,
+            status: AttendanceStatus.VERIFIED,
             importBatchId: importBatch.id
           }
 
@@ -579,7 +580,7 @@ export async function POST(request: NextRequest) {
                 isEarlyOut,
                 totalSessions,
                 sessionType: isAbsent ? null : (isHalfDay ? 'HALF_DAY' : 'FULL_DAY'),
-                status: AttendanceStatus.APPROVED,
+                status: AttendanceStatus.VERIFIED,
                 importBatchId: importBatch.id
               }
             })
@@ -606,6 +607,97 @@ export async function POST(request: NextRequest) {
         } catch (error) {
           console.error(`Error processing attendance for ${meta.rawName} on ${dateKey}:`, error)
           results.errors.push(`${meta.rawName} on ${dateKey}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+      }
+    }
+
+    // After processing all imported attendance, check for missing working days
+    // and mark employees absent if they have no entry or only IN without OUT
+    if (minDate && maxDate) {
+      // Get all unique year-month combinations in the date range
+      const monthsToCheck = new Set<string>()
+      for (let d = new Date(minDate); d <= maxDate; d = new Date(d.getTime() + 24 * 60 * 60 * 1000)) {
+        const manilaTime = new Date(d.getTime() + MANILA_TIME_OFFSET_HOURS * 60 * 60 * 1000)
+        const year = manilaTime.getUTCFullYear()
+        const month = manilaTime.getUTCMonth() + 1
+        monthsToCheck.add(`${year}-${month}`)
+      }
+
+      // Load working days for each month
+      const workingDaysMap = new Map<string, Set<string>>()
+      for (const yearMonth of monthsToCheck) {
+        const [yearStr, monthStr] = yearMonth.split('-')
+        const year = parseInt(yearStr)
+        const month = parseInt(monthStr)
+        const workingDays = await getWorkingDayKeysInMonth(year, month)
+        
+        // Filter working days to only those in the import date range
+        const filteredWorkingDays = new Set<string>()
+        for (const dateKey of workingDays) {
+          const workingDate = manilaDateKeyToUTC(dateKey)
+          if (workingDate >= minDate && workingDate <= maxDate) {
+            filteredWorkingDays.add(dateKey)
+          }
+        }
+        
+        workingDaysMap.set(yearMonth, filteredWorkingDays)
+      }
+
+      // Combine all working days across the import range
+      const allWorkingDayKeys = new Set<string>()
+      for (const workingDays of workingDaysMap.values()) {
+        for (const dateKey of workingDays) {
+          allWorkingDayKeys.add(dateKey)
+        }
+      }
+
+      // For each matched employee, check if they have attendance on all working days
+      for (const [employeeKey, meta] of employeeMeta.entries()) {
+        const matchedUser = resolvedUsers.get(employeeKey)
+        if (!matchedUser) continue
+
+        const employeeAttendance = attendanceMap.get(employeeKey) || new Map()
+        
+        // Check each working day
+        for (const workingDayKey of allWorkingDayKeys) {
+          const recordKey = `${matchedUser.id}|${workingDayKey}`
+          
+          // Skip if we already have an attendance record for this day
+          if (employeeAttendance.has(workingDayKey)) {
+            continue
+          }
+          
+          // Skip if this record already exists in the database (to avoid duplicates)
+          if (existingRecordLookup.has(recordKey)) {
+            continue
+          }
+          
+          // No attendance data for this working day - mark as absent
+          const recordDate = manilaDateKeyToUTC(workingDayKey)
+          
+          const absencePayload: Prisma.AttendanceRecordCreateManyInput = {
+            userId: matchedUser.id,
+            date: recordDate,
+            timeIn: null,
+            timeOut: null,
+            hoursWorked: null,
+            isLate: false,
+            isAbsent: true,
+            morningTimeIn: null,
+            morningTimeOut: null,
+            afternoonTimeIn: null,
+            afternoonTimeOut: null,
+            isHalfDay: false,
+            isEarlyOut: false,
+            totalSessions: 0,
+            sessionType: null,
+            status: AttendanceStatus.VERIFIED,
+            importBatchId: importBatch.id
+          }
+          
+          attendanceCreates.push(absencePayload)
+          results.imported++
+          results.processed++
         }
       }
     }
@@ -641,7 +733,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Import completed. ${results.imported} new records imported, ${results.updated} records updated.`,
+      message: `Import completed. ${results.imported} new records imported, ${results.updated} records updated. Absence records created for employees missing on valid working days.`,
       results,
       batchId: importBatch.id
     })

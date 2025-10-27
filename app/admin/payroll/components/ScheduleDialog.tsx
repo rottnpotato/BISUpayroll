@@ -28,7 +28,6 @@ const defaultFormData: ScheduleFormData = {
   processingDays: [20, 5],
   cutoffType: "bi-monthly",
   isActive: false,
-  paymentMethod: "bank_transfer",
   description: ""
 }
 
@@ -74,7 +73,6 @@ export function ScheduleDialog({
         processingDays: initialData.processingDays || [20, 5],
         cutoffType: initialData.cutoffType || "bi-monthly",
         isActive: initialData.isActive || false,
-        paymentMethod: initialData.paymentMethod || "bank_transfer",
         description: initialData.description || ""
       })
     } else if (isOpen && !initialData) {
@@ -245,31 +243,6 @@ export function ScheduleDialog({
             </div>
           </div>
 
-          {/* Payment Method */}
-          <div className="space-y-4">
-            <h4 className="font-medium text-bisu-purple-deep">Payment Configuration</h4>
-            
-            <div>
-              <Label htmlFor="paymentMethod">Payment Method</Label>
-              <Select 
-                value={formData.paymentMethod} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="check">Check</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Payment method to be used after employee signs payroll
-              </p>
-            </div>
-          </div>
-
           {/* Activation */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
@@ -283,7 +256,7 @@ export function ScheduleDialog({
               </Label>
             </div>
             <p className="text-xs text-muted-foreground">
-              Note: Activating this schedule will deactivate any other active schedules. Payroll will be generated on scheduled dates but employees must sign before payment.
+              Note: Activating this schedule will deactivate any other active schedules.
             </p>
           </div>
         </div>

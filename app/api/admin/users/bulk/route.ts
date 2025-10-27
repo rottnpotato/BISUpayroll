@@ -9,6 +9,7 @@ interface BulkEmployee {
   email: string
   password: string
   role: string
+  employeeType: string
   department: string
   position: string
   phone: string
@@ -98,6 +99,12 @@ export async function POST(request: NextRequest) {
           ? statusMap[employee.salary.toUpperCase()] 
           : "CONTRACTUAL"
 
+        // Validate employee type if provided
+        const validEmployeeTypes = ["TEACHING_PERSONNEL", "NON_TEACHING_PERSONNEL", "CASUAL", "PLANTILLA"]
+        const employeeType = employee.employeeType && validEmployeeTypes.includes(employee.employeeType.toUpperCase())
+          ? employee.employeeType.toUpperCase()
+          : null
+
         // Create user
         const user = await prisma.user.create({
           data: {
@@ -107,6 +114,7 @@ export async function POST(request: NextRequest) {
             lastName: employee.lastName,
             role: "EMPLOYEE",
             status: employmentStatus,
+            employeeType: employeeType as any,
             employeeId: employee.employeeId || undefined,
             department: employee.department || undefined,
             position: employee.position || undefined,

@@ -65,7 +65,7 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
     description: "",
     department: "",
     position: "",
-    baseSalary: "",
+    dailyRate: "",
   overtimeEligible: true,
     holidayPayEligible: true,
     gsisEligible: true,
@@ -194,7 +194,7 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
       description: role.description || "",
       department: role.department || "",
       position: role.position || "",
-      baseSalary: role.baseSalary?.toString() || "",
+      dailyRate: role.dailyRate?.toString() || "",
       overtimeEligible: role.overtimeEligible,
       holidayPayEligible: role.holidayPayEligible,
       gsisEligible: role.gsisEligible,
@@ -213,7 +213,7 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
       description: "",
       department: "",
       position: "",
-      baseSalary: "",
+      dailyRate: "",
   overtimeEligible: true,
       holidayPayEligible: true,
       gsisEligible: true,
@@ -292,12 +292,12 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
                         />
                       </div>
                       <div>
-                        <Label htmlFor="baseSalary">Base Salary (₱)</Label>
+                        <Label htmlFor="dailyRate">Daily Rate (₱)</Label>
                         <Input
-                          id="baseSalary"
+                          id="dailyRate"
                           type="number"
-                          value={formData.baseSalary}
-                          onChange={(e) => setFormData({...formData, baseSalary: e.target.value})}
+                          value={formData.dailyRate}
+                          onChange={(e) => setFormData({...formData, dailyRate: e.target.value})}
                           placeholder="45000"
                         />
                       </div>
@@ -530,10 +530,10 @@ export function PayrollRoleTogglesCard({ onSave, hasUnsavedChanges = false }: Pa
                             {role.position}
                           </div>
                         )}
-                        {role.baseSalary && (
+                        {role.dailyRate && (
                           <div className="flex items-center gap-1">
                             <DollarSign className="w-4 h-4" />
-                            ₱{role.baseSalary.toLocaleString()}
+                            ₱{role.dailyRate.toLocaleString()}
                           </div>
                         )}
                       </div>

@@ -227,7 +227,6 @@ export function MonthlyPayrollGenerator({
                 <SelectItem value="CCIS">CCIS</SelectItem>
                 <SelectItem value="CTAS">CTAS</SelectItem>
                 <SelectItem value="CCJ">CCJ</SelectItem>
-                <SelectItem value="CTE">CTE</SelectItem>
               </SelectContent>
             </Select>
             <div className="mt-4">
@@ -241,7 +240,6 @@ export function MonthlyPayrollGenerator({
                   <SelectItem value="PERMANENT">Permanent</SelectItem>
                   <SelectItem value="TEMPORARY">Temporary</SelectItem>
                   <SelectItem value="CONTRACTUAL">Contractual</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -34,7 +34,8 @@ import {
   RecentReportsTable,
   PayrollPreviewDialog,
   ConfigurationLayout,
-  MonthlyPayrollGenerator
+  MonthlyPayrollGenerator,
+  PayrollDebugModal
 } from './components'
 
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
@@ -72,7 +73,7 @@ const itemVariants = {
 
 export default function PayrollPage() {
   // Use our custom hooks for data and state management
-  const { rules, users, schedules, isLoading, loadData } = usePayrollData()
+  const { rules, users, schedules, isLoading, isUsersLoading, loadData } = usePayrollData()
   const { toast } = useToast()
   
   // Tab state management with URL hash support
@@ -254,7 +255,8 @@ export default function PayrollPage() {
       selectedTemplate?.type || 'custom',
       undefined, // scheduleId - you can get this from the active schedule if needed
       undefined,  // scheduleName - you can get this from the active schedule if needed
-      selectedTemplate
+      selectedTemplate,
+      selectedEmploymentStatus
     )
     if (success) {
       setShowPreview(false)
@@ -289,7 +291,7 @@ export default function PayrollPage() {
       } else {
         // Likely JSON ledger → transform to printable HTML
         const { payrollData: parsedData, dateRange } = parseSavedLedgerJsonToPayrollData(content)
-        htmlContent = generatePrintHTML(parsedData, dateRange, null)
+        htmlContent = generatePrintHTML(parsedData, dateRange, null, selectedEmploymentStatus)
       }
 
       const printWindow = window.open('', '_blank')
@@ -500,20 +502,28 @@ export default function PayrollPage() {
               <SkeletonCard lines={8} />
             ) : (
               <div className="grid grid-cols-1 gap-6">
-                <MonthlyPayrollGenerator
-                  dateRange={templateDateRanges[reportTemplateData.find(t => t.type === 'monthly')!.id]}
-                  onDateRangeChange={(range) => {
-                    const monthly = reportTemplateData.find(t => t.type === 'monthly')!
-                    updateTemplateDateRange(monthly.id, range)
-                  }}
-                  selectedDepartment={selectedDepartment}
-                  onDepartmentChange={setSelectedDepartment}
-                  selectedEmploymentStatus={selectedEmploymentStatus}
-                  onEmploymentStatusChange={setSelectedEmploymentStatus}
-                  onGenerate={handleGenerateMonthlyPayroll}
-                  isGenerating={isGenerating}
-                  schedules={schedules}
-                />
+                <div>
+                  <div className="flex justify-end mb-3">
+                    <PayrollDebugModal 
+                      defaultStartDate={templateDateRanges[reportTemplateData.find(t => t.type === 'monthly')!.id]?.from}
+                      defaultEndDate={templateDateRanges[reportTemplateData.find(t => t.type === 'monthly')!.id]?.to}
+                    />
+                  </div>
+                  <MonthlyPayrollGenerator
+                    dateRange={templateDateRanges[reportTemplateData.find(t => t.type === 'monthly')!.id]}
+                    onDateRangeChange={(range) => {
+                      const monthly = reportTemplateData.find(t => t.type === 'monthly')!
+                      updateTemplateDateRange(monthly.id, range)
+                    }}
+                    selectedDepartment={selectedDepartment}
+                    onDepartmentChange={setSelectedDepartment}
+                    selectedEmploymentStatus={selectedEmploymentStatus}
+                    onEmploymentStatusChange={setSelectedEmploymentStatus}
+                    onGenerate={handleGenerateMonthlyPayroll}
+                    isGenerating={isGenerating}
+                    schedules={schedules}
+                  />
+                </div>
 
                 <motion.div
                   variants={containerVariants}
@@ -563,7 +573,7 @@ export default function PayrollPage() {
         onUserSelection={handleUserSelection}
         onSelectAllUsers={handleSelectAllUsersWrapper}
         users={users}
-        isUsersLoading={false}
+        isUsersLoading={isUsersLoading}
         isEdit={!!editingRule}
         title={editingRule ? "Edit Payroll Calculation" : "Add New Payroll Calculation"}
       />

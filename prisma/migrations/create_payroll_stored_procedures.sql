@@ -76,9 +76,9 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- =====================================================
 CREATE OR REPLACE FUNCTION calculate_late_deductions(
     p_late_hours DECIMAL,
-    p_hourly_rate DECIMAL,
-    p_daily_rate DECIMAL,
-    p_deduction_amount DECIMAL,
+    p_hourly_rate DECIMAL DEFAULT 0,
+    p_daily_rate DECIMAL DEFAULT 0,
+    p_deduction_amount DECIMAL DEFAULT 0,
     p_deduction_basis TEXT DEFAULT 'fixed'
 ) RETURNS DECIMAL AS $$
 BEGIN
@@ -206,7 +206,6 @@ CREATE OR REPLACE FUNCTION calculate_payroll_for_period(
     p_pay_period_end DATE
 ) RETURNS TABLE(
     user_id TEXT,
-    base_salary DECIMAL,
     daily_rate DECIMAL,
     hourly_rate DECIMAL,
     days_worked INT,
@@ -238,8 +237,7 @@ CREATE OR REPLACE FUNCTION calculate_payroll_for_period(
     net_pay DECIMAL
 ) AS $$
 DECLARE
-    v_base_salary DECIMAL := 0;
-    v_daily_rate DECIMAL;
+    v_daily_rate DECIMAL := 0;
     v_hourly_rate DECIMAL;
     v_days_worked INT := 0;
     v_hours_worked DECIMAL := 0;
@@ -305,25 +303,24 @@ BEGIN
     SELECT COALESCE(value, 'fixed') INTO v_late_deduction_basis
     FROM "system_settings" WHERE key = 'working_hours_lateDeductionBasis' AND "isActive" = true LIMIT 1;
     
-    -- Get base salary from payroll rules
-    SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_base_salary
+    -- Get daily rate from payroll rules
+    SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_daily_rate
     FROM "payroll_rule_assignments" pra
     JOIN "payroll_rules" pr ON pra."payrollRuleId" = pr.id
     WHERE pra."userId" = p_user_id
     AND pr."isActive" = true
-    AND (pr.type = 'base' OR pr.type LIKE '%salary%');
+    AND pr.type = 'daily_rate';
     
-    -- If no user-specific base salary, check global rules
-    IF v_base_salary = 0 THEN
-        SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_base_salary
+    -- If no user-specific daily rate, check global rules
+    IF v_daily_rate = 0 THEN
+        SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_daily_rate
         FROM "payroll_rules"
         WHERE "applyToAll" = true
         AND "isActive" = true
-        AND (type = 'base' OR type LIKE '%salary%');
+        AND type = 'daily_rate';
     END IF;
     
-    -- Calculate rates
-    v_daily_rate := v_base_salary;
+    -- Calculate hourly rate from daily rate
     v_hourly_rate := calculate_hourly_rate(v_daily_rate, v_daily_hours);
     
     -- Aggregate attendance data
@@ -377,7 +374,7 @@ BEGIN
     -- Get allowances and bonuses from payroll rules
     SELECT COALESCE(SUM(
         CASE 
-            WHEN pr."isPercentage" THEN v_base_salary * (CAST(pr.amount AS DECIMAL) / 100)
+            WHEN pr."isPercentage" THEN v_daily_rate * (CAST(pr.amount AS DECIMAL) / 100)
             ELSE CAST(pr.amount AS DECIMAL)
         END
     ), 0) INTO v_allowances
@@ -390,7 +387,7 @@ BEGIN
     -- Add global allowances
     SELECT COALESCE(v_allowances + SUM(
         CASE 
-            WHEN "isPercentage" THEN v_base_salary * (CAST(amount AS DECIMAL) / 100)
+            WHEN "isPercentage" THEN v_daily_rate * (CAST(amount AS DECIMAL) / 100)
             ELSE CAST(amount AS DECIMAL)
         END
     ), v_allowances) INTO v_allowances
@@ -402,7 +399,7 @@ BEGIN
     -- Get bonuses
     SELECT COALESCE(SUM(
         CASE 
-            WHEN pr."isPercentage" THEN v_base_salary * (CAST(pr.amount AS DECIMAL) / 100)
+            WHEN pr."isPercentage" THEN v_daily_rate * (CAST(pr.amount AS DECIMAL) / 100)
             ELSE CAST(pr.amount AS DECIMAL)
         END
     ), 0) INTO v_bonuses
@@ -415,7 +412,7 @@ BEGIN
     -- Add global bonuses
     SELECT COALESCE(v_bonuses + SUM(
         CASE 
-            WHEN "isPercentage" THEN v_base_salary * (CAST(amount AS DECIMAL) / 100)
+            WHEN "isPercentage" THEN v_daily_rate * (CAST(amount AS DECIMAL) / 100)
             ELSE CAST(amount AS DECIMAL)
         END
     ), v_bonuses) INTO v_bonuses
@@ -427,16 +424,70 @@ BEGIN
     v_total_earnings := v_regular_pay + v_overtime_pay + v_holiday_pay + v_allowances + v_bonuses + v_thirteenth_month + v_sil + v_other_earnings;
     v_gross_pay := v_total_earnings;
     
-    -- Calculate contributions based on days worked
-    v_contribution_base := v_daily_rate * v_days_worked;
-    v_gsis := calculate_gsis_contribution(v_contribution_base);
-    v_philhealth := calculate_philhealth_contribution(v_contribution_base);
-    v_pagibig := calculate_pagibig_contribution(v_contribution_base);
+    -- Get mandatory contributions from payroll rules (only if defined by admin)
+    SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_gsis
+    FROM "payroll_rule_assignments" pra
+    JOIN "payroll_rules" pr ON pra."payrollRuleId" = pr.id
+    WHERE pra."userId" = p_user_id
+    AND pr."isActive" = true
+    AND pr.type = 'gsis';
     
-    -- Calculate tax
+    IF v_gsis = 0 THEN
+        SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_gsis
+        FROM "payroll_rules"
+        WHERE "applyToAll" = true
+        AND "isActive" = true
+        AND type = 'gsis';
+    END IF;
+    
+    SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_philhealth
+    FROM "payroll_rule_assignments" pra
+    JOIN "payroll_rules" pr ON pra."payrollRuleId" = pr.id
+    WHERE pra."userId" = p_user_id
+    AND pr."isActive" = true
+    AND pr.type = 'philhealth';
+    
+    IF v_philhealth = 0 THEN
+        SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_philhealth
+        FROM "payroll_rules"
+        WHERE "applyToAll" = true
+        AND "isActive" = true
+        AND type = 'philhealth';
+    END IF;
+    
+    SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_pagibig
+    FROM "payroll_rule_assignments" pra
+    JOIN "payroll_rules" pr ON pra."payrollRuleId" = pr.id
+    WHERE pra."userId" = p_user_id
+    AND pr."isActive" = true
+    AND pr.type = 'pagibig';
+    
+    IF v_pagibig = 0 THEN
+        SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_pagibig
+        FROM "payroll_rules"
+        WHERE "applyToAll" = true
+        AND "isActive" = true
+        AND type = 'pagibig';
+    END IF;
+    
+    -- Get withholding tax from payroll rules (only if defined by admin)
+    SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_withholding_tax
+    FROM "payroll_rule_assignments" pra
+    JOIN "payroll_rules" pr ON pra."payrollRuleId" = pr.id
+    WHERE pra."userId" = p_user_id
+    AND pr."isActive" = true
+    AND pr.type = 'tax';
+    
+    IF v_withholding_tax = 0 THEN
+        SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_withholding_tax
+        FROM "payroll_rules"
+        WHERE "applyToAll" = true
+        AND "isActive" = true
+        AND type = 'tax';
+    END IF;
+    
+    -- Calculate taxable income for record keeping
     v_taxable_income := v_gross_pay - v_gsis - v_philhealth - v_pagibig - v_thirteenth_month - v_sil;
-    v_annual_taxable := v_taxable_income * 12;
-    v_withholding_tax := calculate_withholding_tax(v_annual_taxable);
     
     -- Calculate deductions
     v_late_deductions := calculate_late_deductions(v_late_hours, v_hourly_rate, v_daily_rate, v_late_deduction_amount, v_late_deduction_basis);
@@ -465,7 +516,6 @@ BEGIN
     -- Return calculated values
     RETURN QUERY SELECT
         p_user_id,
-        v_base_salary,
         v_daily_rate,
         v_hourly_rate,
         v_days_worked,
@@ -535,7 +585,6 @@ BEGIN
                 "userId",
                 "payPeriodStart",
                 "payPeriodEnd",
-                "baseSalary",
                 "dailyRate",
                 "hourlyRate",
                 "daysWorked",
@@ -574,7 +623,6 @@ BEGIN
                 v_calc.user_id,
                 p_pay_period_start,
                 p_pay_period_end,
-                v_calc.base_salary,
                 v_calc.daily_rate,
                 v_calc.hourly_rate,
                 v_calc.days_worked,
@@ -611,7 +659,6 @@ BEGIN
             )
             ON CONFLICT ("userId", "payPeriodStart", "payPeriodEnd")
             DO UPDATE SET
-                "baseSalary" = EXCLUDED."baseSalary",
                 "dailyRate" = EXCLUDED."dailyRate",
                 "hourlyRate" = EXCLUDED."hourlyRate",
                 "daysWorked" = EXCLUDED."daysWorked",
@@ -779,7 +826,6 @@ BEGIN
             -- Update existing payroll results
             UPDATE "payroll_results" pr
             SET
-                "baseSalary" = calc.base_salary,
                 "dailyRate" = calc.daily_rate,
                 "hourlyRate" = calc.hourly_rate,
                 "allowances" = calc.allowances,

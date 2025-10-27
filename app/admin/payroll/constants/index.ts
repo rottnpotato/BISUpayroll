@@ -3,14 +3,14 @@ import { PayrollRule, PayrollSchedule, HolidayType, TaxBracket, Report } from '.
 export const payrollRules: PayrollRule[] = [
   { 
     id: "1", 
-    name: "Basic Salary", 
-    type: "base", 
-    amount: 25000, 
+    name: "Daily Rate", 
+    type: "daily_rate", 
+    amount: 500, 
     isPercentage: false,
     isActive: true,
-    description: "Base monthly salary for regular government employees",
+    description: "Daily rate for government employees",
     applyToAll: true,
-    category: "base_pay"
+    category: "daily_rate"
   },
   { 
     id: "2", 
@@ -173,8 +173,7 @@ export const payrollSchedules: PayrollSchedule[] = [
     isActive: true, 
     processHour: 9, 
     processMinute: 0,
-    cutoffDays: [15],
-    paymentMethod: "bank_transfer"
+    cutoffDays: [15]
   },
   { 
     id: "2", 
@@ -183,8 +182,7 @@ export const payrollSchedules: PayrollSchedule[] = [
     isActive: false, 
     processHour: 9, 
     processMinute: 0,
-    cutoffDays: [7, 22],
-    paymentMethod: "bank_transfer"
+    cutoffDays: [7, 22]
   },
   { 
     id: "3", 
@@ -193,8 +191,7 @@ export const payrollSchedules: PayrollSchedule[] = [
     isActive: false, 
     processHour: 9, 
     processMinute: 0,
-    cutoffDays: [7, 21],
-    paymentMethod: "bank_transfer"
+    cutoffDays: [7, 21]
   }
 ]
 

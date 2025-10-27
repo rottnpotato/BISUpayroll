@@ -84,26 +84,26 @@ export const PAYROLL_CONFIG_DEFAULTS: PayrollConfigurationBundle = {
   },
   contributions: {
     gsis: {
-      employeeRate: 9,
-      employerRate: 12,
-      minSalary: 5000,
-      maxSalary: 100000
+      employeeRate: 0,
+      employerRate: 0,
+      minSalary: 0,
+      maxSalary: 0
     },
     philHealth: {
-      employeeRate: 2.75,
-      employerRate: 2.75,
-      minContribution: 200,
-      maxContribution: 1750,
-      minSalary: 8000,
-      maxSalary: 70000
+      employeeRate: 0,
+      employerRate: 0,
+      minContribution: 0,
+      maxContribution: 0,
+      minSalary: 0,
+      maxSalary: 0
     },
     pagibig: {
-      employeeRate: 2,
-      employerRate: 2,
-      minContribution: 24,
-      maxContribution: 200,
-      minSalary: 1200,
-      maxSalary: 10000
+      employeeRate: 0,
+      employerRate: 0,
+      minContribution: 0,
+      maxContribution: 0,
+      minSalary: 0,
+      maxSalary: 0
     }
   },
   taxBrackets: {

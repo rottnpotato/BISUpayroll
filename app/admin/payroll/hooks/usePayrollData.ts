@@ -25,10 +25,13 @@ export const usePayrollData = () => {
   const fetchUsers = async () => {
     try {
       setIsUsersLoading(true)
-      const response = await fetch("/api/admin/users")
+      // Fetch all users without pagination by setting a high limit
+      const response = await fetch("/api/admin/users?limit=1000")
       const data = await response.json()
       if (data.users) {
-        setUsers(data.users.filter((user: User) => user.status === "ACTIVE"))
+        setUsers(data.users.filter((user: User) => 
+          user.status !== "INACTIVE" && user.role !== "ADMIN"
+        ))
       }
     } catch (error) {
       console.error("Error fetching users:", error)

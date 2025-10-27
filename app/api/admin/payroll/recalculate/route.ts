@@ -52,6 +52,10 @@ export async function POST(request: NextRequest) {
       if (calculation && calculation.length > 0) {
         const calc = calculation[0]
         
+        // Ensure required fields have valid values
+        const dailyRate = calc.daily_rate || 0
+        const hourlyRate = calc.hourly_rate || (dailyRate / 8) || 0
+        
         // Upsert to payroll_results table
         await prisma.payrollResult.upsert({
           where: {
@@ -62,12 +66,13 @@ export async function POST(request: NextRequest) {
             }
           },
           create: {
-            userId: calc.user_id,
+            user: {
+              connect: { id: calc.user_id }
+            },
             payPeriodStart: new Date(startDate),
             payPeriodEnd: new Date(endDate),
-            baseSalary: calc.base_salary,
-            dailyRate: calc.daily_rate,
-            hourlyRate: calc.hourly_rate,
+            dailyRate: dailyRate,
+            hourlyRate: hourlyRate,
             daysWorked: calc.days_worked,
             hoursWorked: calc.hours_worked,
             overtimeHours: calc.overtime_hours,
@@ -99,9 +104,11 @@ export async function POST(request: NextRequest) {
             netPay: calc.net_pay,
           },
           update: {
-            baseSalary: calc.base_salary,
-            dailyRate: calc.daily_rate,
-            hourlyRate: calc.hourly_rate,
+            user: {
+              connect: { id: calc.user_id }
+            },
+            dailyRate: dailyRate,
+            hourlyRate: hourlyRate,
             daysWorked: calc.days_worked,
             hoursWorked: calc.hours_worked,
             overtimeHours: calc.overtime_hours,

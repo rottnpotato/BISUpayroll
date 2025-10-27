@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
 
+// DEPRECATED: This endpoint works with the old payroll_records table
+// Use the stored procedures (calculate_payroll_for_period) and payroll_results table instead
+// The stored procedures handle all payroll calculations at the database level
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -49,7 +53,6 @@ export async function PUT(
     const {
       payPeriodStart,
       payPeriodEnd,
-      baseSalary,
       overtime,
       deductions,
       bonuses,
@@ -72,7 +75,6 @@ export async function PUT(
 
     if (payPeriodStart) updateData.payPeriodStart = new Date(payPeriodStart)
     if (payPeriodEnd) updateData.payPeriodEnd = new Date(payPeriodEnd)
-    if (baseSalary) updateData.baseSalary = parseFloat(baseSalary)
     if (overtime !== undefined) updateData.overtime = overtime
     if (deductions !== undefined) updateData.deductions = deductions
     if (bonuses !== undefined) updateData.bonuses = bonuses
@@ -86,13 +88,12 @@ export async function PUT(
     }
 
     // Recalculate gross and net pay if financial values changed
-    if (baseSalary || overtime !== undefined || deductions !== undefined || bonuses !== undefined) {
-      const newBaseSalary = baseSalary ? parseFloat(baseSalary) : existingRecord.baseSalary
+    if (overtime !== undefined || deductions !== undefined || bonuses !== undefined) {
       const newOvertime = overtime !== undefined ? overtime : existingRecord.overtime
       const newDeductions = deductions !== undefined ? deductions : existingRecord.deductions
       const newBonuses = bonuses !== undefined ? bonuses : existingRecord.bonuses
 
-      updateData.grossPay = Number(newBaseSalary) + Number(newOvertime) + Number(newBonuses)
+      updateData.grossPay = Number(newOvertime) + Number(newBonuses)
       updateData.netPay = updateData.grossPay - Number(newDeductions)
     }
 
