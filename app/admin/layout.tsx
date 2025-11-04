@@ -4,7 +4,7 @@ import type React from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { BisuLogo } from "@/components/bisu-logo"
 import { AnimatedSidebar } from "@/components/animated-sidebar"
-import { LayoutDashboard, Users, Activity, FileText, Calendar, DollarSign } from "lucide-react"
+import { LayoutDashboard, Users, Activity, FileText, Calendar, DollarSign, Clock } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { motion } from "@/components/simple-motion"
@@ -15,6 +15,7 @@ const adminNavItems = [
   { href: "/admin/users", label: "Employee Management", icon: Users },
   { href: "/admin/payroll", label: "Payroll Management", icon: DollarSign },
   { href: "/admin/attendance", label: "Attendance", icon: Calendar },
+  { href: "/admin/overtime", label: "Overtime Requests", icon: Clock },
   { href: "/admin/settings", label: "System Logs", icon: Activity },
 ]
 

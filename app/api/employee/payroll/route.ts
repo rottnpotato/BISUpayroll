@@ -117,73 +117,55 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, string>)
 
-    // Calculate current month statistics
-    const workingDays = attendanceRecords.filter(record => !record.isAbsent).length
-    const totalHoursWorked = attendanceRecords.reduce((sum, record) => {
-      return sum + (record.hoursWorked || 0)
-    }, 0)
-    const lateCount = attendanceRecords.filter(record => record.isLate).length
-    const absentCount = attendanceRecords.filter(record => record.isAbsent).length
+    // Use stored procedure for accurate payroll calculation
+    const payrollResult = await prisma.$queryRaw<any[]>`
+      SELECT * FROM calculate_payroll_for_period(
+        ${user.id}::TEXT,
+        ${startOfMonth}::DATE,
+        ${endOfMonth}::DATE
+      )
+    `
 
-    // Calculate expected working hours and overtime
-    const expectedDailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
-    const expectedTotalHours = workingDays * expectedDailyHours
-    const overtimeHours = Math.max(0, totalHoursWorked - expectedTotalHours)
-    const regularHours = Math.min(totalHoursWorked, expectedTotalHours)
+    const calculation = payrollResult[0]
 
-    // Get daily rate directly from payroll rules (type=daily_rate)
-    const dailyRateRule = payrollRules.find((rule: any) => rule.type === 'daily_rate')
-    const dailyRate = dailyRateRule ? Number(dailyRateRule.amount) : 0
-    const monthlySalary = dailyRate * 22 // Standard monthly rate for reference
-    const hourlyRate = dailyRate / expectedDailyHours
-
-    // Calculate overtime pay
-    const overtimeRate = parseFloat(configs['rates_overtimeRate1'] || '1.25')
-    const overtimePay = overtimeHours * hourlyRate * overtimeRate
-
-    // Calculate late deductions
-    const lateDeductionAmount = parseFloat(configs['working_hours_lateDeductionAmount'] || '0')
-    const lateDeductionBasis = configs['working_hours_lateDeductionBasis'] || 'fixed'
-    let lateDeductions = 0
-
-    if (lateDeductionBasis === 'fixed') {
-      lateDeductions = lateCount * lateDeductionAmount
-    } else if (lateDeductionBasis === 'hourly') {
-      lateDeductions = lateCount * hourlyRate * lateDeductionAmount
+    if (!calculation) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Failed to calculate payroll' 
+      }, { status: 500 })
     }
 
-    // Calculate base pay based on actual days worked
-    const basePay = workingDays * dailyRate
+    // Extract values from stored procedure result
+    const dailyRate = Number(calculation.daily_rate || 0)
+    const hourlyRate = Number(calculation.hourly_rate || 0)
+    const workingDays = Number(calculation.days_worked || 0)
+    const totalHoursWorked = Number(calculation.hours_worked || 0)
+    const overtimeHours = Number(calculation.overtime_hours || 0)
+    const regularHours = totalHoursWorked - overtimeHours
+    const lateCount = Number(calculation.late_hours || 0) // Note: late_hours stores count
+    const absentCount = attendanceRecords.filter(record => record.isAbsent).length
 
-    // Calculate rule-based deductions and bonuses
-    let governmentDeductions = 0
-    let loanDeductions = 0
-    let otherDeductions = 0
-    let bonuses = 0
+    const basePay = Number(calculation.regular_pay || 0)
+    const overtimePay = Number(calculation.overtime_pay || 0)
+    const bonuses = Number(calculation.bonuses || 0) + Number(calculation.allowances || 0)
+    const holidayPay = Number(calculation.holiday_pay || 0)
+    const overloadPay = Number(calculation.overload_pay || 0)
 
-    payrollRules.forEach(rule => {
-      const amount = Number(rule.amount)
-      
-      if (rule.type === 'deduction') {
-        if (rule.name.toLowerCase().includes('sss') || 
-            rule.name.toLowerCase().includes('philhealth') || 
-            rule.name.toLowerCase().includes('pagibig') ||
-            rule.name.toLowerCase().includes('tax')) {
-          governmentDeductions += rule.isPercentage ? (basePay + overtimePay) * amount / 100 : amount
-        } else if (rule.name.toLowerCase().includes('loan')) {
-          loanDeductions += amount
-        } else {
-          otherDeductions += amount
-        }
-      } else if (rule.type === 'bonus' || rule.type === 'allowance') {
-        bonuses += rule.isPercentage ? (basePay + overtimePay) * amount / 100 : amount
-      }
-    })
+    const governmentDeductions = Number(calculation.gsis_contribution || 0) + 
+                                 Number(calculation.philhealth_contribution || 0) + 
+                                 Number(calculation.pagibig_contribution || 0)
+    const loanDeductions = Number(calculation.loan_deductions || 0)
+    const otherDeductions = Number(calculation.other_deductions || 0)
+    const lateDeductions = Number(calculation.late_deductions || 0)
+    const undertimeDeductions = Number(calculation.undertime_deductions || 0)
 
-    // Calculate totals
-    const totalDeductions = governmentDeductions + loanDeductions + otherDeductions + lateDeductions
-    const grossPay = basePay + overtimePay + bonuses
-    const netPay = grossPay - totalDeductions
+    const totalDeductions = Number(calculation.total_deductions || 0)
+    const grossPay = Number(calculation.gross_pay || 0)
+    const netPay = Number(calculation.net_pay || 0)
+
+    const monthlySalary = dailyRate * 22
+    const expectedDailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
+    const expectedTotalHours = workingDays * expectedDailyHours
 
     // Calculate year-to-date earnings
     const currentYear = new Date().getFullYear()
@@ -265,18 +247,32 @@ export async function GET(request: NextRequest) {
       deductionBreakdown: {
         government: {
           total: governmentDeductions,
-          details: payrollRules
-            .filter(rule => rule.type === 'deduction' && 
-              (rule.name.toLowerCase().includes('sss') ||
-               rule.name.toLowerCase().includes('philhealth') ||
-               rule.name.toLowerCase().includes('pagibig') ||
-               rule.name.toLowerCase().includes('tax')))
-            .map(rule => ({
-              name: rule.name,
-              amount: rule.isPercentage ? (basePay + overtimePay) * Number(rule.amount) / 100 : Number(rule.amount),
-              isPercentage: rule.isPercentage,
-              percentage: rule.isPercentage ? Number(rule.amount) : null
-            }))
+          details: [
+            ...(Number(calculation.gsis_contribution || 0) > 0 ? [{
+              name: 'GSIS',
+              amount: Number(calculation.gsis_contribution),
+              isPercentage: false,
+              percentage: null
+            }] : []),
+            ...(Number(calculation.philhealth_contribution || 0) > 0 ? [{
+              name: 'PhilHealth',
+              amount: Number(calculation.philhealth_contribution),
+              isPercentage: false,
+              percentage: null
+            }] : []),
+            ...(Number(calculation.pagibig_contribution || 0) > 0 ? [{
+              name: 'Pag-IBIG',
+              amount: Number(calculation.pagibig_contribution),
+              isPercentage: false,
+              percentage: null
+            }] : []),
+            ...(Number(calculation.withholding_tax || 0) > 0 ? [{
+              name: 'Withholding Tax',
+              amount: Number(calculation.withholding_tax),
+              isPercentage: false,
+              percentage: null
+            }] : [])
+          ]
         },
         loans: {
           total: loanDeductions,
@@ -289,10 +285,11 @@ export async function GET(request: NextRequest) {
             }))
         },
         other: {
-          total: otherDeductions + lateDeductions,
+          total: otherDeductions + lateDeductions + undertimeDeductions,
           details: [
             ...payrollRules
               .filter(rule => rule.type === 'deduction' && 
+                !rule.name.toLowerCase().includes('gsis') &&
                 !rule.name.toLowerCase().includes('sss') &&
                 !rule.name.toLowerCase().includes('philhealth') &&
                 !rule.name.toLowerCase().includes('pagibig') &&
@@ -300,26 +297,58 @@ export async function GET(request: NextRequest) {
                 !rule.name.toLowerCase().includes('loan'))
               .map(rule => ({
                 name: rule.name,
-                amount: rule.isPercentage ? (basePay + overtimePay) * Number(rule.amount) / 100 : Number(rule.amount),
+                amount: Number(rule.amount),
                 description: rule.description
               })),
             ...(lateDeductions > 0 ? [{
               name: 'Late Deductions',
               amount: lateDeductions,
-              description: `${lateCount} late(s) × ${lateDeductionAmount}`
+              description: `${lateCount} late(s)`
+            }] : []),
+            ...(undertimeDeductions > 0 ? [{
+              name: 'Undertime Deductions',
+              amount: undertimeDeductions,
+              description: `Undertime hours`
             }] : [])
           ]
         }
       },
-      appliedRules: payrollRules.map(rule => ({
-        id: rule.id,
-        name: rule.name,
-        type: rule.type,
-        amount: Number(rule.amount),
-        isPercentage: rule.isPercentage,
-        description: rule.description,
-        calculatedAmount: rule.isPercentage ? (basePay + overtimePay) * Number(rule.amount) / 100 : Number(rule.amount)
-      }))
+      appliedRules: payrollRules.map(rule => {
+        let calculatedAmount = 0
+        
+        // Map rule types to stored procedure fields
+        if (rule.type === 'daily_rate') {
+          calculatedAmount = dailyRate
+        } else if (rule.type === 'bonus') {
+          calculatedAmount = rule.isPercentage ? grossPay * Number(rule.amount) / 100 : Number(rule.amount)
+        } else if (rule.type === 'allowance') {
+          calculatedAmount = rule.isPercentage ? grossPay * Number(rule.amount) / 100 : Number(rule.amount)
+        } else if (rule.type === 'deduction') {
+          if (rule.name.toLowerCase().includes('gsis')) {
+            calculatedAmount = Number(calculation.gsis_contribution || 0)
+          } else if (rule.name.toLowerCase().includes('philhealth')) {
+            calculatedAmount = Number(calculation.philhealth_contribution || 0)
+          } else if (rule.name.toLowerCase().includes('pagibig')) {
+            calculatedAmount = Number(calculation.pagibig_contribution || 0)
+          } else if (rule.name.toLowerCase().includes('tax')) {
+            calculatedAmount = Number(calculation.withholding_tax || 0)
+          } else {
+            calculatedAmount = Number(rule.amount)
+          }
+        } else {
+          calculatedAmount = Number(rule.amount)
+        }
+        
+        return {
+          id: rule.id,
+          name: rule.name,
+          type: rule.type,
+          amount: Number(rule.amount),
+          isPercentage: rule.isPercentage,
+          description: rule.description,
+          calculatedAmount: calculatedAmount
+        }
+      })
     }
 
     return NextResponse.json({

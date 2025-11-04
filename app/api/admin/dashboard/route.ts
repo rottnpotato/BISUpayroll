@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
       Promise.resolve(0),
       Promise.resolve(0),
       
-      // This month's payroll
-      prisma.payrollRecord.aggregate({
+      // This month's payroll from PayrollResult
+      prisma.payrollResult.aggregate({
         where: {
           payPeriodStart: {
             gte: startOfMonth
@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // Last month's payroll for comparison
-      prisma.payrollRecord.aggregate({
+      // Last month's payroll for comparison from PayrollResult
+      prisma.payrollResult.aggregate({
         where: {
           payPeriodStart: {
             gte: lastMonth,
@@ -86,8 +86,8 @@ export async function GET(request: NextRequest) {
         }
       }),
       
-      // Unpaid payroll
-      prisma.payrollRecord.count({
+      // Unpaid payroll from PayrollResult
+      prisma.payrollResult.count({
         where: {
           isPaid: false
         }
@@ -98,8 +98,8 @@ export async function GET(request: NextRequest) {
       Promise.resolve(0),
       Promise.resolve([]),
       
-      // Recent payroll records
-      prisma.payrollRecord.findMany({
+      // Recent payroll records from PayrollResult
+      prisma.payrollResult.findMany({
         take: 10,
         orderBy: { createdAt: "desc" },
         include: {
@@ -116,10 +116,10 @@ export async function GET(request: NextRequest) {
       }),
 
       // Count all payroll records for basic statistics
-      prisma.payrollRecord.count(),
+      prisma.payrollResult.count(),
 
       // Count paid payrolls this month
-      prisma.payrollRecord.count({
+      prisma.payrollResult.count({
         where: {
           isPaid: true,
           paidAt: {
@@ -128,8 +128,8 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // Monthly payroll total
-      prisma.payrollRecord.aggregate({
+      // Monthly payroll total from PayrollResult
+      prisma.payrollResult.aggregate({
         where: {
           payPeriodStart: {
             gte: startOfMonth
@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
         const deptAttendance = await fetchAllPunchAttendance({ startDate: startOfMonth, endDate: new Date(), department: dept.department || undefined })
         const attendanceCount = deptAttendance.records.filter(r => !r.isAbsent).length
 
-        const avgSalary = await prisma.payrollRecord.aggregate({
+        const avgSalary = await prisma.payrollResult.aggregate({
           where: {
             user: {
               department: dept.department
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
         const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0)
 
         // Current month
-        const sum = await prisma.payrollRecord.aggregate({
+        const sum = await prisma.payrollResult.aggregate({
           where: {
             payPeriodStart: {
               gte: startOfMonth,
@@ -292,7 +292,7 @@ export async function GET(request: NextRequest) {
         const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1)
         const prevMonthEnd = new Date(date.getFullYear(), date.getMonth(), 0)
         
-        const prevSum = await prisma.payrollRecord.aggregate({
+        const prevSum = await prisma.payrollResult.aggregate({
           where: {
             payPeriodStart: {
               gte: prevMonth,
@@ -438,31 +438,105 @@ export async function GET(request: NextRequest) {
       payrollPeriodEnd = endCandidate
     }
 
-    // Fetch current payroll records within the computed payroll period for Employee Payroll Details
-    const currentPeriodPayroll = await prisma.payrollRecord.findMany({
+    // Calculate payroll on-the-fly for all active employees using stored procedure
+    // Get all active employees (exclude INACTIVE)
+    const employeesForPayroll = await prisma.user.findMany({
       where: {
-        payPeriodStart: {
-          gte: payrollPeriodStart
-        },
-        payPeriodEnd: {
-          lte: payrollPeriodEnd
-        }
+        role: 'EMPLOYEE',
+        status: { not: 'INACTIVE' }
       },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            employeeId: true,
-            department: true,
-            status: true
-          }
-        }
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        employeeId: true,
+        department: true,
+        status: true
       }
     })
 
+    // Calculate payroll for each employee using the stored procedure
+    const currentPeriodPayroll = await Promise.all(
+      employeesForPayroll.map(async (employee) => {
+        try {
+          // Call stored procedure to calculate payroll
+          const calculation = await prisma.$queryRaw<any[]>`
+            SELECT * FROM calculate_payroll_for_period(
+              ${employee.id}::text,
+              ${payrollPeriodStart}::date,
+              ${payrollPeriodEnd}::date
+            )
+          `
+
+          if (calculation && calculation.length > 0) {
+            const calc = calculation[0]
+            return {
+              id: `calc_${employee.id}`,
+              userId: employee.id,
+              payPeriodStart: payrollPeriodStart,
+              payPeriodEnd: payrollPeriodEnd,
+              dailyRate: Number(calc.daily_rate || 0),
+              hourlyRate: Number(calc.hourly_rate || 0),
+              daysWorked: Number(calc.days_worked || 0),
+              hoursWorked: Number(calc.hours_worked || 0),
+              overtimeHours: Number(calc.overtime_hours || 0),
+              undertimeHours: Number(calc.undertime_hours || 0),
+              lateHours: Number(calc.late_hours || 0),
+              holidayHours: Number(calc.holiday_hours || 0),
+              regularPay: Number(calc.regular_pay || 0),
+              overtimePay: Number(calc.overtime_pay || 0),
+              holidayPay: Number(calc.holiday_pay || 0),
+              nightDifferential: 0,
+              allowances: Number(calc.allowances || 0),
+              bonuses: Number(calc.bonuses || 0),
+              thirteenthMonthPay: Number(calc.thirteenth_month_pay || 0),
+              serviceIncentiveLeave: Number(calc.service_incentive_leave || 0),
+              otherEarnings: Number(calc.other_earnings || 0),
+              totalEarnings: Number(calc.total_earnings || 0),
+              grossPay: Number(calc.gross_pay || 0),
+              gsisContribution: Number(calc.gsis_contribution || 0),
+              philHealthContribution: Number(calc.philhealth_contribution || 0),
+              pagibigContribution: Number(calc.pagibig_contribution || 0),
+              taxableIncome: Number(calc.taxable_income || 0),
+              withholdingTax: Number(calc.withholding_tax || 0),
+              lateDeductions: Number(calc.late_deductions || 0),
+              undertimeDeductions: Number(calc.undertime_deductions || 0),
+              loanDeductions: Number(calc.loan_deductions || 0),
+              otherDeductions: Number(calc.other_deductions || 0),
+              totalDeductions: Number(calc.total_deductions || 0),
+              netPay: Number(calc.net_pay || 0),
+              user: {
+                firstName: employee.firstName,
+                lastName: employee.lastName,
+                employeeId: employee.employeeId,
+                department: employee.department,
+                status: employee.status
+              }
+            }
+          }
+          return null
+        } catch (error) {
+          console.error(`Error calculating payroll for employee ${employee.id}:`, error)
+          return null
+        }
+      })
+    )
+
+    // Filter out null results and calculate totals
+    const validPayrollRecords = currentPeriodPayroll.filter(record => record !== null)
+    const payrollResultTotals = validPayrollRecords.reduce((acc, record: any) => ({
+      grossPay: acc.grossPay + Number(record.grossPay || 0),
+      netPay: acc.netPay + Number(record.netPay || 0),
+      totalDeductions: acc.totalDeductions + Number(record.totalDeductions || 0),
+      count: acc.count + 1
+    }), { grossPay: 0, netPay: 0, totalDeductions: 0, count: 0 })
+
     // Ensure consistent data structure even when empty
+    // Use PayrollResult data for accurate payroll totals
+    const actualMonthlyTotal = payrollResultTotals.grossPay > 0 ? payrollResultTotals.grossPay : Number(monthlyPayrollTotal._sum.grossPay || 0)
+    const actualNetTotal = payrollResultTotals.netPay > 0 ? payrollResultTotals.netPay : Number(thisMonthPayroll._sum.netPay || 0)
+    const actualPayrollCount = payrollResultTotals.count > 0 ? payrollResultTotals.count : thisMonthPayroll._count.id || 0
+
     const response = {
       overview: {
         totalEmployees: totalEmployees || 0,
@@ -471,15 +545,15 @@ export async function GET(request: NextRequest) {
         todayAttendance: todayAttendance || 0,
         thisWeekAttendance: thisWeekAttendance || 0,
         thisMonthPayroll: {
-          total: Number(thisMonthPayroll._sum.grossPay || 0),
-          netTotal: Number(thisMonthPayroll._sum.netPay || 0),
-          count: thisMonthPayroll._count.id || 0
+          total: actualMonthlyTotal,
+          netTotal: actualNetTotal,
+          count: actualPayrollCount
         },
         unpaidPayroll: unpaidPayroll || 0,
         attendanceRate: attendanceRate || 0
       },
       totalEmployees: totalEmployees || 0,
-      monthlyPayrollTotal: Number(monthlyPayrollTotal._sum.grossPay || 0),
+      monthlyPayrollTotal: actualMonthlyTotal,
       unpaidPayrolls: Math.max(0, (totalPayrollRecords || 0) - (paidPayrolls || 0)),
       generatedPayrolls: totalPayrollRecords || 0,
       paidPayrolls: paidPayrolls || 0,
@@ -501,7 +575,7 @@ export async function GET(request: NextRequest) {
         attendance: recentAttendance || [],
         payroll: recentPayroll || []
       },
-      employeePayroll: currentPeriodPayroll || [],
+      employeePayroll: validPayrollRecords || [],
       payrollDetails: {
         company: "BISU Balilihan Campus",
         period: {
@@ -509,12 +583,12 @@ export async function GET(request: NextRequest) {
           end: payrollPeriodEnd.toISOString().split('T')[0]
         },
         status: payrollStatus,
-        total: Number(thisMonthPayroll._sum.grossPay || 0),
+        total: actualMonthlyTotal,
         breakdown: {
-          salary: Number(thisMonthPayroll._sum.grossPay || 0) * 0.7,
-          benefits: Number(thisMonthPayroll._sum.grossPay || 0) * 0.15,
-          incentives: Number(thisMonthPayroll._sum.grossPay || 0) * 0.1,
-          employerContributions: Number(thisMonthPayroll._sum.grossPay || 0) * 0.05
+          salary: actualMonthlyTotal * 0.7,
+          benefits: actualMonthlyTotal * 0.15,
+          incentives: actualMonthlyTotal * 0.1,
+          employerContributions: actualMonthlyTotal * 0.05
         },
         schedule: activePayrollSchedule,
         deadlineStatus: payrollDeadlineStatus,

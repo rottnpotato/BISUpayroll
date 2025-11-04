@@ -63,6 +63,26 @@ export async function GET(request: NextRequest) {
           lte: endDate,
         },
       },
+      include: {
+        overloadRecords: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        overtimeRequests: {
+          include: {
+            approvedBy: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
       orderBy: { date: 'asc' },
     })
 
@@ -421,19 +441,10 @@ export async function POST(request: NextRequest) {
         const isLate = sessionType === 'morning' && (now.getHours() > workStartHour || 
           (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes)))
 
-        // Auto-approve time-in if not excessively late (more than 2 hours)
-        const shouldAutoApproveTimeIn = (() => {
-          if (!isLate) return true // Auto-approve if on time
-          
-          const currentHour = now.getHours()
-          const currentMinute = now.getMinutes()
-          const actualTimeIn = currentHour * 60 + currentMinute
-          const expectedTimeIn = workStartHour * 60 + workStartMinute
-          const lateMinutes = actualTimeIn - expectedTimeIn
-          
-          // Don't auto-approve if more than 2 hours late (120 minutes)
-          return lateMinutes <= 120
-        })()
+        // Auto-approve time-in for regular attendance
+        // Time-in records are always auto-approved since final determination
+        // depends on total hours worked (checked at time-out)
+        const shouldAutoApproveTimeIn = true
 
         // Create session-based attendance data
         const sessionData: any = {
@@ -502,19 +513,10 @@ export async function POST(request: NextRequest) {
         // For additional sessions (afternoon), late flag does not apply
         const isLate = false
 
-        // Auto-approve time-in if not excessively late (more than 2 hours)
-        const shouldAutoApproveTimeIn = (() => {
-          if (!isLate) return true // Auto-approve if on time
-          
-          const currentHour = now.getHours()
-          const currentMinute = now.getMinutes()
-          const actualTimeIn = currentHour * 60 + currentMinute
-          const expectedTimeIn = workStartHour * 60 + workStartMinute
-          const lateMinutes = actualTimeIn - expectedTimeIn
-          
-          // Don't auto-approve if more than 2 hours late (120 minutes)
-          return lateMinutes <= 120
-        })()
+        // Auto-approve time-in for regular attendance
+        // Time-in records are always auto-approved since final determination
+        // depends on total hours worked (checked at time-out)
+        const shouldAutoApproveTimeIn = true
 
         // Update data for the new session
         const updateData: any = {
@@ -581,14 +583,29 @@ export async function POST(request: NextRequest) {
       // Determine which session to time-out from
       let timeOutSession: 'morning' | 'afternoon' | 'general' = 'general'
       
-      if (sessionType === 'morning' && hasMorningTimeIn) {
-        timeOutSession = 'morning'
-      } else if (sessionType === 'afternoon' && hasAfternoonTimeIn) {
-        timeOutSession = 'afternoon'
-      } else if (hasMorningTimeIn && !hasAfternoonTimeIn) {
-        timeOutSession = 'morning'
-      } else if (hasAfternoonTimeIn) {
-        timeOutSession = 'afternoon'
+      // Use the current time's session type to determine which session to timeout
+      // Priority: Current session type (morning/afternoon) determines where to record timeout
+      if (sessionType === 'afternoon') {
+        // Currently in afternoon session
+        if (hasAfternoonTimeIn && !hasAfternoonTimeOut) {
+          // Has afternoon time-in, use it
+          timeOutSession = 'afternoon'
+        } else if (hasMorningTimeIn && !hasMorningTimeOut) {
+          // Only has morning time-in, this is afternoon timeout for full-day work
+          timeOutSession = 'afternoon'
+        }
+      } else if (sessionType === 'morning') {
+        // Currently in morning session
+        if (hasMorningTimeIn && !hasMorningTimeOut) {
+          timeOutSession = 'morning'
+        }
+      } else {
+        // Outside session times, fallback logic
+        if (hasMorningTimeIn && !hasMorningTimeOut) {
+          timeOutSession = 'morning'
+        } else if (hasAfternoonTimeIn && !hasAfternoonTimeOut) {
+          timeOutSession = 'afternoon'
+        }
       }
       
       // Check for early timeout
@@ -628,7 +645,9 @@ export async function POST(request: NextRequest) {
         if (timeOutSession === 'morning') {
           timeInForSession = attendanceRecord.morningTimeIn ?? null
         } else if (timeOutSession === 'afternoon') {
-          timeInForSession = attendanceRecord.afternoonTimeIn ?? null
+          // For afternoon timeout, prefer afternoon time-in, but fall back to morning time-in
+          // (for full-day workers who only timed in once in the morning)
+          timeInForSession = attendanceRecord.afternoonTimeIn ?? attendanceRecord.morningTimeIn ?? null
         } else {
           timeInForSession = attendanceRecord.timeIn ?? attendanceRecord.morningTimeIn ?? attendanceRecord.afternoonTimeIn ?? null
         }
@@ -707,29 +726,16 @@ export async function POST(request: NextRequest) {
           : 1.0
 
         // Determine if this attendance should be auto-approved
-        // Auto-approve if:
-        // 1. Employee worked reasonable hours (between 4-12 hours)
-        // 2. Not excessively late (more than 2 hours late)
-        // 3. Has both time-in and time-out
+        // Auto-approve ALL regular attendance automatically
+        // Note: Hours beyond 8 are only counted if employee requests overtime/overload
+        // If no overtime/overload request is made, attendance is capped at 8 hours for payroll
+        // Only require approval for early-out cases requiring supervisor review
         const shouldAutoApprove = (() => {
-          // Check reasonable working hours (4-12 hours)
-          if (totalHoursWorked < 4 || totalHoursWorked > 12) return false
-
-          // Check if excessively late (more than 2 hours)
-          if (attendanceRecord.isLate) {
-            const timeInHour = attendanceRecord.timeIn?.getHours() || 0
-            const timeInMinute = attendanceRecord.timeIn?.getMinutes() || 0
-            const actualTimeIn = timeInHour * 60 + timeInMinute
-            const expectedTimeIn = workStartHour * 60 + workStartMinute
-            const lateMinutes = actualTimeIn - expectedTimeIn
-
-            // Don't auto-approve if more than 2 hours late (120 minutes)
-            if (lateMinutes > 120) return false
-          }
-
-          // Prevent auto-approval if early-out requires supervisor review
+          // Don't auto-approve if early-out (requires supervisor review)
           if (isEarlyOut) return false
 
+          // Auto-approve all regular attendance (even if >8 hours)
+          // Overtime/overload requires separate explicit request by employee
           return true
         })()
 

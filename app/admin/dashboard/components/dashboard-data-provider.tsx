@@ -22,6 +22,9 @@ export default function DashboardDataProvider({ children }: DashboardDataProvide
     try {
       setIsLoading(true)
       setError(null)
+      
+      // Fetch the dashboard data directly without pre-generating payroll
+      // The dashboard should display existing PayrollResult data
       const response = await fetch('/api/admin/dashboard')
       
       if (!response.ok) {
@@ -29,6 +32,12 @@ export default function DashboardDataProvider({ children }: DashboardDataProvide
       }
       
       const data = await response.json()
+      console.log('Dashboard data loaded:', { 
+        employeePayrollCount: data?.employeePayroll?.length || 0,
+        hasOverview: !!data?.overview,
+        hasPayrollDetails: !!data?.payrollDetails,
+        monthlyTotal: data?.monthlyPayrollTotal || 0
+      })
       setDashboardData(data)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)

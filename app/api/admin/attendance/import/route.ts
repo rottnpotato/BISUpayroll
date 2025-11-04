@@ -478,22 +478,63 @@ export async function POST(request: NextRequest) {
             if (sequence.in && sequence.out) {
               const sessionHours = (sequence.out.getTime() - sequence.in.getTime()) / (1000 * 60 * 60)
               
-              // First valid session is morning
+              // Get Manila hours for both timestamps
+              const inHour = getManilaHours(sequence.in)
+              const outHour = getManilaHours(sequence.out)
+              
+              // Define session boundaries: morning is before 12:00, afternoon is 13:00 or later
+              const isMorningIn = inHour < 12
+              const isAfternoonIn = inHour >= 13
+              const isAfternoonOut = outHour >= 13
+              
+              // Determine session assignment based on time ranges
               if (totalSessions === 0) {
-                morningTimeIn = sequence.in
-                morningTimeOut = sequence.out
-                hoursWorked += sessionHours
-                totalSessions++
+                // First session
+                if (isMorningIn && isAfternoonOut) {
+                  // Single full-day session: morning IN, afternoon OUT (no morning OUT or afternoon IN)
+                  morningTimeIn = sequence.in
+                  morningTimeOut = null
+                  afternoonTimeIn = null
+                  afternoonTimeOut = sequence.out
+                  hoursWorked += sessionHours
+                  totalSessions = 2 // Count as full day
+                } else if (isMorningIn) {
+                  // Morning session only
+                  morningTimeIn = sequence.in
+                  morningTimeOut = sequence.out
+                  hoursWorked += sessionHours
+                  totalSessions++
+                } else if (isAfternoonIn) {
+                  // Afternoon session only (e.g., 4:49 PM IN)
+                  afternoonTimeIn = sequence.in
+                  afternoonTimeOut = sequence.out
+                  hoursWorked += sessionHours
+                  totalSessions++
+                } else {
+                  // Lunch time IN (12:00-12:59), treat as afternoon
+                  afternoonTimeIn = sequence.in
+                  afternoonTimeOut = sequence.out
+                  hoursWorked += sessionHours
+                  totalSessions++
+                }
               } 
-              // Second valid session is afternoon
+              // Second session
               else if (totalSessions === 1) {
-                afternoonTimeIn = sequence.in
-                afternoonTimeOut = sequence.out
-                hoursWorked += sessionHours
-                totalSessions++
+                // Assign to whichever session is not yet filled
+                if (!afternoonTimeIn && !afternoonTimeOut) {
+                  afternoonTimeIn = sequence.in
+                  afternoonTimeOut = sequence.out
+                  hoursWorked += sessionHours
+                  totalSessions++
+                } else if (!morningTimeIn && !morningTimeOut) {
+                  morningTimeIn = sequence.in
+                  morningTimeOut = sequence.out
+                  hoursWorked += sessionHours
+                  totalSessions++
+                }
               }
               // More than 2 sessions - log warning
-              else {
+              else if (totalSessions >= 2) {
                 results.warnings.push(
                   `${meta.rawName} on ${dateKey}: More than 2 sessions detected. Only using first 2 sessions.`
                 )
@@ -559,7 +600,7 @@ export async function POST(request: NextRequest) {
             isEarlyOut,
             totalSessions,
             sessionType: isAbsent ? null : (isHalfDay ? 'HALF_DAY' : 'FULL_DAY'),
-            status: AttendanceStatus.VERIFIED,
+            status: AttendanceStatus.APPROVED,
             importBatchId: importBatch.id
           }
 
@@ -580,7 +621,7 @@ export async function POST(request: NextRequest) {
                 isEarlyOut,
                 totalSessions,
                 sessionType: isAbsent ? null : (isHalfDay ? 'HALF_DAY' : 'FULL_DAY'),
-                status: AttendanceStatus.VERIFIED,
+                status: AttendanceStatus.APPROVED,
                 importBatchId: importBatch.id
               }
             })
@@ -691,7 +732,7 @@ export async function POST(request: NextRequest) {
             isEarlyOut: false,
             totalSessions: 0,
             sessionType: null,
-            status: AttendanceStatus.VERIFIED,
+            status: AttendanceStatus.APPROVED,
             importBatchId: importBatch.id
           }
           

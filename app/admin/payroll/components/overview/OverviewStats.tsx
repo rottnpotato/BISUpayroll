@@ -27,12 +27,12 @@ export const OverviewStats: FC<OverviewStatsProps> = ({ summary, formatCurrency 
       sub: "Estimated total",
     },
     {
-      label: "Pending Approval",
-      value: summary.pendingApproval.toString(),
+      label: "Completed Payrolls",
+      value: summary.completedPayrolls.toString(),
       icon: Clock,
-      accent: "from-orange-400/20 border-orange-400/30",
-      iconColor: "text-orange-500",
-      sub: "Awaiting approval",
+      accent: "from-green-500/20 border-green-500/30",
+      iconColor: "text-green-600",
+      sub: "Successfully processed",
     },
     {
       label: "Next Pay Date",

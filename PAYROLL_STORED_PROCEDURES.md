@@ -6,6 +6,7 @@ This system uses PostgreSQL stored procedures and triggers to calculate payroll 
 
 ✅ **Automatic Recalculation**: Payroll updates automatically when:
 - Attendance records are approved
+- Overload/overtime records are approved
 - Payroll rules are modified
 - System configurations change
 - Tax/contribution rates are updated
@@ -174,6 +175,23 @@ When attendance records are imported or updated, payroll is automatically recalc
 4. Payroll results are updated in real-time
 5. Dashboard shows updated payroll data
 
+### 1b. Overload Record Approval Trigger
+
+When overload/overtime records are approved, payroll is automatically recalculated:
+
+```sql
+-- Trigger: auto_recalculate_payroll_on_overload
+-- Fires: AFTER INSERT OR UPDATE on overload_records
+-- Action: Recalculates payroll when overload records are approved
+```
+
+**Example Flow:**
+1. Employee submits overload record for extra hours worked
+2. Admin reviews and approves overload record (status='APPROVED')
+3. **Trigger fires automatically**
+4. Payroll results updated with overload hours and pay
+5. Dashboard reflects additional earnings from approved overload
+
 ### 2. Configuration Change Trigger
 
 When system settings affecting payroll are modified:
@@ -223,6 +241,7 @@ When payroll rules are modified:
 |----------|---------|------------|
 | `calculate_hourly_rate()` | Convert daily to hourly rate | daily_rate, daily_hours |
 | `calculate_overtime_pay()` | Compute overtime earnings | overtime_hours, hourly_rate, rates |
+| `calculate_overload_pay()` | Compute approved overload earnings | user_id, period_start, period_end |
 | `calculate_holiday_pay()` | Compute holiday premium | holiday_hours, hourly_rate, type |
 | `calculate_late_deductions()` | Compute late penalties | late_hours, rates, basis |
 | `calculate_gsis_contribution()` | Compute GSIS deduction | salary_base, rate, limits |
@@ -259,6 +278,7 @@ When payroll rules are modified:
    ├─ Regular pay = (hours - overtime - holiday) × hourly_rate
    ├─ Overtime pay = overtime formula
    ├─ Holiday pay = holiday formula
+   ├─ Overload pay = sum of approved overload records
    ├─ Allowances from payroll rules
    ├─ Bonuses from payroll rules
    ├─ 13th month pay
@@ -459,6 +479,163 @@ SELECT * FROM pg_stat_user_functions WHERE funcname LIKE '%payroll%';
 4. **Audit Trail**: Log all recalculations with timestamps and triggers
 5. **Notifications**: Alert admins when payroll changes significantly
 6. **Batch Processing**: Optimize for large employee counts (1000+)
+
+## Overload/Overtime Pay System
+
+### What is Overload Pay?
+
+Overload pay is compensation for additional hours worked beyond regular working hours, typically for teaching or special assignments. Unlike regular overtime (which is calculated automatically from attendance), overload must be explicitly recorded and approved.
+
+### How It Works
+
+1. **Employee Records Overload**
+   - Employee views attendance record showing >8 hours worked
+   - Employee clicks "Add Overload" and enters:
+     - Start time and end time of overload work
+     - Description/reason for overload
+   - System calculates hours and amount based on overload rate
+   - Overload record created with status='PENDING'
+
+2. **Admin Approval**
+   - Admin reviews overload requests
+   - Admin approves or rejects with optional notes
+   - On approval, status changes to 'APPROVED'
+
+3. **Automatic Payroll Update**
+   - When overload is approved, trigger fires automatically
+   - `calculate_overload_pay()` aggregates all approved overload records
+   - Payroll results updated with:
+     - `overloadHours`: Total approved overload hours
+     - `overloadPay`: Total approved overload amount
+     - `totalEarnings` and `grossPay`: Increased by overload pay
+     - `netPay`: Recalculated including overload
+
+### Overload vs Overtime
+
+| Feature | Overtime | Overload |
+|---------|----------|----------|
+| **Calculation** | Automatic from hours worked > 8 | Manual entry + approval |
+| **Rate** | 1.25x-1.5x hourly rate | Fixed hourly rate from payroll rules |
+| **Approval** | Auto-approved with attendance | Requires admin approval |
+| **Use Case** | Regular extra hours | Special assignments, teaching loads |
+| **Recording** | Derived from time in/out | Explicitly entered by employee |
+
+### Database Schema
+
+```sql
+-- Overload records table
+CREATE TABLE "overload_records" (
+  id TEXT PRIMARY KEY,
+  "attendanceId" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "startTime" TIMESTAMP NOT NULL,
+  "endTime" TIMESTAMP NOT NULL,
+  "hoursWorked" DECIMAL(6,2) NOT NULL,
+  "hourlyRate" DECIMAL(10,2) NOT NULL,
+  "totalAmount" DECIMAL(10,2) NOT NULL,
+  description TEXT,
+  status "OverloadStatus" DEFAULT 'PENDING',
+  "approvedAt" TIMESTAMP,
+  "approvedById" TEXT,
+  "rejectionReason" TEXT,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- Enum for overload status
+CREATE TYPE "OverloadStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+```
+
+### API Endpoints
+
+#### Create Overload Record
+```bash
+POST /api/employee/overload
+{
+  "attendanceId": "clx123...",
+  "startTime": "17:00",
+  "endTime": "19:00",
+  "description": "Extra teaching hours for night class",
+  "date": "2025-11-01"
+}
+```
+
+#### Get Overload Records
+```bash
+# Get all for current user
+GET /api/employee/overload
+
+# Get for specific attendance
+GET /api/employee/overload?attendanceId=clx123...
+```
+
+#### Get Overload Rate
+```bash
+GET /api/employee/overload/rate
+# Returns: { "rate": 150.00 }
+```
+
+### Configuration
+
+Set overload hourly rate in payroll rules:
+1. Go to Admin → Payroll → Rules
+2. Create rule with:
+   - Name: "Overload Rate" (or similar, containing "overload")
+   - Type: "earnings"
+   - Amount: hourly rate (e.g., 150.00)
+   - Active: true
+
+The system will use this rate for calculating overload pay. Default is 100 PHP/hour if no rule is configured.
+
+### Validation Rules
+
+- Employee must have worked >8 hours on the attendance date
+- Overload start/end times must be valid
+- Overload hours must be > 0
+- Only approved records are included in payroll
+- Cannot create overload for inactive attendance records
+
+### Troubleshooting
+
+**Issue: Overload pay not showing in payroll**
+
+Check:
+```sql
+-- Verify overload records are approved
+SELECT * FROM "overload_records" 
+WHERE "userId" = 'user_id_here' 
+AND status = 'APPROVED';
+
+-- Test calculate_overload_pay function
+SELECT * FROM calculate_overload_pay(
+  'user_id_here',
+  '2025-11-01'::date,
+  '2025-11-30'::date
+);
+
+-- Check if trigger fired
+SELECT * FROM "payroll_results"
+WHERE "userId" = 'user_id_here'
+AND "overloadPay" > 0;
+```
+
+**Issue: Overload trigger not firing**
+
+Verify trigger exists:
+```sql
+SELECT * FROM pg_trigger 
+WHERE tgname = 'auto_recalculate_payroll_on_overload';
+```
+
+Recreate if needed:
+```sql
+DROP TRIGGER IF EXISTS auto_recalculate_payroll_on_overload ON "overload_records";
+CREATE TRIGGER auto_recalculate_payroll_on_overload
+    AFTER INSERT OR UPDATE ON "overload_records"
+    FOR EACH ROW
+    WHEN (NEW."status" = 'APPROVED')
+    EXECUTE FUNCTION trigger_recalculate_payroll_on_overload();
+```
 
 ## Support
 

@@ -18,6 +18,53 @@ export interface AttendanceRecord {
   afternoonTimeOut?: string | null
   totalSessions?: number
   isLate?: boolean
+  approvalStatus?: string
+  rejectionReason?: string | null
+  approvedAt?: string | null
+  overloadRecords?: OverloadRecord[]
+  overtimeRequests?: OvertimeRequest[]
+}
+
+export interface OvertimeRequest {
+  id: string
+  attendanceId: string
+  userId: string
+  startTime: string
+  endTime: string
+  hoursWorked: number
+  hourlyRate: number
+  totalAmount: number
+  description?: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  approvedAt?: string | null
+  approvedById?: string | null
+  rejectionReason?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface OverloadRecord {
+  id: string
+  attendanceId: string
+  userId: string
+  startTime: string
+  endTime: string
+  hoursWorked: number
+  hourlyRate: number
+  totalAmount: number
+  description?: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  approvedAt?: string | null
+  approvedById?: string | null
+  rejectionReason?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface OverloadFormData {
+  startTime: string
+  endTime: string
+  description?: string
 }
 
 export interface AttendanceSummary {

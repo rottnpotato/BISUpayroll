@@ -598,6 +598,7 @@ export default function PayrollPage() {
         templateDateRange={selectedTemplate ? templateDateRanges[selectedTemplate.id] : undefined}
         selectedTemplate={selectedTemplate}
         onPrint={handlePrint}
+        employmentStatus={selectedEmploymentStatus}
       />
 
       {/* Fixed Save Button - Always visible when there are unsaved changes */}

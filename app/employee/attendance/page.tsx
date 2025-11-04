@@ -11,46 +11,16 @@ import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-
-interface AttendanceRecord {
-  id: string
-  date: string
-  dayOfWeek: string
-  timeIn: string | null
-  timeOut: string | null
-  status: string
-  hours: number
-  approvalStatus: string
-  rejectionReason: string | null
-  approvedAt: string | null
-  morningTimeIn?: string | null
-  morningTimeOut?: string | null
-  afternoonTimeIn?: string | null
-  afternoonTimeOut?: string | null
-  isHalfDay?: boolean
-  isEarlyOut?: boolean
-  earlyOutReason?: string | null
-}
-
-interface AttendanceSummary {
-  totalDays: number
-  presentDays: number
-  absentDays: number
-  lateDays: number
-  totalHours: number
-  averageHoursPerDay: number
-}
-
-interface AttendanceData {
-  records: AttendanceRecord[]
-  summary: AttendanceSummary
-}
+import { AttendanceDetailModal } from "./components/attendance-detail-modal"
+import { AttendanceRecord, AttendanceData, AttendanceSummary } from "./types"
 
 export default function EmployeeAttendancePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [attendanceData, setAttendanceData] = useState<AttendanceData | null>(null)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
   const fetchAttendanceData = async () => {
     try {
@@ -341,7 +311,14 @@ export default function EmployeeAttendancePage() {
                     <TableBody>
                       {attendanceData && attendanceData.records.length > 0 ? (
                         attendanceData.records.map((record) => (
-                          <TableRow key={record.id}>
+                          <TableRow 
+                            key={record.id}
+                            className="cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => {
+                              setSelectedRecord(record)
+                              setIsDetailModalOpen(true)
+                            }}
+                          >
                             <TableCell className="font-medium">{record.date}</TableCell>
                             <TableCell>{record.dayOfWeek}</TableCell>
                             <TableCell>
@@ -359,7 +336,7 @@ export default function EmployeeAttendancePage() {
                             <TableCell>{formatHours(record.hours)}</TableCell>
                             <TableCell>{getStatusBadge(record.status)}</TableCell>
                             <TableCell>
-                              {getApprovalStatusBadge(record.approvalStatus, record.rejectionReason)}
+                              {getApprovalStatusBadge(record.approvalStatus!, record.rejectionReason)}
                             </TableCell>
                           </TableRow>
                         ))
@@ -378,6 +355,20 @@ export default function EmployeeAttendancePage() {
           </motion.div>
         </motion.div>
       )}
+
+      {/* Attendance Detail Modal */}
+      <AttendanceDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false)
+          setSelectedRecord(null)
+        }}
+        record={selectedRecord}
+        onOverloadAdded={() => {
+          // Refresh attendance data to show new overload
+          fetchAttendanceData()
+        }}
+      />
     </div>
   )
 }

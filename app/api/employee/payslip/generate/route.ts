@@ -125,121 +125,102 @@ export async function POST(request: NextRequest) {
       return acc
     }, {} as Record<string, string>)
 
-    // Calculate statistics
-    const workingDays = attendanceRecords.filter(record => !record.isAbsent).length
-    const totalHoursWorked = attendanceRecords.reduce((sum, record) => {
-      return sum + (record.hoursWorked || 0)
-    }, 0)
-    const lateCount = attendanceRecords.filter(record => record.isLate).length
-    const absentCount = attendanceRecords.filter(record => record.isAbsent).length
+    // Use stored procedure for accurate payroll calculation
+    const payrollResult = await prisma.$queryRaw<any[]>`
+      SELECT * FROM calculate_payroll_for_period(
+        ${user.id}::TEXT,
+        ${payPeriodStart}::DATE,
+        ${payPeriodEnd}::DATE
+      )
+    `
 
-    // Calculate expected working hours and overtime
-    const expectedDailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
-    const expectedTotalHours = workingDays * expectedDailyHours
-    const overtimeHours = Math.max(0, totalHoursWorked - expectedTotalHours)
-    const regularHours = Math.min(totalHoursWorked, expectedTotalHours)
+    const calculation = payrollResult[0]
 
-    // Get daily rate from payroll rules
-    const dailyRateRule = payrollRules.find((rule: any) => rule.type === 'daily_rate')
-    const dailyRate = dailyRateRule ? Number(dailyRateRule.amount) : 0
-    const monthlySalary = dailyRate * 22 // Standard monthly rate for reference
-    const hourlyRate = dailyRate / expectedDailyHours
-
-    // Calculate overtime pay
-    const overtimeRate = parseFloat(configs['rates_overtimeRate1'] || '1.25')
-    const overtimePay = overtimeHours * hourlyRate * overtimeRate
-
-    // Calculate late deductions
-    const lateDeductionAmount = parseFloat(configs['working_hours_lateDeductionAmount'] || '0')
-    const lateDeductionBasis = configs['working_hours_lateDeductionBasis'] || 'fixed'
-    let lateDeductions = 0
-
-    if (lateDeductionBasis === 'fixed') {
-      lateDeductions = lateCount * lateDeductionAmount
-    } else if (lateDeductionBasis === 'hourly') {
-      lateDeductions = lateCount * hourlyRate * lateDeductionAmount
+    if (!calculation) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Failed to calculate payroll for payslip generation' 
+      }, { status: 500 })
     }
 
-    // Calculate base pay based on actual days worked
-    const basePay = workingDays * dailyRate
+    // Extract values from stored procedure result
+    const dailyRate = Number(calculation.daily_rate || 0)
+    const hourlyRate = Number(calculation.hourly_rate || 0)
+    const workingDays = Number(calculation.days_worked || 0)
+    const totalHoursWorked = Number(calculation.hours_worked || 0)
+    const overtimeHours = Number(calculation.overtime_hours || 0)
+    const regularHours = totalHoursWorked - overtimeHours
+    const lateCount = Number(calculation.late_hours || 0) // Note: late_hours stores count
+    const absentCount = attendanceRecords.filter(record => record.isAbsent).length
 
-    // Calculate rule-based deductions and bonuses
-    let governmentDeductions = 0
-    let loanDeductions = 0
-    let otherDeductions = 0
-    let bonuses = 0
-    let holidayPay = 0
-    let allowances = 0
+    const basePay = Number(calculation.regular_pay || 0)
+    const overtimePay = Number(calculation.overtime_pay || 0)
+    const bonuses = Number(calculation.bonuses || 0)
+    const allowances = Number(calculation.allowances || 0)
+    const holidayPay = Number(calculation.holiday_pay || 0)
+    const overloadPay = Number(calculation.overload_pay || 0)
 
-    const appliedRules: any[] = []
+    const gsisContribution = Number(calculation.gsis_contribution || 0)
+    const philHealthContribution = Number(calculation.philhealth_contribution || 0)
+    const pagibigContribution = Number(calculation.pagibig_contribution || 0)
+    const withholdingTax = Number(calculation.withholding_tax || 0)
+    
+    const governmentDeductions = gsisContribution + philHealthContribution + pagibigContribution
+    const loanDeductions = Number(calculation.loan_deductions || 0)
+    const otherDeductions = Number(calculation.other_deductions || 0)
+    const lateDeductions = Number(calculation.late_deductions || 0)
+    const undertimeDeductions = Number(calculation.undertime_deductions || 0)
 
-    payrollRules.forEach(rule => {
-      const amount = Number(rule.amount)
+    const totalDeductions = Number(calculation.total_deductions || 0)
+    const grossPay = Number(calculation.gross_pay || 0)
+    const netPay = Number(calculation.net_pay || 0)
+
+    const monthlySalary = dailyRate * 22
+
+    // Build applied rules list
+    const appliedRules: any[] = payrollRules.map(rule => {
       let calculatedAmount = 0
       
-      if (rule.type === 'deduction') {
-        calculatedAmount = rule.isPercentage ? (basePay + overtimePay) * amount / 100 : amount
-        
-        if (rule.name.toLowerCase().includes('sss') || 
-            rule.name.toLowerCase().includes('gsis') || 
-            rule.name.toLowerCase().includes('philhealth') || 
-            rule.name.toLowerCase().includes('pagibig') ||
-            rule.name.toLowerCase().includes('pag-ibig') ||
-            rule.name.toLowerCase().includes('tax')) {
-          governmentDeductions += calculatedAmount
-        } else if (rule.name.toLowerCase().includes('loan')) {
-          loanDeductions += calculatedAmount
-        } else {
-          otherDeductions += calculatedAmount
-        }
+      if (rule.type === 'daily_rate') {
+        calculatedAmount = dailyRate
       } else if (rule.type === 'bonus') {
-        calculatedAmount = rule.isPercentage ? (basePay + overtimePay) * amount / 100 : amount
-        bonuses += calculatedAmount
+        calculatedAmount = rule.isPercentage ? grossPay * Number(rule.amount) / 100 : Number(rule.amount)
       } else if (rule.type === 'allowance') {
-        calculatedAmount = rule.isPercentage ? (basePay + overtimePay) * amount / 100 : amount
-        allowances += calculatedAmount
-      } else if (rule.type === 'holiday_pay') {
-        calculatedAmount = rule.isPercentage ? (basePay + overtimePay) * amount / 100 : amount
-        holidayPay += calculatedAmount
+        calculatedAmount = rule.isPercentage ? grossPay * Number(rule.amount) / 100 : Number(rule.amount)
+      } else if (rule.type === 'deduction') {
+        if (rule.name.toLowerCase().includes('gsis')) {
+          calculatedAmount = gsisContribution
+        } else if (rule.name.toLowerCase().includes('philhealth')) {
+          calculatedAmount = philHealthContribution
+        } else if (rule.name.toLowerCase().includes('pagibig')) {
+          calculatedAmount = pagibigContribution
+        } else if (rule.name.toLowerCase().includes('tax')) {
+          calculatedAmount = withholdingTax
+        } else {
+          calculatedAmount = Number(rule.amount)
+        }
+      } else {
+        calculatedAmount = Number(rule.amount)
       }
 
-      appliedRules.push({
+      return {
         id: rule.id,
         name: rule.name,
         type: rule.type,
-        amount: amount,
+        amount: Number(rule.amount),
         isPercentage: rule.isPercentage,
         description: rule.description,
         calculatedAmount: calculatedAmount
-      })
-    })
-
-    // Calculate totals
-    const totalDeductions = governmentDeductions + loanDeductions + otherDeductions + lateDeductions
-    const grossPay = basePay + overtimePay + bonuses + allowances + holidayPay
-    const netPay = grossPay - totalDeductions
-
-    // Build deduction breakdown with individual amounts
-    const deductionBreakdown: any = {}
-    
-    // Extract specific government deductions
-    payrollRules.forEach(rule => {
-      if (rule.type === 'deduction') {
-        const calculatedAmount = rule.isPercentage ? (basePay + overtimePay) * Number(rule.amount) / 100 : Number(rule.amount)
-        
-        if (rule.name.toLowerCase().includes('withholding') || rule.name.toLowerCase().includes('tax')) {
-          deductionBreakdown.withholdingTax = calculatedAmount
-        } else if (rule.name.toLowerCase().includes('gsis')) {
-          deductionBreakdown.gsisContribution = calculatedAmount
-        } else if (rule.name.toLowerCase().includes('pagibig') || rule.name.toLowerCase().includes('pag-ibig')) {
-          deductionBreakdown.pagibigContribution = calculatedAmount
-        } else if (rule.name.toLowerCase().includes('philhealth')) {
-          deductionBreakdown.philHealthContribution = calculatedAmount
-        } else if (rule.name.toLowerCase().includes('sss')) {
-          deductionBreakdown.sssContribution = calculatedAmount
-        }
       }
     })
+
+    // Build deduction breakdown with individual amounts
+    const deductionBreakdown: any = {
+      gsisContribution: gsisContribution,
+      philHealthContribution: philHealthContribution,
+      pagibigContribution: pagibigContribution,
+      withholdingTax: withholdingTax
+    }
 
     // Prepare payslip data
     const payslipData = {
@@ -259,13 +240,13 @@ export async function POST(request: NextRequest) {
         monthlySalary: monthlySalary,
         basePay: basePay,
         overtimePay: overtimePay,
-        bonuses: bonuses + holidayPay + allowances,
+        bonuses: bonuses + holidayPay + allowances + overloadPay,
         grossPay: grossPay,
         netPay: netPay,
         lateDeductions: lateDeductions,
         governmentDeductions: governmentDeductions,
         loanDeductions: loanDeductions,
-        otherDeductions: otherDeductions,
+        otherDeductions: otherDeductions + undertimeDeductions,
         totalDeductions: totalDeductions
       },
       deductionBreakdown: deductionBreakdown,

@@ -200,6 +200,8 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 -- =====================================================
 -- MAIN STORED PROCEDURE: Calculate Complete Payroll
 -- =====================================================
+DROP FUNCTION IF EXISTS calculate_payroll_for_period(TEXT, DATE, DATE) CASCADE;
+
 CREATE OR REPLACE FUNCTION calculate_payroll_for_period(
     p_user_id TEXT,
     p_pay_period_start DATE,
@@ -359,8 +361,8 @@ BEGIN
         
         -- Check for holiday work
         IF EXISTS (
-            SELECT 1 FROM "holidays"
-            WHERE DATE(date) = DATE(rec.date)
+            SELECT 1 FROM "holidays" h
+            WHERE DATE(h.date) = DATE(rec.date)
         ) THEN
             v_holiday_hours := v_holiday_hours + rec.hours;
         END IF;

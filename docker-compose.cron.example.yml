@@ -1,0 +1,33 @@
+# Add this cron service to your existing docker-compose.yml
+
+services:
+  # ... your existing 'app' service
+
+  # Automatic Payroll Generation Cron Service
+  payroll-cron:
+    image: alpine:latest
+    container_name: payroll-cron
+    command: |
+      sh -c '
+      echo "# Automatic Payroll Generation - Daily at 8:00 AM" > /etc/crontabs/root
+      echo "0 8 * * * wget -q -O- http://app:3000/api/cron/payroll-generation?secret=${CRON_SECRET} || echo \"Failed to trigger payroll generation\"" >> /etc/crontabs/root
+      echo "Cron job installed. Schedule: Daily at 8:00 AM"
+      crond -f -l 2
+      '
+    environment:
+      - CRON_SECRET=${CRON_SECRET}
+    depends_on:
+      - app
+    restart: unless-stopped
+
+# Instructions:
+# 1. Copy the 'payroll-cron' service block above
+# 2. Add it to your docker-compose.yml under 'services'
+# 3. Make sure CRON_SECRET is in your .env file
+# 4. Restart: docker compose down && docker compose up -d
+#
+# Schedule options (change "0 8 * * *" as needed):
+# - "0 8 * * *"     = Daily at 8:00 AM
+# - "0 */6 * * *"   = Every 6 hours
+# - "0 9 * * 1"     = Every Monday at 9:00 AM
+# - "0 0 1,15 * *"  = 1st and 15th of each month at midnight

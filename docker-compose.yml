@@ -25,6 +25,24 @@ services:
     restart: unless-stopped
     init: true
 
+  # Automatic Payroll Generation Cron Service
+  payroll-cron:
+    image: alpine:latest
+    container_name: payroll-cron
+    command: |
+      sh -c '
+      echo "# Automatic Payroll Generation - Daily at 8:00 AM" > /etc/crontabs/root
+      echo "0 8 * * * wget -q -O- http://app:3000/api/cron/payroll-generation?secret=${CRON_SECRET} || echo \"Failed to trigger payroll generation at \$(date)\"" >> /etc/crontabs/root
+      echo "Payroll cron job installed. Schedule: Daily at 8:00 AM (container time)"
+      crond -f -l 2
+      '
+    environment:
+      - CRON_SECRET=${CRON_SECRET}
+      - TZ=${TZ:-Asia/Manila}
+    depends_on:
+      - app
+    restart: unless-stopped
+
 volumes:
   pnpm-store:
   node_modules:

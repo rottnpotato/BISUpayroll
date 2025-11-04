@@ -36,6 +36,17 @@ export interface AttendanceRecord {
   isEarlyOut?: boolean
   earlyOutReason?: string | null
   totalSessions?: number
+  // Overtime and overload records
+  overtimeRequests?: Array<{
+    id: string
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+    hoursWorked: number
+  }>
+  overloadRecords?: Array<{
+    id: string
+    status: 'PENDING' | 'APPROVED' | 'REJECTED'
+    hoursWorked: number
+  }>
 }
 
 export interface AttendanceResponse {

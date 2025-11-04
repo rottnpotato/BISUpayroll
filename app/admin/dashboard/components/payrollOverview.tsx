@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CircleCheck, ArrowRight, Calendar, Users, PhilippinePeso, Building2 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { formatCurrency } from '@/lib/utils'
 
 interface PayrollOverviewProps {
   data: DashboardData | null
@@ -309,7 +310,7 @@ const PayrollOverview: FC<PayrollOverviewProps> = ({ data, isLoading, companyNam
           </div>
           <div>
             <div className="text-sm text-bisu-purple-medium font-medium">Total Employee Salaries</div>
-            <div className="text-2xl font-bold text-bisu-purple-deep">{totalAmount}</div>
+            <div className="text-2xl font-bold text-bisu-purple-deep">{formatCurrency(totalAmount)}</div>
             <div className="text-xs text-gray-500">
               {employeeCount > 0 ? `${employeeCount} employees` : 'No employees processed'}
             </div>

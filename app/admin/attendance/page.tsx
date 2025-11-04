@@ -16,6 +16,7 @@ import {
   AttendancePagination,
   AttendanceImportDialog
 } from "./components"
+import { ImportHistoryDialog } from "./components/ImportHistoryDialog"
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -91,7 +92,10 @@ export default function AttendancePage() {
             <h1 className="text-3xl font-bold text-bisu-purple-deep mb-2">Attendance Monitoring</h1>
             <p className="text-gray-600">Track employee attendance and time records</p>
           </div>
-          <AttendanceImportDialog onImportComplete={refetch} />
+          <div className="flex gap-2">
+            <ImportHistoryDialog onImportReverted={refetch} />
+            <AttendanceImportDialog onImportComplete={refetch} />
+          </div>
         </div>
       </motion.div>
 

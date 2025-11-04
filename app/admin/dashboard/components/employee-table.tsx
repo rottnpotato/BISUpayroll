@@ -30,6 +30,7 @@ interface Employee {
   lastName: string
   grossPay?: number
   netPay?: number
+  totalEarnings?: number
   benefits?: number
   expenses?: number
   deductions?: number
@@ -38,6 +39,10 @@ interface Employee {
   dailyRate?: number
   overtime?: number
   bonuses?: number
+  gsisContribution?: number
+  philHealthContribution?: number
+  pagibigContribution?: number
+  totalCost?: number
   status?: 'PERMANENT' | 'INACTIVE' | 'CONTRACTUAL' | 'TEMPORARY' | 'pending' | 'leave'
   department?: string
   employeeId?: string
@@ -74,21 +79,61 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
   const itemsPerPage = 10
 
   // Transform the payroll data to match our employee interface
-  let employees: Employee[] = data?.map((payroll: any) => ({
-    id: payroll.id,
-    userId: payroll.userId,
-    firstName: payroll.user?.firstName || 'Unknown',
-    lastName: payroll.user?.lastName || 'Employee',
-    grossPay: Number(payroll.grossPay || 0),
-    netPay: Number(payroll.netPay || 0),
-    dailyRate: Number(payroll.dailyRate || 0),
-    overtime: Number(payroll.overtime || 0),
-    bonuses: Number(payroll.bonuses || 0),
-    deductions: Number(payroll.deductions || 0),
-    status: payroll.user?.status || 'ACTIVE',
-    department: payroll.user?.department || 'Unassigned',
-    employeeId: payroll.user?.employeeId
-  })) || []
+  // Data is calculated on-the-fly using the stored procedure for real-time accuracy
+  let employees: Employee[] = data?.map((payroll: any) => {
+    const grossPay = Number(payroll.grossPay || 0)
+    const totalEarnings = Number(payroll.totalEarnings || 0)
+    const netPay = Number(payroll.netPay || 0)
+    const totalDeductions = Number(payroll.totalDeductions || 0)
+    const gsisContribution = Number(payroll.gsisContribution || 0)
+    const philHealthContribution = Number(payroll.philHealthContribution || 0)
+    const pagibigContribution = Number(payroll.pagibigContribution || 0)
+    
+    // Total cost includes employee gross pay + employer contributions (typically matching employee contributions)
+    const totalCost = grossPay + gsisContribution + philHealthContribution + pagibigContribution
+    
+    // Debug logging for first few employees to verify calculations
+    if (data.indexOf(payroll) < 3) {
+      console.log(`Employee ${data.indexOf(payroll) + 1} Calculated Payroll:`, {
+        name: `${payroll.user?.firstName} ${payroll.user?.lastName}`,
+        period: {
+          start: payroll.payPeriodStart,
+          end: payroll.payPeriodEnd
+        },
+        calculated: {
+          totalEarnings,
+          grossPay,
+          totalDeductions,
+          netPay,
+          totalCost,
+          daysWorked: payroll.daysWorked,
+          hoursWorked: payroll.hoursWorked
+        },
+        hasData: grossPay > 0 || totalEarnings > 0 || netPay > 0
+      })
+    }
+    
+    return {
+      id: payroll.id,
+      userId: payroll.userId,
+      firstName: payroll.user?.firstName || 'Unknown',
+      lastName: payroll.user?.lastName || 'Employee',
+      grossPay: grossPay,
+      totalEarnings: totalEarnings,
+      netPay: netPay,
+      dailyRate: Number(payroll.dailyRate || 0),
+      overtime: Number(payroll.overtimePay || 0),
+      bonuses: Number(payroll.bonuses || 0),
+      deductions: Number(payroll.totalDeductions || 0),
+      gsisContribution: gsisContribution,
+      philHealthContribution: philHealthContribution,
+      pagibigContribution: pagibigContribution,
+      totalCost: totalCost,
+      status: payroll.user?.status || 'ACTIVE',
+      department: payroll.user?.department || 'Unassigned',
+      employeeId: payroll.user?.employeeId
+    }
+  }) || []
 
   // Dedupe by employee (prefer employeeId, then userId, then record id)
   if (employees.length > 1) {
@@ -125,16 +170,35 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
     })
   }
 
-  // Apply sorting based on sortBy prop
-  if (sortBy !== "Name") {
+  // Apply sorting based on sortColumn state or sortBy prop
+  if (sortColumn) {
+    employees.sort((a, b) => {
+      let comparison = 0
+      switch (sortColumn) {
+        case 'name':
+          comparison = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+          break
+        case 'grossPay':
+          comparison = (a.totalEarnings || 0) - (b.totalEarnings || 0)
+          break
+        case 'netPay':
+          comparison = (a.netPay || 0) - (b.netPay || 0)
+          break
+        case 'totalCost':
+          comparison = (a.totalCost || 0) - (b.totalCost || 0)
+          break
+        default:
+          comparison = 0
+      }
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  } else if (sortBy !== "Name") {
     employees.sort((a, b) => {
       switch (sortBy.toLowerCase()) {
         case 'department':
           return (a.department || '').localeCompare(b.department || '')
         case 'salary':
-          return (b.grossPay || 0) - (a.grossPay || 0)
-        case 'status':
-          return (a.status || '').localeCompare(b.status || '')
+          return (b.totalEarnings || 0) - (a.totalEarnings || 0)
         default:
           return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
       }
@@ -171,8 +235,8 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
       <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
         <EmptyState
           icon={Users}
-          title="No Employee Payroll Data"
-          description="No payroll has been generated for this period yet. Generate payroll to see employee salary details and take-home pay calculations."
+          title="No Active Employees"
+          description="There are no active employees in the system. Add employees to see their calculated payroll data here."
           variant="default"
         />
       </div>
@@ -240,14 +304,13 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
               </TableCell>
               <TableCell 
                 className="text-gray-900 font-medium cursor-pointer"
-                onClick={() => handleSort('n  etPay')}
+                onClick={() => handleSort('netPay')}
               >
                 <div className="flex items-center">
                   Salary to Receive {getSortIcon('netPay')}
                 </div>
               </TableCell>
               <TableCell className="text-gray-900 font-medium">Department</TableCell>
-              <TableCell className="font-medium">Status</TableCell>
               <TableCell 
                 className="text-gray-900 font-medium cursor-pointer"
                 onClick={() => handleSort('totalCost')}
@@ -263,6 +326,11 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
           <TableBody>
             {currentEmployees.map((employee) => {
               const isHovered = hoveredRow === employee.id
+              
+              // Check if employee has any attendance/payroll data
+              const hasPayrollData = (employee.totalEarnings || 0) > 0 || 
+                                    (employee.netPay || 0) > 0 || 
+                                    (employee.grossPay || 0) > 0
               
               return (
                 <TableRow 
@@ -287,12 +355,28 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-gray-900">{formatCurrency(employee.grossPay || 0)}</div>
-                    <div className="text-xs text-gray-800">Before deductions</div>
+                    {hasPayrollData ? (
+                      <>
+                        <div className="font-medium text-gray-900">{formatCurrency(employee.totalEarnings || 0)}</div>
+                        <div className="text-xs text-gray-800">All earnings combined</div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">
+                        Payroll data not yet imported for this period
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium text-green-700">{formatCurrency(employee.netPay || 0)}</div>
-                    <div className="text-xs text-gray-800">Take-home pay</div>
+                    {hasPayrollData ? (
+                      <>
+                        <div className="font-medium text-green-700">{formatCurrency(employee.netPay || 0)}</div>
+                        <div className="text-xs text-gray-800">Take-home pay</div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">
+                        Payroll data not yet imported for this period
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="px-2 py-1 rounded-md bg-purple-50 text-purple-800 text-sm inline-block">
@@ -300,10 +384,16 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    {getStatusBadge(employee.status)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium text-gray-900">{formatCurrency(employee.grossPay || 0)}</div>
+                    {hasPayrollData ? (
+                      <>
+                        <div className="font-medium text-gray-900">{formatCurrency(employee.totalCost || 0)}</div>
+                        <div className="text-xs text-gray-500">Including employer contributions</div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">
+                        Payroll data not yet imported for this period
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <TooltipProvider>
@@ -338,6 +428,7 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                         </TooltipTrigger>
                         <TooltipContent side="top">
                           <div className="text-xs space-y-1">
+                            <div className="font-semibold mb-2 border-b pb-1">Payroll Breakdown</div>
                             <div className="flex items-center">
                               <div className="w-2 h-2 bg-purple-400 mr-2 rounded"></div>
                               <span>Daily Rate: {formatCurrency(employee.dailyRate || 0)}</span>
@@ -353,6 +444,11 @@ const EmployeeTable: FC<EmployeeTableProps> = ({
                             <div className="flex items-center">
                               <div className="w-2 h-2 bg-red-400 mr-2 rounded"></div>
                               <span>Deductions: {formatCurrency(employee.deductions || 0)}</span>
+                            </div>
+                            <div className="border-t pt-1 mt-1 space-y-0.5 text-gray-600">
+                              <div className="text-[10px]">GSIS: {formatCurrency(employee.gsisContribution || 0)}</div>
+                              <div className="text-[10px]">PhilHealth: {formatCurrency(employee.philHealthContribution || 0)}</div>
+                              <div className="text-[10px]">Pag-IBIG: {formatCurrency(employee.pagibigContribution || 0)}</div>
                             </div>
                           </div>
                         </TooltipContent>

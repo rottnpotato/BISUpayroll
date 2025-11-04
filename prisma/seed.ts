@@ -79,7 +79,14 @@ async function main() {
     { key: 'system_active', value: 'true' },
     { key: 'currency', value: 'PHP' },
     { key: 'working_hours_per_day', value: '8' },
+    { key: 'working_hours_dailyHours', value: '8' },
     { key: 'overtime_rate_multiplier', value: '1.25' },
+    { key: 'rates_overtimeRate1', value: '1.25' },
+    { key: 'rates_overtimeRate2', value: '1.5' },
+    { key: 'rates_regularHolidayRate', value: '2.0' },
+    { key: 'rates_specialHolidayRate', value: '1.3' },
+    { key: 'working_hours_lateDeductionAmount', value: '10' },
+    { key: 'working_hours_lateDeductionBasis', value: 'per_minute' },
   ]
 
   for (const setting of systemSettings) {
