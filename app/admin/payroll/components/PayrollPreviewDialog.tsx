@@ -396,40 +396,24 @@ export const PayrollPreviewDialog = ({
               <div className="grid grid-cols-2 gap-2">
                 <div className="border border-black p-2 relative">
                   <div className="absolute top-1 right-1 w-4 h-4 border border-black flex items-center justify-center text-xs font-bold">A</div>
-                  <p className="text-xs font-semibold mb-1">Certified:</p>
-                  <p className="text-xs font-bold">Shiela Olaguir</p>
-                  <p className="text-xs">Dean of CCIS</p>
+                  <p className="text-xs font-semibold mb-1">Prepared by:</p>
+                  <p className="text-xs font-bold">Maricel R. Tambis</p>
+                  <p className="text-xs">(Administrative Aide 3)</p>
                 </div>
                 <div className="border border-black p-2 relative">
                   <div className="absolute top-1 right-1 w-4 h-4 border border-black flex items-center justify-center text-xs font-bold">B</div>
-                  <p className="text-xs font-semibold mb-1">Certified:</p>
-                  <p className="text-xs font-bold">Jean F. Nebrea</p>
-                  <p className="text-xs">Campus Director</p>
+                  <p className="text-xs font-semibold mb-1">Reviewed by:</p>
+                  <p className="text-xs font-bold">Anneli C. Uy</p>
+                  <p className="text-xs">(Administrative Assistant 2 - Disbursing Officer 2)</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="border border-black p-2 relative">
                   <div className="absolute top-1 right-1 w-4 h-4 border border-black flex items-center justify-center text-xs font-bold">C</div>
-                  <p className="text-xs font-semibold mb-1">Certified:</p>
-                  <p className="text-xs font-bold">Julie Mae Sembrano</p>
-                  <p className="text-xs">Accountant II</p>
+                  <p className="text-xs font-semibold mb-1">Approved by:</p>
+                  <p className="text-xs font-bold">Jean F. Nebrea</p>
+                  <p className="text-xs">(Associate Professor 5)</p>
                 </div>
-                <div className="border border-black p-2 relative">
-                  <div className="absolute top-1 right-1 w-4 h-4 border border-black flex items-center justify-center text-xs font-bold">D</div>
-                  <p className="text-xs font-semibold mb-1">Certified:</p>
-                  <p className="text-xs font-bold">Anneli Uy</p>
-                  <p className="text-xs">Disbursing Officer</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedTemplate?.type !== "tax" && (
-            <div className="mt-4 print:mt-2 grid grid-cols-2 gap-4">
-              <div className="border border-black p-2">
-                <p className="text-xs font-semibold mb-1">Additional Certifiers:</p>
-                <p className="text-xs"><strong>Junrey Poyos</strong> - Dean of CTAS</p>
-                <p className="text-xs"><strong>Mary Joyce Gudmalin</strong> - Dean of CCJ</p>
               </div>
             </div>
           )}

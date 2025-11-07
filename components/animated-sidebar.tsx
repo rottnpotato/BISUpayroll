@@ -5,15 +5,22 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronLeft, ChevronRight, LogOut, Menu } from "lucide-react"
+import { ChevronLeft, ChevronRight, LogOut, Menu, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+
+type SubmenuItem = {
+  href: string
+  label: string
+  icon: React.ElementType
+}
 
 type SidebarItem = {
   href: string
   label: string
   icon: React.ElementType
+  submenu?: SubmenuItem[]
 }
 
 type SidebarProps = {
@@ -32,6 +39,7 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({})
 
   // Check if we're on mobile
   useEffect(() => {
@@ -49,6 +57,20 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
     return () => window.removeEventListener("resize", checkIfMobile)
   }, [])
 
+  // Auto-expand menu if current path is in submenu
+  useEffect(() => {
+    const newExpandedMenus: Record<string, boolean> = {}
+    items.forEach((item) => {
+      if (item.submenu) {
+        const isSubmenuActive = item.submenu.some((subitem) => pathname!.startsWith(subitem.href))
+        if (isSubmenuActive) {
+          newExpandedMenus[item.href] = true
+        }
+      }
+    })
+    setExpandedMenus((prev) => ({ ...prev, ...newExpandedMenus }))
+  }, [pathname, items])
+
   // Notify parent about collapsed state changes
   useEffect(() => {
     if (onCollapsedChange) {
@@ -62,6 +84,13 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
     } else {
       setIsCollapsed(!isCollapsed)
     }
+  }
+
+  const toggleSubmenu = (href: string) => {
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [href]: !prev[href],
+    }))
   }
 
   return (
@@ -110,43 +139,132 @@ export function AnimatedSidebar({ items, logo, userInfo, onLogout, onCollapsedCh
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           <ul className="space-y-1">
             {items.map((item, index) => {
-              const isActive = pathname === item.href
+              const isActive = pathname === item.href || (item.submenu && item.submenu.some((subitem) => pathname!.startsWith(subitem.href)))
+              const isExpanded = expandedMenus[item.href]
               const Icon = item.icon
+              const hasSubmenu = item.submenu && item.submenu.length > 0
 
               return (
                 <TooltipProvider key={item.href} delayDuration={0}>
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <li className="animate-slide-in-right" style={{ animationDelay: `${index * 0.1}s` }}>
-                        <Link
-                          href={item.href}
-                          className={cn(
-                            "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 relative",
-                            isActive
-                              ? "bg-white text-bisu-purple-deep font-bold shadow-md"
-                              : "text-bisu-yellow-light hover:bg-bisu-purple-medium/50 hover:text-bisu-yellow",
-                            isActive && !isCollapsed && "border-l-4 border-bisu-yellow pl-2" 
+                    <li className="animate-slide-in-right" style={{ animationDelay: `${index * 0.1}s` }}>
+                      {hasSubmenu ? (
+                        <>
+                          <TooltipTrigger asChild>
+                            <Link
+                              href={item.href}
+                              onClick={(e) => {
+                                // Toggle submenu without preventing navigation
+                                toggleSubmenu(item.href)
+                              }}
+                              className={cn(
+                                "flex items-center w-full rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 relative",
+                                isActive
+                                  ? "bg-white text-bisu-purple-deep font-bold shadow-md"
+                                  : "text-bisu-yellow-light hover:bg-bisu-purple-medium/50 hover:text-bisu-yellow",
+                                isActive && !isCollapsed && "border-l-4 border-bisu-yellow pl-2" 
+                              )}
+                            >
+                              <span className={cn(
+                                "flex items-center justify-center", 
+                                (isCollapsed && !isMobile) ? "mx-auto" : "mr-2",
+                                isActive && "text-bisu-purple-deep"
+                              )}>
+                                <Icon size={20} />
+                              </span>
+                              {(!isCollapsed || (isMobile && isSidebarOpen)) && (
+                                <>
+                                  <span className="flex-1 transition-opacity duration-200 whitespace-nowrap overflow-hidden text-ellipsis text-left">
+                                    {item.label}
+                                  </span>
+                                  <ChevronDown 
+                                    size={16} 
+                                    className={cn(
+                                      "transition-transform duration-200 ml-auto",
+                                      isExpanded && "rotate-180"
+                                    )} 
+                                  />
+                                </>
+                              )}
+                              {isActive && isCollapsed && !isMobile && (
+                                <span className="absolute inset-y-0 left-0 w-1 bg-bisu-yellow rounded-r-full"></span>
+                              )}
+                            </Link>
+                          </TooltipTrigger>
+                          {isCollapsed && !isMobile && <TooltipContent side="right">{item.label}</TooltipContent>}
+
+                          {/* Submenu with tree lines */}
+                          {isExpanded && (!isCollapsed || (isMobile && isSidebarOpen)) && (
+                            <ul className="mt-1 ml-4 border-l-2 border-bisu-yellow/30 pl-2 space-y-1">
+                              {item.submenu!.map((subitem, subIndex) => {
+                                const isSubActive = pathname === subitem.href
+                                const SubIcon = subitem.icon
+                                const isLast = subIndex === item.submenu!.length - 1
+
+                                return (
+                                  <li key={subitem.href} className="relative">
+                                    {/* Tree line connector */}
+                                    <div className="absolute left-0 top-0 w-4 h-6 border-l-2 border-b-2 border-bisu-yellow/30 rounded-bl-md" />
+                                    
+                                    <Link
+                                      href={subitem.href}
+                                      className={cn(
+                                        "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ml-2",
+                                        isSubActive
+                                          ? "bg-bisu-yellow/20 text-white font-semibold"
+                                          : "text-bisu-yellow-light/90 hover:bg-bisu-purple-medium/30 hover:text-bisu-yellow"
+                                      )}
+                                    >
+                                      <span className={cn(
+                                        "flex items-center justify-center mr-2",
+                                        isSubActive && "text-bisu-yellow"
+                                      )}>
+                                        <SubIcon size={16} />
+                                      </span>
+                                      <span className="transition-opacity duration-200 whitespace-nowrap overflow-hidden text-ellipsis">
+                                        {subitem.label}
+                                      </span>
+                                    </Link>
+                                  </li>
+                                )
+                              })}
+                            </ul>
                           )}
-                        >
-                          <span className={cn(
-                            "flex items-center justify-center", 
-                            (isCollapsed && !isMobile) ? "mx-auto" : "mr-2",
-                            isActive && "text-bisu-purple-deep"
-                          )}>
-                            <Icon size={20} />
-                          </span>
-                          {(!isCollapsed || (isMobile && isSidebarOpen)) && (
-                            <span className="transition-opacity duration-200 whitespace-nowrap overflow-hidden text-ellipsis">
-                              {item.label}
-                            </span>
-                          )}
-                          {isActive && isCollapsed && !isMobile && (
-                            <span className="absolute inset-y-0 left-0 w-1 bg-bisu-yellow rounded-r-full"></span>
-                          )}
-                        </Link>
-                      </li>
-                    </TooltipTrigger>
-                    {isCollapsed && !isMobile && <TooltipContent side="right">{item.label}</TooltipContent>}
+                        </>
+                      ) : (
+                        <>
+                          <TooltipTrigger asChild>
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 relative",
+                                isActive
+                                  ? "bg-white text-bisu-purple-deep font-bold shadow-md"
+                                  : "text-bisu-yellow-light hover:bg-bisu-purple-medium/50 hover:text-bisu-yellow",
+                                isActive && !isCollapsed && "border-l-4 border-bisu-yellow pl-2" 
+                              )}
+                            >
+                              <span className={cn(
+                                "flex items-center justify-center", 
+                                (isCollapsed && !isMobile) ? "mx-auto" : "mr-2",
+                                isActive && "text-bisu-purple-deep"
+                              )}>
+                                <Icon size={20} />
+                              </span>
+                              {(!isCollapsed || (isMobile && isSidebarOpen)) && (
+                                <span className="transition-opacity duration-200 whitespace-nowrap overflow-hidden text-ellipsis">
+                                  {item.label}
+                                </span>
+                              )}
+                              {isActive && isCollapsed && !isMobile && (
+                                <span className="absolute inset-y-0 left-0 w-1 bg-bisu-yellow rounded-r-full"></span>
+                              )}
+                            </Link>
+                          </TooltipTrigger>
+                          {isCollapsed && !isMobile && <TooltipContent side="right">{item.label}</TooltipContent>}
+                        </>
+                      )}
+                    </li>
                   </Tooltip>
                 </TooltipProvider>
               )

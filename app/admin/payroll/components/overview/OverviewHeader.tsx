@@ -10,7 +10,7 @@ interface OverviewHeaderProps {
   onRefresh: () => void
 }
 
-export const OverviewHeader: FC<OverviewHeaderProps> = ({ title = "Payroll Overview", summary, onRefresh }) => {
+export const OverviewHeader: FC<OverviewHeaderProps> = ({ title = "Payroll General Details", summary, onRefresh }) => {
   return (
     <Card className="border-0 shadow-none bg-gradient-to-br from-bisu-purple-extralight via-white to-white p-0">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6">

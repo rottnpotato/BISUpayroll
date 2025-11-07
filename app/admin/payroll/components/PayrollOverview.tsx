@@ -197,7 +197,7 @@ export function PayrollOverview({
         type: "spring",
         stiffness: 100,
         damping: 12,
-      },
+      } as const,
     },
   }
 

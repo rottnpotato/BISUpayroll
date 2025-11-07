@@ -350,47 +350,28 @@ export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange, sel
           <div class="cert-box">
             <div class="cert-letter">A</div>
             <div class="cert-content">
-              <p><strong>Certified:</strong></p>
-              <p><strong>Shiela Olaguir</strong></p>
-              <p>Dean of CCIS</p>
+              <p><strong>Prepared by:</strong></p>
+              <p><strong>Maricel R. Tambis</strong></p>
+              <p>(Administrative Aide 3)</p>
             </div>
           </div>
           <div class="cert-box">
             <div class="cert-letter">B</div>
             <div class="cert-content">
-              <p><strong>Certified:</strong></p>
-              <p><strong>Jean F. Nebrea</strong></p>
-              <p>Campus Director</p>
+              <p><strong>Reviewed by:</strong></p>
+              <p><strong>Anneli C. Uy</strong></p>
+              <p>(Administrative Assistant 2 - Disbursing Officer 2)</p>
             </div>
           </div>
           <div class="cert-box">
             <div class="cert-letter">C</div>
             <div class="cert-content">
-              <p><strong>Certified:</strong></p>
-              <p><strong>Julie Mae Sembrano</strong></p>
-              <p>Accountant II</p>
+              <p><strong>Approved by:</strong></p>
+              <p><strong>Jean F. Nebrea</strong></p>
+              <p>(Associate Professor 5)</p>
             </div>
           </div>
-          <div class="cert-box">
-            <div class="cert-letter">D</div>
-            <div class="cert-content">
-              <p><strong>Certified:</strong></p>
-              <p><strong>Anneli Uy</strong></p>
-              <p>Disbursing Officer</p>
-            </div>
-          </div>
-        </div>
-      ` : ''}
 
-      ${selectedTemplate?.type !== 'tax' ? `
-        <div style="margin-top: 16px;">
-          <div class="cert-box">
-            <div class="cert-content">
-              <p><strong>Additional Certifiers:</strong></p>
-              <p><strong>Junrey Poyos</strong> - Dean of CTAS</p>
-              <p><strong>Mary Joyce Gudmalin</strong> - Dean of CCJ</p>
-            </div>
-          </div>
         </div>
       ` : ''}
     </body>
