@@ -4,9 +4,10 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calculator } from "lucide-react"
-import { PayrollRulesTable, PayrollRuleDialog } from '../components'
+import { PayrollRulesTable, PayrollRuleDialog, ConfigurationStatusCard } from '../components'
 import { usePayrollData } from '../hooks/usePayrollData'
 import { usePayrollRules } from '../hooks/usePayrollRules'
+import { usePayrollConfig } from '../hooks/usePayrollConfig'
 import type { PayrollRule } from '../types'
 
 const itemVariants = {
@@ -24,6 +25,13 @@ const itemVariants = {
 
 export default function PayrollCalculationsPage() {
   const { rules, users, isLoading, isUsersLoading, loadData } = usePayrollData()
+  const {
+    workingHoursConfig,
+    ratesConfig,
+    leaveBenefitsConfig,
+    contributionsConfig,
+    taxBracketsConfig
+  } = usePayrollConfig()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingRule, setEditingRule] = useState<PayrollRule | null>(null)
 
@@ -85,13 +93,23 @@ export default function PayrollCalculationsPage() {
     >
       <motion.div variants={itemVariants}>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">
-            Payroll Calculations
+          <h1 className="text-3xl font-normal tracking-tight text-bisu-purple-deep">
+            <b>Browse All </b>Payroll Calculations
           </h1>
           <p className="text-muted-foreground">
             Manage payroll calculation rules and formulas
           </p>
         </div>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <ConfigurationStatusCard
+          workingHoursConfig={workingHoursConfig}
+          ratesConfig={ratesConfig}
+          leaveBenefitsConfig={leaveBenefitsConfig}
+          contributionsConfig={contributionsConfig}
+          taxBracketsConfig={taxBracketsConfig}
+        />
       </motion.div>
 
       <motion.div variants={itemVariants}>

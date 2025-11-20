@@ -62,6 +62,8 @@ export interface PayrollSchedule {
   processingDays?: number[]
   cutoffType?: 'bi-monthly' | 'monthly' | 'weekly'
   description?: string
+  // Employment statuses this schedule applies to
+  employmentStatuses?: string[]
 }
 
 export interface HolidayType {
@@ -222,6 +224,8 @@ export interface ScheduleFormData {
   cutoffType: 'bi-monthly' | 'monthly' | 'weekly'
   isActive: boolean
   description: string
+  // Employment statuses this schedule applies to
+  employmentStatuses: string[]
 }
 
 export interface HolidayFormData {

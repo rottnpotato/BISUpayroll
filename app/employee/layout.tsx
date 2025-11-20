@@ -4,7 +4,7 @@ import type React from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { BisuLogo } from "@/components/bisu-logo"
 import { AnimatedSidebar } from "@/components/animated-sidebar"
-import { Calendar, DollarSign, User } from "lucide-react"
+import { Calendar, DollarSign, User, Clock } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { motion } from "@/components/simple-motion"
@@ -13,6 +13,7 @@ import { NotificationProvider } from "@/components/ui/notification"
 
 const employeeNavItems = [
   { href: "/employee/attendance", label: "Attendance", icon: Calendar },
+  { href: "/employee/overtime", label: "Overtime", icon: Clock },
   { href: "/employee/payroll", label: "Payslip Details", icon: DollarSign },
   { href: "/employee/profile", label: "Profile", icon: User },
 ]

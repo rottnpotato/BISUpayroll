@@ -16,7 +16,8 @@ export const usePrintPayroll = () => {
     templateDateRange: DateRange,
     generatedBy: string,
     scheduleId?: string,
-    scheduleName?: string
+    scheduleName?: string,
+    employmentStatus?: string
   ) => {
     try {
       // Calculate file metadata
@@ -46,7 +47,8 @@ export const usePrintPayroll = () => {
         metadata: {
           departments,
           generationTime: new Date().toISOString(),
-          payrollDataCount: payrollData.length
+          payrollDataCount: payrollData.length,
+          employmentStatus: employmentStatus || 'all'
         }
       }
 
@@ -118,7 +120,8 @@ export const usePrintPayroll = () => {
       // Generate file name
   const dateStr = templateDateRange.from.toISOString().split('T')[0]
   const suffix = selectedTemplate?.type ? selectedTemplate.type : reportType
-  const fileName = `payroll_${suffix}_${dateStr}_${Date.now()}.pdf`
+  const statusSuffix = employmentStatus && employmentStatus !== 'all' ? `_${employmentStatus.toLowerCase()}` : ''
+  const fileName = `payroll_${suffix}${statusSuffix}_${dateStr}_${Date.now()}.pdf`
 
       // Save file record to database
       try {
@@ -138,7 +141,8 @@ export const usePrintPayroll = () => {
           templateDateRange,
           generatedBy,
           scheduleId,
-          scheduleName
+          scheduleName,
+          employmentStatus
         )
       } catch (error) {
         console.warn('Failed to save file record, but print will continue:', error)

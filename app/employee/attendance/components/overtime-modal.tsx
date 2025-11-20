@@ -21,9 +21,25 @@ import {
   Info,
   Loader2,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  CheckCircle,
+  XCircle
 } from "lucide-react"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+
+interface OvertimeRequest {
+  id: string
+  startTime: string
+  endTime: string
+  hoursWorked: number
+  hourlyRate: number
+  totalAmount: number
+  description?: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  rejectionReason?: string | null
+}
 
 interface OvertimeModalProps {
   isOpen: boolean
@@ -34,7 +50,10 @@ interface OvertimeModalProps {
     timeIn: string | null
     timeOut: string | null
     hours: number
+    morningTimeIn?: string | null
+    afternoonTimeOut?: string | null
   }
+  existingRequests?: OvertimeRequest[]
   onSuccess?: () => void
 }
 
@@ -48,6 +67,7 @@ export function OvertimeModal({
   isOpen, 
   onClose, 
   attendanceRecord,
+  existingRequests = [],
   onSuccess
 }: OvertimeModalProps) {
   const [formData, setFormData] = useState<OvertimeFormData>({
@@ -60,6 +80,8 @@ export function OvertimeModal({
   const [hourlyRate, setHourlyRate] = useState<number | null>(null)
   const [calculatedHours, setCalculatedHours] = useState<number>(0)
   const [calculatedAmount, setCalculatedAmount] = useState<number>(0)
+
+  const hasExistingRequest = existingRequests.length > 0
 
   // Fetch hourly rate on mount
   useEffect(() => {
@@ -120,6 +142,11 @@ export function OvertimeModal({
   const formatTimeForDisplay = (timeString: string | null): string => {
     if (!timeString) return 'N/A'
     
+    // If it's already formatted (contains AM/PM), return as is
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      return timeString
+    }
+    
     try {
       const date = new Date(timeString)
       return date.toLocaleTimeString('en-US', { 
@@ -129,6 +156,40 @@ export function OvertimeModal({
       })
     } catch {
       return timeString
+    }
+  }
+
+  const formatHours = (hours: number) => {
+    const h = Math.floor(hours)
+    const m = Math.floor((hours - h) * 60)
+    return `${h}h ${m}m`
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return (
+          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending
+          </Badge>
+        )
+      case 'APPROVED':
+        return (
+          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Approved
+          </Badge>
+        )
+      case 'REJECTED':
+        return (
+          <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20">
+            <XCircle className="h-3 w-3 mr-1" />
+            Rejected
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{status}</Badge>
     }
   }
 
@@ -229,8 +290,8 @@ export function OvertimeModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-blue-500" />
             Request Overtime
@@ -240,21 +301,79 @@ export function OvertimeModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto flex-1">
+          {/* Existing Overtime Requests */}
+          {existingRequests.length > 0 && (
+            <>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-700">Existing Overtime Request for this Date</h3>
+                {existingRequests.map((request) => (
+                  <motion.div
+                    key={request.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="border rounded-lg p-3 bg-blue-50"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3 w-3 text-gray-500" />
+                          <span className="text-sm font-medium">
+                            {formatTimeForDisplay(request.startTime)} - {formatTimeForDisplay(request.endTime)}
+                          </span>
+                          {getStatusBadge(request.status)}
+                        </div>
+                        <div className="text-xs text-gray-600 ml-5">
+                          {formatHours(Number(request.hoursWorked))} @ ₱{Number(request.hourlyRate).toFixed(2)}/hr (OT rates)
+                        </div>
+                        {request.description && (
+                          <div className="text-xs text-gray-500 ml-5 italic">
+                            {request.description}
+                          </div>
+                        )}
+                        {request.rejectionReason && (
+                          <div className="text-xs text-red-600 ml-5 bg-red-50 p-2 rounded mt-1">
+                            <XCircle className="h-3 w-3 inline mr-1" />
+                            Reason: {request.rejectionReason}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-blue-600 flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          ₱{Number(request.totalAmount).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <Alert className="bg-yellow-50 border-yellow-200">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800">
+                  You have already submitted an overtime request for this date. Multiple requests per date are not allowed.
+                </AlertDescription>
+              </Alert>
+
+              <Separator />
+            </>
+          )}
           {/* Attendance Info */}
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
               <div className="text-sm space-y-1">
-                <p><strong>Regular Hours:</strong> {attendanceRecord.hours.toFixed(2)} hours</p>
-                <p><strong>Time In:</strong> {formatTimeForDisplay(attendanceRecord.timeIn)}</p>
-                <p><strong>Time Out:</strong> {formatTimeForDisplay(attendanceRecord.timeOut)}</p>
+                <p><strong>Worked Hours:</strong> {attendanceRecord.hours.toFixed(2)} hours</p>
+                <p><strong>Morning In:</strong> {formatTimeForDisplay(attendanceRecord.morningTimeIn!)}</p>
+                <p><strong>Afternoon Out:</strong> {formatTimeForDisplay(attendanceRecord.afternoonTimeOut!)}</p>
               </div>
             </AlertDescription>
           </Alert>
 
           {/* Overtime Period */}
           <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">New Overtime Request</h3>
             <div>
               <Label htmlFor="startTime">Overtime Start Time *</Label>
               <Input
@@ -263,6 +382,7 @@ export function OvertimeModal({
                 value={formData.startTime}
                 onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                 className={errors.startTime ? 'border-red-500' : ''}
+                disabled={hasExistingRequest}
               />
               {errors.startTime && (
                 <p className="text-sm text-red-500 mt-1">{errors.startTime}</p>
@@ -277,6 +397,7 @@ export function OvertimeModal({
                 value={formData.endTime}
                 onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                 className={errors.endTime ? 'border-red-500' : ''}
+                disabled={hasExistingRequest}
               />
               {errors.endTime && (
                 <p className="text-sm text-red-500 mt-1">{errors.endTime}</p>
@@ -291,6 +412,7 @@ export function OvertimeModal({
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
+                disabled={hasExistingRequest}
               />
             </div>
           </div>
@@ -335,20 +457,22 @@ export function OvertimeModal({
           </Alert>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0">
           <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
-            Cancel
+            {hasExistingRequest ? 'Close' : 'Cancel'}
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              'Submit Request'
-            )}
-          </Button>
+          {!hasExistingRequest && (
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                'Submit Request'
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

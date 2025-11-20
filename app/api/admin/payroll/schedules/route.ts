@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, description } = body
+    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, description, employmentStatuses } = body
 
     if (!name || !Array.isArray(days)) {
       return NextResponse.json(
@@ -73,6 +73,9 @@ export async function POST(request: NextRequest) {
     }
     if (description) {
       scheduleData.description = description
+    }
+    if (employmentStatuses && Array.isArray(employmentStatuses)) {
+      scheduleData.employmentStatuses = employmentStatuses
     }
 
     const schedule = await prisma.payrollSchedule.create({

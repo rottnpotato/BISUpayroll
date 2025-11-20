@@ -28,7 +28,8 @@ const defaultFormData: ScheduleFormData = {
   processingDays: [20, 5],
   cutoffType: "bi-monthly",
   isActive: false,
-  description: ""
+  description: "",
+  employmentStatuses: []
 }
 
 export function ScheduleDialog({
@@ -73,7 +74,8 @@ export function ScheduleDialog({
         processingDays: initialData.processingDays || [20, 5],
         cutoffType: initialData.cutoffType || "bi-monthly",
         isActive: initialData.isActive || false,
-        description: initialData.description || ""
+        description: initialData.description || "",
+        employmentStatuses: initialData.employmentStatuses || []
       })
     } else if (isOpen && !initialData) {
       setFormData(defaultFormData)
@@ -90,12 +92,22 @@ export function ScheduleDialog({
   }
 
   const handleCutoffDayToggle = (day: number, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      cutoffDays: checked 
-        ? [...prev.cutoffDays, day].sort((a, b) => a - b)
-        : prev.cutoffDays.filter(d => d !== day)
-    }))
+    setFormData(prev => {
+      // For monthly, only allow one cutoff day
+      if (prev.cutoffType === 'monthly' && checked) {
+        return {
+          ...prev,
+          cutoffDays: [day]
+        }
+      }
+      
+      return {
+        ...prev,
+        cutoffDays: checked 
+          ? [...prev.cutoffDays, day].sort((a, b) => a - b)
+          : prev.cutoffDays.filter(d => d !== day)
+      }
+    })
   }
 
   const dayOptions = [1, 5, 10, 15, 20, 25, 30, 31]
@@ -145,6 +157,8 @@ export function ScheduleDialog({
                   onValueChange={(value: any) => setFormData(prev => ({ 
                     ...prev, 
                     cutoffType: value,
+                    // Auto-set cutoff days based on type
+                    cutoffDays: value === 'bi-monthly' ? [15, 30] : value === 'monthly' ? [30] : [],
                     // Reset processing days based on cutoff type
                     processingDays: value === 'bi-monthly' ? [20, 5] : [1]
                   }))}
@@ -230,6 +244,7 @@ export function ScheduleDialog({
                       id={`cutoff-${day}`}
                       checked={formData.cutoffDays.includes(day)}
                       onCheckedChange={(checked) => handleCutoffDayToggle(day, checked as boolean)}
+                      disabled={formData.cutoffType === 'monthly' && formData.cutoffDays.length > 0 && !formData.cutoffDays.includes(day)}
                     />
                     <Label htmlFor={`cutoff-${day}`} className="text-sm">
                       {day === 31 ? 'End' : `${day}th`}
@@ -238,7 +253,40 @@ export function ScheduleDialog({
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Select the days when attendance cutoff occurs
+                {formData.cutoffType === 'bi-monthly' 
+                  ? 'For bi-monthly, typically select 15th and 30th' 
+                  : formData.cutoffType === 'monthly'
+                  ? 'For monthly, select only one cutoff day'
+                  : 'Select the day when attendance cutoff occurs'}
+              </p>
+            </div>
+
+            {/* Employment Status Selection */}
+            <div>
+              <Label>Employment Status (Leave empty for all)</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {['PERMANENT', 'TEMPORARY', 'CONTRACTUAL'].map((status) => (
+                  <div key={status} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`status-${status}`}
+                      checked={formData.employmentStatuses.includes(status)}
+                      onCheckedChange={(checked) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          employmentStatuses: checked 
+                            ? [...prev.employmentStatuses, status]
+                            : prev.employmentStatuses.filter(s => s !== status)
+                        }))
+                      }}
+                    />
+                    <Label htmlFor={`status-${status}`} className="text-sm">
+                      {status === 'PERMANENT' ? 'Permanent' : status === 'TEMPORARY' ? 'Temporary' : 'Contractual'}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Select which employment statuses this schedule applies to. If none selected, applies to all.
               </p>
             </div>
           </div>

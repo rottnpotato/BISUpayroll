@@ -130,7 +130,7 @@ export const CONFIG_TYPE_KEY_MAP: Record<ConfigType, string> = {
   taxBrackets: "tax_brackets"
 }
 
-const workingHoursKeyMap: Record<keyof WorkingHoursConfig, string> = {
+const workingHoursKeyMap: Partial<Record<keyof WorkingHoursConfig, string>> = {
   dailyHours: "working_hours_dailyHours",
   weeklyHours: "working_hours_weeklyHours",
   overtimeThreshold: "working_hours_overtimeThreshold",
@@ -139,7 +139,7 @@ const workingHoursKeyMap: Record<keyof WorkingHoursConfig, string> = {
   lateDeductionAmount: "working_hours_lateDeductionAmount"
 }
 
-const ratesKeyMap: Record<keyof RatesConfig, string> = {
+const ratesKeyMap: Partial<Record<keyof RatesConfig, string>> = {
   overtimeRate1: "rates_overtimeRate1",
   overtimeRate2: "rates_overtimeRate2",
   regularHolidayRate: "rates_regularHolidayRate",
@@ -147,7 +147,7 @@ const ratesKeyMap: Record<keyof RatesConfig, string> = {
   currency: "rates_currency"
 }
 
-const leaveBenefitsKeyMap: Record<keyof LeaveBenefitsConfig, string> = {
+const leaveBenefitsKeyMap: Partial<Record<keyof LeaveBenefitsConfig, string>> = {
   vacationLeave: "leave_benefits_vacationLeave",
   sickLeave: "leave_benefits_sickLeave",
   serviceIncentiveLeave: "leave_benefits_serviceIncentiveLeave",
@@ -155,7 +155,11 @@ const leaveBenefitsKeyMap: Record<keyof LeaveBenefitsConfig, string> = {
   paternityLeave: "leave_benefits_paternityLeave"
 }
 
-const contributionKeyMap = {
+const contributionKeyMap: {
+  gsis: Record<string, string>
+  philHealth: Record<string, string>
+  pagibig: Record<string, string>
+} = {
   gsis: {
     employeeRate: "contributions_gsis_employeeRate",
     employerRate: "contributions_gsis_employerRate",
@@ -178,7 +182,7 @@ const contributionKeyMap = {
     minSalary: "contributions_pagibig_minSalary",
     maxSalary: "contributions_pagibig_maxSalary"
   }
-} as const
+}
 
 const taxSettingKeyMap = {
   withholdingEnabled: "tax_brackets_withholdingEnabled",
@@ -204,8 +208,8 @@ const toNumber = (value: string | undefined, fallback: number) => {
 
 const toBoolean = (value: string | undefined, fallback: boolean) => {
   if (value === undefined || value === null) return fallback
-  if (value === "true" || value === true) return true
-  if (value === "false" || value === false) return false
+  if (value === "true") return true
+  if (value === "false") return false
   return fallback
 }
 
@@ -215,42 +219,72 @@ export function mapSettingsToConfiguration(
   settings: RawSetting[],
   contributionBrackets: ContributionBracketRecord[] = [],
   taxBrackets: TaxBracketRecord[] = [],
-  holidays: HolidayType[] = []
+  holidays: HolidayType[] = [],
+  scopes: any[] = []
 ): PayrollConfigurationBundle {
   const settingMap = new Map<string, string>()
+  const scopeMap = new Map<string, any>()
+  
   settings.forEach(setting => {
     settingMap.set(normalizeSettingKey(setting.key), setting.value)
+    // Map scopes if available
+    if ((setting as any).scopes && (setting as any).scopes.length > 0) {
+      scopeMap.set(normalizeSettingKey(setting.key), (setting as any).scopes[0])
+    }
   })
 
+  // Helper to get scope for a config section
+  const getScopeForSection = (sectionKeys: Record<string, string>) => {
+    for (const key of Object.values(sectionKeys)) {
+      if (scopeMap.has(key)) {
+        const scope = scopeMap.get(key)
+        return {
+          applicationType: scope.applicationType,
+          targetId: scope.targetId,
+          targetName: scope.targetName,
+          priority: scope.priority,
+          isActive: scope.isActive
+        }
+      }
+    }
+    return undefined
+  }
+
   const workingHours: WorkingHoursConfig = {
-    dailyHours: toNumber(settingMap.get(workingHoursKeyMap.dailyHours), PAYROLL_CONFIG_DEFAULTS.workingHours.dailyHours),
-    weeklyHours: toNumber(settingMap.get(workingHoursKeyMap.weeklyHours), PAYROLL_CONFIG_DEFAULTS.workingHours.weeklyHours),
-    overtimeThreshold: toNumber(settingMap.get(workingHoursKeyMap.overtimeThreshold), PAYROLL_CONFIG_DEFAULTS.workingHours.overtimeThreshold),
-    lateGraceMinutes: toNumber(settingMap.get(workingHoursKeyMap.lateGraceMinutes), PAYROLL_CONFIG_DEFAULTS.workingHours.lateGraceMinutes),
-    lateDeductionBasis: (settingMap.get(workingHoursKeyMap.lateDeductionBasis) as WorkingHoursConfig["lateDeductionBasis"]) || PAYROLL_CONFIG_DEFAULTS.workingHours.lateDeductionBasis,
-    lateDeductionAmount: toNumber(settingMap.get(workingHoursKeyMap.lateDeductionAmount), PAYROLL_CONFIG_DEFAULTS.workingHours.lateDeductionAmount)
+    dailyHours: toNumber(settingMap.get(workingHoursKeyMap.dailyHours ?? ""), PAYROLL_CONFIG_DEFAULTS.workingHours.dailyHours),
+    weeklyHours: toNumber(settingMap.get(workingHoursKeyMap.weeklyHours ?? ""), PAYROLL_CONFIG_DEFAULTS.workingHours.weeklyHours),
+    overtimeThreshold: toNumber(settingMap.get(workingHoursKeyMap.overtimeThreshold ?? ""), PAYROLL_CONFIG_DEFAULTS.workingHours.overtimeThreshold),
+    lateGraceMinutes: toNumber(settingMap.get(workingHoursKeyMap.lateGraceMinutes ?? ""), PAYROLL_CONFIG_DEFAULTS.workingHours.lateGraceMinutes),
+    lateDeductionBasis: (settingMap.get(workingHoursKeyMap.lateDeductionBasis ?? "") as WorkingHoursConfig["lateDeductionBasis"]) || PAYROLL_CONFIG_DEFAULTS.workingHours.lateDeductionBasis,
+    lateDeductionAmount: toNumber(settingMap.get(workingHoursKeyMap.lateDeductionAmount ?? ""), PAYROLL_CONFIG_DEFAULTS.workingHours.lateDeductionAmount),
+    applicationScope: getScopeForSection(workingHoursKeyMap as Record<string, string>),
+    isActive: true
   }
 
   const rates: RatesConfig = {
-    overtimeRate1: toNumber(settingMap.get(ratesKeyMap.overtimeRate1), PAYROLL_CONFIG_DEFAULTS.rates.overtimeRate1),
-    overtimeRate2: toNumber(settingMap.get(ratesKeyMap.overtimeRate2), PAYROLL_CONFIG_DEFAULTS.rates.overtimeRate2),
-    regularHolidayRate: toNumber(settingMap.get(ratesKeyMap.regularHolidayRate), PAYROLL_CONFIG_DEFAULTS.rates.regularHolidayRate),
-    specialHolidayRate: toNumber(settingMap.get(ratesKeyMap.specialHolidayRate), PAYROLL_CONFIG_DEFAULTS.rates.specialHolidayRate),
-    currency: (settingMap.get(ratesKeyMap.currency) as RatesConfig["currency"]) || PAYROLL_CONFIG_DEFAULTS.rates.currency
+    overtimeRate1: toNumber(settingMap.get(ratesKeyMap.overtimeRate1 ?? ""), PAYROLL_CONFIG_DEFAULTS.rates.overtimeRate1),
+    overtimeRate2: toNumber(settingMap.get(ratesKeyMap.overtimeRate2 ?? ""), PAYROLL_CONFIG_DEFAULTS.rates.overtimeRate2),
+    regularHolidayRate: toNumber(settingMap.get(ratesKeyMap.regularHolidayRate ?? ""), PAYROLL_CONFIG_DEFAULTS.rates.regularHolidayRate),
+    specialHolidayRate: toNumber(settingMap.get(ratesKeyMap.specialHolidayRate ?? ""), PAYROLL_CONFIG_DEFAULTS.rates.specialHolidayRate),
+    currency: (settingMap.get(ratesKeyMap.currency ?? "") as RatesConfig["currency"]) || PAYROLL_CONFIG_DEFAULTS.rates.currency,
+    applicationScope: getScopeForSection(ratesKeyMap as Record<string, string>),
+    isActive: true
   }
 
   const leaveBenefits: LeaveBenefitsConfig = {
-    vacationLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.vacationLeave), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.vacationLeave),
-    sickLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.sickLeave), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.sickLeave),
-    serviceIncentiveLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.serviceIncentiveLeave), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.serviceIncentiveLeave),
-    maternityLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.maternityLeave), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.maternityLeave ?? 0),
-    paternityLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.paternityLeave), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.paternityLeave ?? 0)
+    vacationLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.vacationLeave ?? ""), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.vacationLeave),
+    sickLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.sickLeave ?? ""), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.sickLeave),
+    serviceIncentiveLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.serviceIncentiveLeave ?? ""), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.serviceIncentiveLeave),
+    maternityLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.maternityLeave ?? ""), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.maternityLeave ?? 0),
+    paternityLeave: toNumber(settingMap.get(leaveBenefitsKeyMap.paternityLeave ?? ""), PAYROLL_CONFIG_DEFAULTS.leaveBenefits.paternityLeave ?? 0),
+    applicationScope: getScopeForSection(leaveBenefitsKeyMap as Record<string, string>),
+    isActive: true
   }
 
-  const mapContributionSection = (section: keyof ContributionsConfig) => {
+  const mapContributionSection = (section: "gsis" | "philHealth" | "pagibig"): any => {
     const defaults = PAYROLL_CONFIG_DEFAULTS.contributions[section]
     const keys = contributionKeyMap[section]
-    const result: any = {}
+    const result: Record<string, number> = {}
     Object.entries(keys).forEach(([field, key]) => {
       result[field] = toNumber(settingMap.get(key), (defaults as any)[field])
     })
@@ -259,7 +293,7 @@ export function mapSettingsToConfiguration(
 
   const contributions: ContributionsConfig = {
     gsis: {
-      ...mapContributionSection("gsis"),
+      ...mapContributionSection("gsis") as { employeeRate: number; employerRate: number; minSalary: number; maxSalary: number },
       brackets: contributionBrackets
         .filter(bracket => bracket.contributionType === "gsis")
         .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
@@ -278,7 +312,7 @@ export function mapSettingsToConfiguration(
         }))
     },
     philHealth: {
-      ...mapContributionSection("philHealth"),
+      ...mapContributionSection("philHealth") as { employeeRate: number; employerRate: number; minContribution: number; maxContribution: number; minSalary: number; maxSalary: number },
       brackets: contributionBrackets
         .filter(bracket => bracket.contributionType === "philhealth")
         .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
@@ -297,7 +331,7 @@ export function mapSettingsToConfiguration(
         }))
     },
     pagibig: {
-      ...mapContributionSection("pagibig"),
+      ...mapContributionSection("pagibig") as { employeeRate: number; employerRate: number; minContribution: number; maxContribution: number; minSalary: number; maxSalary: number },
       brackets: contributionBrackets
         .filter(bracket => bracket.contributionType === "pagibig")
         .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
@@ -314,7 +348,9 @@ export function mapSettingsToConfiguration(
           isActive: bracket.isActive ?? undefined,
           priority: bracket.priority ?? undefined
         }))
-    }
+    },
+    applicationScope: getScopeForSection(contributionKeyMap.gsis),
+    isActive: true
   }
 
   const mappedTaxBrackets: TaxBracket[] = taxBrackets
@@ -330,7 +366,7 @@ export function mapSettingsToConfiguration(
       effectiveDate: undefined,
       isActive: bracket.isActive ?? undefined,
       priority: bracket.priority ?? undefined,
-      source: bracket.source ?? undefined,
+      source: (bracket.source ?? undefined) as "manual" | "api" | "bir" | undefined,
       apiReference: bracket.apiReference ?? undefined
     }))
 
@@ -338,7 +374,9 @@ export function mapSettingsToConfiguration(
     brackets: mappedTaxBrackets.length > 0 ? mappedTaxBrackets : PAYROLL_CONFIG_DEFAULTS.taxBrackets.brackets,
     withholdingEnabled: toBoolean(settingMap.get(taxSettingKeyMap.withholdingEnabled), PAYROLL_CONFIG_DEFAULTS.taxBrackets.withholdingEnabled),
     showBreakdownOnPayslip: toBoolean(settingMap.get(taxSettingKeyMap.showBreakdownOnPayslip), PAYROLL_CONFIG_DEFAULTS.taxBrackets.showBreakdownOnPayslip),
-    autoComputeTax: toBoolean(settingMap.get(taxSettingKeyMap.autoComputeTax), PAYROLL_CONFIG_DEFAULTS.taxBrackets.autoComputeTax)
+    autoComputeTax: toBoolean(settingMap.get(taxSettingKeyMap.autoComputeTax), PAYROLL_CONFIG_DEFAULTS.taxBrackets.autoComputeTax),
+    applicationScope: getScopeForSection(taxSettingKeyMap as any),
+    isActive: true
   }
 
   return {
@@ -358,7 +396,7 @@ export interface SettingPayload {
   category: string
 }
 
-const makeNumberValue = (value: number) => ({
+const makeNumberValue = (value: number): { value: string; dataType: "NUMBER" | "DECIMAL" } => ({
   value: String(value),
   dataType: Number.isInteger(value) ? "NUMBER" : "DECIMAL"
 })
@@ -405,14 +443,14 @@ export function buildSettingsPayload(type: ConfigType, config: any): SettingPayl
       })
     case "contributions": {
       const payload: SettingPayload[] = []
-      const sections = Object.keys(contributionKeyMap) as Array<keyof ContributionsConfig>
+      const sections = Object.keys(contributionKeyMap) as Array<"gsis" | "philHealth" | "pagibig">
       sections.forEach(section => {
         const sectionKeys = contributionKeyMap[section]
         Object.entries(sectionKeys).forEach(([field, key]) => {
           const value = (config[section] as Record<string, number>)[field]
           const parsed = makeNumberValue(value)
           payload.push({
-            key,
+            key: key as string,
             value: parsed.value,
             dataType: parsed.dataType,
             category: "payroll"

@@ -93,15 +93,6 @@ export async function PUT(
       )
     }
 
-    // Validate status if provided
-    const validStatuses = ['PERMANENT', 'TEMPORARY', 'CONTRACTUAL', 'INACTIVE']
-    if (status && !validStatuses.includes(status)) {
-      return NextResponse.json(
-        { error: `Invalid employment status. Must be one of: ${validStatuses.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { id }

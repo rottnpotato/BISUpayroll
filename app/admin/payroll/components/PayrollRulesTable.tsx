@@ -60,7 +60,7 @@ export function PayrollRulesTable({
         type: "spring",
         stiffness: 100,
         damping: 12,
-      },
+      }as const,
     },
   }
 
@@ -70,9 +70,9 @@ export function PayrollRulesTable({
         <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <CardTitle className="text-bisu-yellow text-xl">Payroll Calculations</CardTitle>
+              <CardTitle className="text-bisu-yellow text-xl">Salary Additions & Deductions Table</CardTitle>
               <CardDescription className="text-bisu-yellow-light">
-                Manage salary calculation items and deductions
+                Manage salary calculation items and deductions here.
               </CardDescription>
             </div>
             <Button 
@@ -143,8 +143,8 @@ export function PayrollRulesTable({
                 ) : (
                   filteredRules.map((rule) => (
                     <TableRow key={rule.id} className="hover:bg-gray-50 transition-colors">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
+                      <TableCell className="font-medium items-center">
+                        <div className="flex items-center ml-10">
                           <span>{rule.name}</span>
                           {rule.createdByRole === 'EMPLOYEE' && (
                             <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">

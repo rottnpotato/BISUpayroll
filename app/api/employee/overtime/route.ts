@@ -89,6 +89,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if an overtime request already exists for this attendance record
+    const existingOvertimeRequest = await prisma.overtimeRequest.findFirst({
+      where: {
+        attendanceId: attendanceId,
+        userId: user.id
+      }
+    })
+
+    if (existingOvertimeRequest) {
+      return NextResponse.json(
+        { error: 'You have already submitted an overtime request for this date. Please wait for approval or contact your administrator.' },
+        { status: 400 }
+      )
+    }
+
     // Calculate hours worked
     const start = new Date(startTime)
     const end = new Date(endTime)
@@ -117,6 +132,25 @@ export async function POST(request: NextRequest) {
     if (dailyRateRule) {
       const dailyRate = Number(dailyRateRule.payrollRule.amount)
       hourlyRate = dailyRate / 8 // Assuming 8-hour workday
+    } else {
+      // Try to get global daily rate
+      const globalDailyRate = await prisma.payrollRule.findFirst({
+        where: {
+          type: 'daily_rate',
+          isActive: true,
+          applyToAll: true
+        }
+      })
+
+      if (globalDailyRate) {
+        const dailyRate = Number(globalDailyRate.amount)
+        hourlyRate = dailyRate / 8 // Assuming 8-hour workday
+      } else {
+        return NextResponse.json(
+          { error: 'No daily rate configured for this user. Please contact HR.' },
+          { status: 400 }
+        )
+      }
     }
 
     // Calculate overtime pay (1.25x for first 2 hours, 1.5x after)

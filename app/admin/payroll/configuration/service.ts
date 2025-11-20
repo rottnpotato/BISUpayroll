@@ -20,11 +20,15 @@ const ACTIVE_ONLY = { isActive: true }
 
 export class PayrollConfigurationService {
   static async loadBundle(): Promise<PayrollConfigurationBundle> {
-    const [settings, contributionBrackets, taxBrackets, holidays] = await Promise.all([
-      prisma.systemSettings.findMany({ where: { category: "payroll" } }),
+    const [settings, contributionBrackets, taxBrackets, holidays, scopes] = await Promise.all([
+      prisma.systemSettings.findMany({ 
+        where: { category: "payroll" },
+        include: { scopes: { where: { isActive: true } } }
+      }),
       prisma.contributionBracket.findMany({ where: ACTIVE_ONLY }),
       prisma.taxBracketConfig.findMany({ where: ACTIVE_ONLY }),
-      prisma.holiday.findMany()
+      prisma.holiday.findMany(),
+      prisma.configurationScope.findMany({ where: { isActive: true } })
     ])
 
     return mapSettingsToConfiguration(
@@ -62,7 +66,8 @@ export class PayrollConfigurationService {
         payMultiplier: holiday.type === "REGULAR" ? PAYROLL_CONFIG_DEFAULTS.rates.regularHolidayRate / 100 : PAYROLL_CONFIG_DEFAULTS.rates.specialHolidayRate / 100,
         isActive: true,
         isRecurring: holiday.isRecurring
-      }))
+      })),
+      scopes
     )
   }
 
@@ -79,11 +84,13 @@ export class PayrollConfigurationService {
     }
 
     const payload = buildSettingsPayload(normalized, config)
+    const applicationScope = config.applicationScope
 
     await prisma.$transaction(async tx => {
       if (payload.length > 0) {
-        await Promise.all(payload.map(setting =>
-          tx.systemSettings.upsert({
+        // Save each setting with its configuration scope
+        await Promise.all(payload.map(async setting => {
+          const settingRecord = await tx.systemSettings.upsert({
             where: { key: setting.key },
             create: setting,
             update: {
@@ -93,7 +100,28 @@ export class PayrollConfigurationService {
               isActive: true
             }
           })
-        ))
+
+          // If there's an application scope, create/update configuration scope
+          if (applicationScope) {
+            // First, deactivate old scopes for this setting
+            await tx.configurationScope.updateMany({
+              where: { settingsId: settingRecord.id },
+              data: { isActive: false }
+            })
+
+            // Create new scope
+            await tx.configurationScope.create({
+              data: {
+                settingsId: settingRecord.id,
+                applicationType: applicationScope.applicationType || 'ALL',
+                targetId: applicationScope.targetId,
+                targetName: applicationScope.targetName,
+                priority: applicationScope.priority || 0,
+                isActive: true
+              }
+            })
+          }
+        }))
       }
 
       if (normalized === "contributions") {

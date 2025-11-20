@@ -71,8 +71,8 @@ export default function PayrollConfigurationPage() {
       <motion.div variants={itemVariants}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">
-              Payroll Configuration
+            <h1 className="text-3xl font-normal tracking-tight text-bisu-purple-deep">
+             <b>Browse All </b> Payroll Configuration
             </h1>
             <p className="text-muted-foreground">
               Configure working hours, rates, benefits, and tax settings

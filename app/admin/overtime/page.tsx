@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Clock, CheckCircle, XCircle, Calendar, User, DollarSign, FileText } from 'lucide-react'
+import { Clock, CheckCircle, XCircle, Calendar, User, DollarSign, FileText, PhilippinePeso } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -322,8 +322,8 @@ export default function AdminOvertimePage() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <DollarSign className="h-4 w-4 text-gray-400" />
-                                <span className="font-medium">₱{Number(request.totalAmount).toFixed(2)}</span>
+                                <PhilippinePeso className="h-4 w-4 text-gray-400" />
+                                <span className="font-medium">{Number(request.totalAmount).toFixed(2)}</span>
                               </div>
                               <div className="text-xs text-gray-500">
                                 @ ₱{Number(request.hourlyRate).toFixed(2)}/hr

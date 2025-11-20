@@ -196,7 +196,7 @@ export function AttendanceDetailModal({
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Request Overtime
+                  {record.overtimeRequests && record.overtimeRequests.length > 0 ? 'View Request' : 'Request Overtime'}
                 </Button>
               </div>
 
@@ -378,8 +378,11 @@ export function AttendanceDetailModal({
           date: record.date,
           timeIn: record.timeIn,
           timeOut: record.timeOut,
-          hours: record.hours
+          hours: record.hours,
+          morningTimeIn: record.morningTimeIn,
+          afternoonTimeOut: record.afternoonTimeOut
         }}
+        existingRequests={record.overtimeRequests || []}
         onSuccess={() => {
           setIsOvertimeModalOpen(false)
           onOverloadAdded?.()

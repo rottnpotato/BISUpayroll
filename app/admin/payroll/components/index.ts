@@ -8,6 +8,7 @@ export { HolidayConfigCard } from './HolidayConfigCard'
 export { TaxConfigSummaryCard } from './TaxConfigSummaryCard'
 export { ScheduleDialog } from './ScheduleDialog'
 export { PayrollOverview } from './PayrollOverview'
+export { ConfigurationStatusCard } from './ConfigurationStatusCard'
 
 // Reports components
 export { ReportsHeader } from './ReportsHeader'

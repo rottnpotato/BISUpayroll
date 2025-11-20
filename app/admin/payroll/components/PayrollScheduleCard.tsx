@@ -43,7 +43,7 @@ export function PayrollScheduleCard({
         type: "spring",
         stiffness: 100,
         damping: 12,
-      },
+      }as const,
     },
   }
 
@@ -251,7 +251,7 @@ export function PayrollScheduleCard({
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <CalendarDays size={20} />
-                  Payroll Schedules
+                  Ledger & Attendance Cutoff Schedule
                 </CardTitle>
                 <CardDescription className="text-white/80">
                   Configure release dates, processing days, and cutoff periods
@@ -455,6 +455,21 @@ export function PayrollScheduleCard({
                             <span className="font-medium text-gray-700">Cutoff Days</span>
                           </div>
                           <p className="text-gray-600 ml-4">{formatDays(schedule.cutoffDays)}</p>
+                        </div>
+                      )}
+
+                      {schedule.employmentStatuses && schedule.employmentStatuses.length > 0 && (
+                        <div className="space-y-1 col-span-2">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium text-gray-700">Employment Status</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 ml-4">
+                            {schedule.employmentStatuses.map((status) => (
+                              <Badge key={status} variant="outline" className="text-xs">
+                                {status === 'PERMANENT' ? 'Permanent' : status === 'TEMPORARY' ? 'Temporary' : 'Contractual'}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>

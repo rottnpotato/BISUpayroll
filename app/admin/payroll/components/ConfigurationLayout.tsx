@@ -117,18 +117,6 @@ export function ConfigurationLayout(props: ConfigurationLayoutProps) {
       title: 'Holiday Management',
       description: 'Define public holidays and special work days',
       icon: Calendar
-    },
-    {
-      id: 'role-toggles',
-      title: 'Role Toggles',
-      description: 'Manage role-based payroll configurations and eligibility',
-      icon: Settings
-    },
-    {
-      id: 'summary',
-      title: 'Configuration Summary',
-      description: 'Overview of all payroll configuration settings',
-      icon: Settings
     }
   ]
 
@@ -183,21 +171,6 @@ export function ConfigurationLayout(props: ConfigurationLayoutProps) {
         )
       case 'holidays':
         return <HolidayConfigCard />
-      case 'role-toggles':
-        return (
-          <PayrollRoleTogglesCard
-            onSave={async () => { await props.saveAllConfigurations() }}
-            hasUnsavedChanges={props.hasUnsavedChanges}
-          />
-        )
-      case 'summary':
-        return (
-          <TaxConfigSummaryCard
-            ratesConfig={props.ratesConfig}
-            leaveBenefitsConfig={props.leaveBenefitsConfig}
-            onSave={async () => { await props.saveAllConfigurations() }}
-          />
-        )
       default:
         return (
           <div className="text-center py-8">
@@ -213,7 +186,7 @@ export function ConfigurationLayout(props: ConfigurationLayoutProps) {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Payroll Configuration</h1>
+            <h1 className="text-2xl font-normal text-gray-900"><b>Work Days & Employee Contribution</b> Configuration</h1>
             <p className="text-sm text-gray-600 mt-1">
               Manage your preferences and configure various payroll options.
             </p>

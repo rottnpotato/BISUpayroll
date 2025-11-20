@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id
     const body = await request.json()
-    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, description } = body
+    const { name, days, isActive, cutoffDays, payrollReleaseDay, processingDays, cutoffType, description, employmentStatuses } = body
 
     if (!name || !days || !Array.isArray(days)) {
       return NextResponse.json(
@@ -82,6 +82,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     if (description) {
       updateData.description = description
+    }
+    if (employmentStatuses !== undefined && Array.isArray(employmentStatuses)) {
+      updateData.employmentStatuses = employmentStatuses
     }
 
       const schedule = await prisma.payrollSchedule.update({

@@ -343,6 +343,8 @@ model PayrollSchedule {
   processingDays    Int[]    @default([])
   cutoffType        String?
   description       String?
+  // Employment statuses this schedule applies to
+  employmentStatuses String[] @default([])
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

@@ -44,8 +44,8 @@ export default function PayrollSchedulesPage() {
     >
       <motion.div variants={itemVariants}>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">
-            Payroll Schedules
+          <h1 className="text-3xl font-normal tracking-tight text-bisu-purple-deep">
+            <b>Browse All </b>Payroll Schedules
           </h1>
           <p className="text-muted-foreground">
             Manage payroll processing schedules and periods
