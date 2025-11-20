@@ -80,6 +80,7 @@ export interface AttendanceFilters {
   searchTerm: string
   selectedDepartment: string
   selectedStatus: string
+  selectedEmployeeStatus: string
   selectedDate: Date | undefined
   startDate: Date | undefined
   endDate: Date | undefined

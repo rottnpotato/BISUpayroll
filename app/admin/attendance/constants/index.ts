@@ -1,11 +1,8 @@
 export const DEPARTMENTS = [
   "All Departments",
-  "IT Department", 
-  "HR",
-  "Accounting",
-  "Faculty",
-  "Maintenance",
-  "Admin Office"
+  "CCIS",
+  "CCJ", 
+  "CTAS",
 ] as const
 
 export const ATTENDANCE_STATUSES = [
@@ -13,6 +10,13 @@ export const ATTENDANCE_STATUSES = [
   { value: "present", label: "Present" },
   { value: "late", label: "Late" },
   { value: "absent", label: "Absent" }
+] as const
+
+export const EMPLOYEE_STATUSES = [
+  { value: "all", label: "All Statuses" },
+  { value: "PERMANENT", label: "Permanent" },
+  { value: "TEMPORARY", label: "Temporary" },
+  { value: "CONTRACTUAL", label: "Contractual" }
 ] as const
 
 export const APPROVAL_STATUSES = [

@@ -5,6 +5,7 @@ export default function useAttendanceFilters() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("All Departments")
   const [selectedStatus, setSelectedStatus] = useState("all")
+  const [selectedEmployeeStatus, setSelectedEmployeeStatus] = useState("all")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
@@ -14,6 +15,7 @@ export default function useAttendanceFilters() {
     searchTerm,
     selectedDepartment,
     selectedStatus,
+    selectedEmployeeStatus,
     selectedDate,
     startDate,
     endDate,
@@ -24,6 +26,7 @@ export default function useAttendanceFilters() {
     setSearchTerm,
     setSelectedDepartment,
     setSelectedStatus,
+    setSelectedEmployeeStatus,
     setSelectedDate,
     setStartDate,
     setEndDate,
@@ -34,6 +37,7 @@ export default function useAttendanceFilters() {
     setSearchTerm("")
     setSelectedDepartment("All Departments")
     setSelectedStatus("all")
+    setSelectedEmployeeStatus("all")
     setSelectedDate(undefined)
     setStartDate(undefined)
     setEndDate(undefined)

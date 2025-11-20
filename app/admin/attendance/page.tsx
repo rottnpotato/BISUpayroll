@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SkeletonCard } from "@/components/ui/skeleton-card"
 import { motion } from "framer-motion"
-import { filterAttendanceRecords } from "./utils"
+import { Loader2 } from "lucide-react"
 import { 
   useAttendanceData, 
   useAttendanceActions, 
@@ -44,12 +44,15 @@ const itemVariants = {
 export default function AttendancePage() {
   const { filters, updateFilters, clearDateFilter, clearAllFilters, setDateRange } = useAttendanceFilters()
   
-  const { isLoading, records, totalPages, summaryStats, refetch } = useAttendanceData({
+  const { isLoading, isInitialLoading, records, totalPages, summaryStats, refetch } = useAttendanceData({
     currentPage: filters.currentPage,
     selectedDate: filters.selectedDate,
     selectedDepartment: filters.selectedDepartment,
     startDate: filters.startDate,
-    endDate: filters.endDate
+    endDate: filters.endDate,
+    searchTerm: filters.searchTerm,
+    selectedStatus: filters.selectedStatus,
+    selectedEmployeeStatus: filters.selectedEmployeeStatus
   })
 
   const {
@@ -61,20 +64,15 @@ export default function AttendancePage() {
     selectedDepartment: filters.selectedDepartment,
     startDate: filters.startDate,
     endDate: filters.endDate,
+    searchTerm: filters.searchTerm,
+    selectedStatus: filters.selectedStatus,
     onRefetch: refetch
   })
-
-  const filteredRecords = filterAttendanceRecords(
-    records,
-    filters.searchTerm,
-    filters.selectedStatus
-  )
 
   // Debug logging
   console.log('Admin Attendance Debug:', {
     isLoading,
     records: records.length,
-    filteredRecords: filteredRecords.length,
     filters,
     summaryStats
   })
@@ -99,7 +97,7 @@ export default function AttendancePage() {
         </div>
       </motion.div>
 
-      {isLoading ? (
+      {isInitialLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <SkeletonCard hasHeader={false} lines={2} />
           <SkeletonCard hasHeader={false} lines={2} />
@@ -132,9 +130,14 @@ export default function AttendancePage() {
                   onDateRangeChange={setDateRange}
                 />
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 relative min-h-[400px]">
+                {isLoading && (
+                  <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-sm">
+                    <Loader2 className="h-8 w-8 animate-spin text-bisu-purple-deep" />
+                  </div>
+                )}
                 <AttendanceTable
-                  records={filteredRecords}
+                  records={records}
                   onApprovalAction={handleApprovalAction}
                 />
 

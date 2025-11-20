@@ -10,6 +10,9 @@ interface UseAttendanceDataProps {
   selectedDepartment: string
   startDate?: Date | undefined
   endDate?: Date | undefined
+  searchTerm?: string
+  selectedStatus?: string
+  selectedEmployeeStatus?: string
 }
 
 export default function useAttendanceData({
@@ -17,9 +20,13 @@ export default function useAttendanceData({
   selectedDate,
   selectedDepartment,
   startDate,
-  endDate
+  endDate,
+  searchTerm,
+  selectedStatus,
+  selectedEmployeeStatus
 }: UseAttendanceDataProps) {
   const [isLoading, setIsLoading] = useState(true)
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [totalPages, setTotalPages] = useState(1)
   const [summaryStats, setSummaryStats] = useState<SummaryStats>(INITIAL_SUMMARY_STATS)
@@ -28,7 +35,17 @@ export default function useAttendanceData({
   const fetchAttendanceRecords = async () => {
     try {
       setIsLoading(true)
-      const params = buildApiParams(currentPage, selectedDate, selectedDepartment, PAGINATION_LIMITS.DEFAULT, startDate, endDate)
+      const params = buildApiParams(
+        currentPage, 
+        selectedDate, 
+        selectedDepartment, 
+        PAGINATION_LIMITS.DEFAULT, 
+        startDate, 
+        endDate,
+        searchTerm,
+        selectedStatus,
+        selectedEmployeeStatus
+      )
 
       const response = await fetch(`/api/admin/attendance?${params}`)
       if (!response.ok) {
@@ -57,6 +74,7 @@ export default function useAttendanceData({
       toast.error('Failed to fetch attendance records')
     } finally {
       setIsLoading(false)
+      setIsInitialLoading(false)
     }
   }
 
@@ -77,7 +95,7 @@ export default function useAttendanceData({
   useEffect(() => {
     fetchAttendanceRecords()
     fetchUsers()
-  }, [currentPage, selectedDate, selectedDepartment, startDate, endDate])
+  }, [currentPage, selectedDate, selectedDepartment, startDate, endDate, searchTerm, selectedStatus, selectedEmployeeStatus])
 
   const refetch = () => {
     fetchAttendanceRecords()
@@ -85,6 +103,7 @@ export default function useAttendanceData({
 
   return {
     isLoading,
+    isInitialLoading,
     records,
     totalPages,
     summaryStats,

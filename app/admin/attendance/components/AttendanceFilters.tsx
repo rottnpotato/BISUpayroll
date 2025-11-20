@@ -6,9 +6,9 @@ import { Calendar } from "@/components/ui/calendar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Search, Filter, RefreshCcw, FileDown, Calendar as CalendarIcon, X, CalendarRange } from "lucide-react"
+import { Search, Filter, RefreshCcw, FileDown, Calendar as CalendarIcon, X, CalendarRange, Briefcase } from "lucide-react"
 import { format } from "date-fns"
-import { DEPARTMENTS, ATTENDANCE_STATUSES } from "../constants"
+import { DEPARTMENTS, ATTENDANCE_STATUSES, EMPLOYEE_STATUSES } from "../constants"
 import type { AttendanceFilters } from "../types"
 
 interface AttendanceFiltersProps {
@@ -17,6 +17,7 @@ interface AttendanceFiltersProps {
     setSearchTerm: (term: string) => void
     setSelectedDepartment: (dept: string) => void
     setSelectedStatus: (status: string) => void
+    setSelectedEmployeeStatus: (status: string) => void
     setSelectedDate: (date: Date | undefined) => void
     setStartDate: (date: Date | undefined) => void
     setEndDate: (date: Date | undefined) => void
@@ -81,54 +82,37 @@ export default function AttendanceFilters({
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-[280px] justify-start text-left font-normal bg-transparent text-bisu-yellow border-bisu-yellow/30 hover:bg-bisu-yellow-light">
                 <CalendarRange className="mr-2 h-4 w-4" />
-                {filters.startDate && filters.endDate ? 
-                  `${format(filters.startDate, 'MMM dd')} - ${format(filters.endDate, 'MMM dd')}` : 
-                  <span>Date Range</span>
-                }
+                {filters.startDate ? (
+                  filters.endDate ? (
+                    <>
+                      {format(filters.startDate, "LLL dd, y")} -{" "}
+                      {format(filters.endDate, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(filters.startDate, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pick a date range</span>
+                )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <div className="p-3 space-y-3">
-                <div className="text-sm font-medium">Select Start Date:</div>
-                <Calendar
-                  mode="single"
-                  selected={filters.startDate}
-                  onSelect={(date) => {
-                    onFiltersChange.setStartDate(date)
-                    // Clear single date when using date range
-                    if (date && filters.selectedDate) {
-                      onFiltersChange.setSelectedDate(undefined)
-                    }
-                  }}
-                  initialFocus
-                />
-                {filters.startDate && (
-                  <>
-                    <div className="text-sm font-medium">Select End Date:</div>
-                    <Calendar
-                      mode="single"
-                      selected={filters.endDate}
-                      onSelect={(date) => {
-                        onFiltersChange.setEndDate(date)
-                        // Clear single date when using date range
-                        if (date && filters.selectedDate) {
-                          onFiltersChange.setSelectedDate(undefined)
-                        }
-                      }}
-                      disabled={(date) => date < filters.startDate!}
-                    />
-                  </>
-                )}
-                {filters.startDate && filters.endDate && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full mt-2" 
-                    onClick={() => onDateRangeChange(undefined, undefined)}
-                  >
-                    Clear Date Range
-                  </Button>
-                )}
-              </div>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={filters.startDate}
+                selected={{
+                  from: filters.startDate,
+                  to: filters.endDate,
+                }}
+                onSelect={(range) => {
+                  onDateRangeChange(range?.from, range?.to)
+                  if (range?.from && filters.selectedDate) {
+                    onFiltersChange.setSelectedDate(undefined)
+                  }
+                }}
+                numberOfMonths={2}
+              />
             </PopoverContent>
           </Popover>
 
@@ -180,6 +164,20 @@ export default function AttendanceFilters({
               {DEPARTMENTS.map((dept) => (
                 <SelectItem key={dept} value={dept}>
                   {dept}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filters.selectedEmployeeStatus} onValueChange={onFiltersChange.setSelectedEmployeeStatus}>
+            <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow/30">
+              <Briefcase size={16} className="mr-2 text-bisu-yellow" />
+              <SelectValue placeholder="Employee Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {EMPLOYEE_STATUSES.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
                 </SelectItem>
               ))}
             </SelectContent>

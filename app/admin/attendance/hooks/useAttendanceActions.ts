@@ -10,6 +10,8 @@ interface UseAttendanceActionsProps {
   selectedDepartment: string
   startDate?: Date | undefined
   endDate?: Date | undefined
+  searchTerm?: string
+  selectedStatus?: string
   onRefetch: () => void
 }
 
@@ -18,6 +20,8 @@ export default function useAttendanceActions({
   selectedDepartment,
   startDate,
   endDate,
+  searchTerm,
+  selectedStatus,
   onRefetch
 }: UseAttendanceActionsProps) {
   const [isProcessing, setIsProcessing] = useState(false)
@@ -53,7 +57,16 @@ export default function useAttendanceActions({
 
   const exportAttendance = async () => {
     try {
-      const params = buildApiParams(1, selectedDate, selectedDepartment, PAGINATION_LIMITS.EXPORT, startDate, endDate)
+      const params = buildApiParams(
+        1, 
+        selectedDate, 
+        selectedDepartment, 
+        PAGINATION_LIMITS.EXPORT, 
+        startDate, 
+        endDate,
+        searchTerm,
+        selectedStatus
+      )
       const response = await fetch(`/api/admin/attendance?${params}`)
       const data = await response.json()
       

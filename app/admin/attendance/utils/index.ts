@@ -97,7 +97,10 @@ export const buildApiParams = (
   selectedDepartment: string,
   limit: number = 10,
   startDate?: Date | undefined,
-  endDate?: Date | undefined
+  endDate?: Date | undefined,
+  searchTerm?: string,
+  selectedStatus?: string,
+  selectedEmployeeStatus?: string
 ): URLSearchParams => {
   const params = new URLSearchParams({
     page: currentPage.toString(),
@@ -118,6 +121,18 @@ export const buildApiParams = (
 
   if (selectedDepartment !== "All Departments") {
     params.append('department', selectedDepartment)
+  }
+
+  if (searchTerm) {
+    params.append('search', searchTerm)
+  }
+
+  if (selectedStatus && selectedStatus !== "all") {
+    params.append('status', selectedStatus)
+  }
+
+  if (selectedEmployeeStatus && selectedEmployeeStatus !== "all") {
+    params.append('employeeStatus', selectedEmployeeStatus)
   }
 
   return params

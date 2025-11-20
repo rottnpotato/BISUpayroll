@@ -13,9 +13,12 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
     const department = searchParams.get("department")
+    const search = searchParams.get("search")
+    const status = searchParams.get("status")
+    const employeeStatus = searchParams.get("employeeStatus")
 
-  const startDateValue = startDate ? manilaStartOfDayUTC(startDate) : undefined
-  const endDateValue = endDate ? manilaEndOfDayUTC(endDate) : undefined
+    const startDateValue = startDate ? manilaStartOfDayUTC(startDate) : undefined
+    const endDateValue = endDate ? manilaEndOfDayUTC(endDate) : undefined
 
     const userIdValue = userId || undefined
 
@@ -28,12 +31,50 @@ export async function GET(request: NextRequest) {
     }
     if (userIdValue) whereClause.userId = userIdValue
 
+    // Handle status filter
+    if (status && status !== "all") {
+      switch (status.toLowerCase()) {
+        case "absent":
+          whereClause.isAbsent = true
+          break
+        case "late":
+          whereClause.isLate = true
+          whereClause.timeIn = { not: null }
+          break
+        case "present":
+          whereClause.isLate = false
+          whereClause.timeIn = { not: null }
+          break
+      }
+    }
+
+    // Handle department and search filters
+    const userWhere: any = {}
+    
+    if (department && department !== "All Departments") {
+      userWhere.department = department
+    }
+
+    if (employeeStatus && employeeStatus !== "all") {
+      userWhere.status = employeeStatus
+    }
+
+    if (search) {
+      userWhere.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { employeeId: { contains: search, mode: "insensitive" } }
+      ]
+    }
+
+    if (Object.keys(userWhere).length > 0) {
+      whereClause.user = userWhere
+    }
+
     // Department filter via relation
     const [recordsRaw, totalCount] = await Promise.all([
       prisma.attendanceRecord.findMany({
-        where: department && department !== "All Departments"
-          ? { ...whereClause, user: { department } }
-          : whereClause,
+        where: whereClause,
         select: {
           id: true,
           userId: true,
@@ -118,9 +159,7 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.attendanceRecord.count({
-        where: department && department !== "All Departments"
-          ? { ...whereClause, user: { department } }
-          : whereClause,
+        where: whereClause,
       }),
     ])
 
