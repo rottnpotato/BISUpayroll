@@ -57,6 +57,21 @@ export const usePayrollRules = (refetch: () => Promise<void>) => {
     })
   }
 
+  const handleBulkUserSelection = (userIds: string[], checked: boolean) => {
+    setFormData(prev => {
+      const currentIds = new Set(prev.selectedUserIds)
+      if (checked) {
+        userIds.forEach(id => currentIds.add(id))
+      } else {
+        userIds.forEach(id => currentIds.delete(id))
+      }
+      return {
+        ...prev,
+        selectedUserIds: Array.from(currentIds)
+      }
+    })
+  }
+
   const handleSelectAllUsers = (checked: boolean, allUsers: any[]) => {
     setFormData(prev => ({
       ...prev,
@@ -223,6 +238,7 @@ export const usePayrollRules = (refetch: () => Promise<void>) => {
     selectedRule,
     handleFormChange,
     handleUserSelection,
+    handleBulkUserSelection,
     handleSelectAllUsers,
     handleAddRule,
     handleEditRule,

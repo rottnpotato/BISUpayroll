@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react"
 import type { AttendanceRecord } from "../types"
-import { formatTime, formatHours } from "../utils"
+import { formatTime, formatHours, calculateUndertime } from "../utils"
 import AttendanceApprovalDialog from "./AttendanceApprovalDialog"
 
 interface AttendanceTableProps {
@@ -138,7 +138,7 @@ export default function AttendanceTable({ records }: AttendanceTableProps) {
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={12} className="text-center py-10 text-gray-500">
+            <TableCell colSpan={13} className="text-center py-10 text-gray-500">
               No attendance records found matching the current filters
             </TableCell>
           </TableRow>
@@ -162,6 +162,7 @@ export default function AttendanceTable({ records }: AttendanceTableProps) {
             <TableHead colSpan={2} className="text-center text-green-500">Morning</TableHead>
             <TableHead colSpan={2} className="text-center text-orange-500 ">Afternoon</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Undertime</TableHead>
             <TableHead>Hours Worked</TableHead>
             <TableHead>Approval Status</TableHead>
             <TableHead className="text-center">Actions</TableHead>
@@ -176,6 +177,7 @@ export default function AttendanceTable({ records }: AttendanceTableProps) {
             <TableHead className="text-xs text-gray-500">Out</TableHead>
             <TableHead className="text-xs text-gray-500">In</TableHead>
             <TableHead className="text-xs text-gray-500">Out</TableHead>
+            <TableHead></TableHead>
             <TableHead></TableHead>
             <TableHead></TableHead>
             <TableHead></TableHead>
@@ -195,6 +197,7 @@ export default function AttendanceTable({ records }: AttendanceTableProps) {
               <TableCell className="text-green-600">{formatTime(record.afternoonTimeIn ?? null)}</TableCell>
               <TableCell className="text-orange-600">{formatTime(record.afternoonTimeOut ?? null)}</TableCell>
               <TableCell>{getStatusBadge(record)}</TableCell>
+              <TableCell className="text-red-500 font-medium">{calculateUndertime(record)}</TableCell>
               <TableCell>{formatHours(record.hoursWorked)}</TableCell>
               <TableCell>
                 {needsApproval(record) ? (

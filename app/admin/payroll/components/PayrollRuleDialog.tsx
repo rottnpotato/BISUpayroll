@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Search, Filter } from "lucide-react"
 import { PayrollFormData, User } from "../types"
+import { useState, useMemo } from "react"
 
 interface PayrollRuleDialogProps {
   isOpen: boolean
@@ -19,6 +21,7 @@ interface PayrollRuleDialogProps {
   onSelectChange: (field: string, value: string) => void
   onUserSelection: (userId: string, checked: boolean) => void
   onSelectAllUsers: (checked: boolean) => void
+  onBulkUserSelection?: (userIds: string[], checked: boolean) => void
   users: User[]
   isUsersLoading: boolean
   isEdit?: boolean
@@ -34,11 +37,52 @@ export function PayrollRuleDialog({
   onSelectChange,
   onUserSelection,
   onSelectAllUsers,
+  onBulkUserSelection,
   users,
   isUsersLoading,
   isEdit = false,
   title
 }: PayrollRuleDialogProps) {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+
+  const departments = useMemo(() => 
+    Array.from(new Set(users.map(u => u.department).filter(Boolean) as string[])).sort(),
+    [users]
+  )
+
+  const statuses = useMemo(() => 
+    Array.from(new Set(users.map(u => u.status).filter(Boolean) as string[])).sort(),
+    [users]
+  )
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const matchesSearch = (
+        user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.employeeId && user.employeeId.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+      const matchesDepartment = departmentFilter === "all" || user.department === departmentFilter
+      const matchesStatus = statusFilter === "all" || user.status === statusFilter
+      return matchesSearch && matchesDepartment && matchesStatus
+    })
+  }, [users, searchTerm, departmentFilter, statusFilter])
+
+  const areAllFilteredSelected = filteredUsers.length > 0 && filteredUsers.every(user => formData.selectedUserIds.includes(user.id))
+
+  const handleSelectAllFiltered = (checked: boolean) => {
+    if (onBulkUserSelection) {
+      onBulkUserSelection(filteredUsers.map(u => u.id), checked)
+    } else {
+      if (searchTerm === "" && departmentFilter === "all" && statusFilter === "all") {
+        onSelectAllUsers(checked)
+      } else {
+        filteredUsers.forEach(user => onUserSelection(user.id, checked))
+      }
+    }
+  }
 
   const handleSubmit = async () => {
     const success = await onSubmit()
@@ -204,39 +248,79 @@ export function PayrollRuleDialog({
             {!formData.applyToAll && (
               <div className="space-y-3">
                 <Label>Select Employees</Label>
-                <div className="border rounded-lg p-4 max-h-48 overflow-y-auto">
+                
+                <div className="flex flex-col gap-3 mb-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search employees..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {departments.map(dept => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        {statuses.map(status => (
+                          <SelectItem key={status} value={status}>{status}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
                   {isUsersLoading ? (
                     <div className="text-center py-4 text-gray-500">Loading employees...</div>
-                  ) : users.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500">No employees found</div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">No employees found matching filters</div>
                   ) : (
                     <>
                       <div className="flex items-center space-x-2 mb-3 pb-2 border-b">
                         <Checkbox
                           id="selectAll"
-                          checked={formData.selectedUserIds.length === users.length}
-                          onCheckedChange={(checked) => onSelectAllUsers(!!checked)}
+                          checked={areAllFilteredSelected}
+                          onCheckedChange={(checked) => handleSelectAllFiltered(!!checked)}
                         />
                         <Label htmlFor="selectAll" className="font-medium">
-                          Select All ({users.length} employees)
+                          Select All ({filteredUsers.length} employees)
                         </Label>
                       </div>
-                      <ScrollArea className="h-32">
+                      <ScrollArea className="h-48">
                         <div className="space-y-2">
-                          {users.map((user) => (
+                          {filteredUsers.map((user) => (
                             <div key={user.id} className="flex items-center space-x-2">
                               <Checkbox
                                 id={`user-${user.id}`}
                                 checked={formData.selectedUserIds.includes(user.id)}
                                 onCheckedChange={(checked) => onUserSelection(user.id, !!checked)}
                               />
-                              <Label htmlFor={`user-${user.id}`} className="text-sm">
+                              <Label htmlFor={`user-${user.id}`} className="text-sm cursor-pointer">
                                 {user.firstName} {user.lastName}
                                 {user.employeeId && (
                                   <span className="text-gray-500 ml-1">({user.employeeId})</span>
                                 )}
                                 {user.department && (
                                   <span className="text-gray-500 ml-1">- {user.department}</span>
+                                )}
+                                {user.status && (
+                                  <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded ml-2 text-gray-600">{user.status}</span>
                                 )}
                               </Label>
                             </div>

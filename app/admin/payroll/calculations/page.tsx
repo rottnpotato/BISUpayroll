@@ -45,7 +45,8 @@ export default function PayrollCalculationsPage() {
     handleUpdateRule,
     handleDeleteRule,
     handleToggleRuleStatus,
-    resetForm
+    resetForm,
+    handleBulkUserSelection
   } = usePayrollRules(loadData)
 
   const handleEditRuleClick = (rule: PayrollRule) => {
@@ -146,6 +147,7 @@ export default function PayrollCalculationsPage() {
         }}
         onUserSelection={handleUserSelection}
         onSelectAllUsers={handleSelectAllUsersWrapper}
+        onBulkUserSelection={handleBulkUserSelection}
         users={users}
         isUsersLoading={isUsersLoading}
         isEdit={!!editingRule}

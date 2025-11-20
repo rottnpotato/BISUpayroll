@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AttendanceDetailModal } from "./components/attendance-detail-modal"
 import { AttendanceRecord, AttendanceData, AttendanceSummary } from "./types"
+import { calculateUndertime } from "./utils"
 
 export default function EmployeeAttendancePage() {
   const [isLoading, setIsLoading] = useState(true)
@@ -292,6 +293,7 @@ export default function EmployeeAttendancePage() {
                         <TableHead>Day</TableHead>
                         <TableHead colSpan={2} className="text-center">Morning</TableHead>
                         <TableHead colSpan={2} className="text-center">Afternoon</TableHead>
+                        <TableHead>Undertime</TableHead>
                         <TableHead>Hours</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Approval</TableHead>
@@ -303,6 +305,7 @@ export default function EmployeeAttendancePage() {
                         <TableHead className="text-xs text-gray-500">Out</TableHead>
                         <TableHead className="text-xs text-gray-500">In</TableHead>
                         <TableHead className="text-xs text-gray-500">Out</TableHead>
+                        <TableHead></TableHead>
                         <TableHead></TableHead>
                         <TableHead></TableHead>
                         <TableHead></TableHead>
@@ -333,6 +336,7 @@ export default function EmployeeAttendancePage() {
                             <TableCell>
                               {record.afternoonTimeOut || <span className="text-gray-400">--</span>}
                             </TableCell>
+                            <TableCell className="text-red-500 font-medium">{calculateUndertime(record)}</TableCell>
                             <TableCell>{formatHours(record.hours)}</TableCell>
                             <TableCell>{getStatusBadge(record.status)}</TableCell>
                             <TableCell>
@@ -342,7 +346,7 @@ export default function EmployeeAttendancePage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                             No attendance records found for this period
                           </TableCell>
                         </TableRow>
