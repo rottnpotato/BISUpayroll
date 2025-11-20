@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,8 +30,10 @@ import { AddEmployeeDialog } from "./components/AddEmployeeDialog"
 import { EditEmployeeDialog } from "./components/EditEmployeeDialog"
 import { DeleteEmployeeDialog } from "./components/DeleteEmployeeDialog"
 import { BulkImportDialog } from "./components/BulkImportDialog"
+import { useSidebar } from "@/contexts/sidebar-context"
 
 export default function AdminUsersPage() {
+  const { isCollapsed } = useSidebar()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("All Departments")
   const [selectedStatus, setSelectedStatus] = useState("")
@@ -276,124 +278,129 @@ export default function AdminUsersPage() {
 
       <Toaster />
 
-      {loading ? (
-        <SkeletonCard lines={10} />
-      ) : (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Card className="shadow-lg border-0 overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg pb-4">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <CardTitle className="text-bisu-yellow flex items-center">
-                  <UserPlus size={20} className="mr-2" />
-                  Employee Management
-                </CardTitle>
-                <div className="flex flex-wrap gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
-                          onClick={fetchUsers}
-                        >
-                          <RefreshCcw size={16} className="mr-2" />
-                          Refresh
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Refresh user data</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
-                          onClick={() => setShowAddDialog(true)}
-                        >
-                          <Plus size={16} className="mr-2" />
-                          Add Employee
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Add new employee</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
-                          onClick={() => setShowBulkImportDialog(true)}
-                        >
-                          <Users size={16} className="mr-2" />
-                          Bulk Import
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Import multiple employees</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <Card className="shadow-lg border-0 overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white rounded-t-lg pb-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <CardTitle className="text-bisu-yellow flex items-center">
+                <UserPlus size={20} className="mr-2" />
+                Employee Management
+              </CardTitle>
+              <div className="flex flex-wrap gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
+                        onClick={fetchUsers}
+                      >
+                        <RefreshCcw size={16} className="mr-2" />
+                        Refresh
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Refresh user data</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
+                        onClick={() => setShowAddDialog(true)}
+                      >
+                        <Plus size={16} className="mr-2" />
+                        Add Employee
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Add new employee</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="text-bisu-yellow bg-transparent border-bisu-yellow hover:bg-bisu-yellow-light/10"
+                        onClick={() => setShowBulkImportDialog(true)}
+                      >
+                        <Users size={16} className="mr-2" />
+                        Bulk Import
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Import multiple employees</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-4 mt-4">
+              <div className={`relative transition-all duration-300 ${isCollapsed ? 'md:w-[760px]' : 'md:w-[600px]'}`}>
+                <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow" />
+                <Input
+                  placeholder="Search by name, email, ID..."
+                  className="pl-8 bg-bisu-purple-light text-white placeholder:text-bisu-yellow/70 border-bisu-yellow/30 focus:border-bisu-yellow"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 flex-wrap flex-1">
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow/30">
+                    <Filter size={16} className="mr-2 text-bisu-yellow" />
+                    <SelectValue placeholder="Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All Departments">All Departments</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Tabs value={selectedStatus} onValueChange={setSelectedStatus} className="flex-1">
+                  <TabsList className="bg-bisu-purple-light border-bisu-yellow/30 text-bisu-yellow-light hover:text-bisu-yellow">
+                    <TabsTrigger value="" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
+                      All
+                    </TabsTrigger>
+                    <TabsTrigger value="PERMANENT" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
+                      Permanent
+                    </TabsTrigger>
+                    <TabsTrigger value="CONTRACTUAL" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
+                      Contractual
+                    </TabsTrigger>
+                    <TabsTrigger value="TEMPORARY" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
+                      Temporary
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-bisu-purple-deep"></div>
+                  <p className="text-sm text-gray-500">Loading employees...</p>
                 </div>
               </div>
-              
-              <div className="flex flex-col md:flex-row gap-4 mt-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-bisu-yellow" />
-                  <Input
-                    placeholder="Search by name, email, ID, or position..."
-                    className="pl-10 bg-bisu-purple-light text-white placeholder:text-bisu-yellow/70 border-bisu-yellow/30 focus:border-bisu-yellow"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                    <SelectTrigger className="w-[180px] bg-bisu-purple-light text-white border-bisu-yellow/30">
-                      <Filter size={16} className="mr-2 text-bisu-yellow" />
-                      <SelectValue placeholder="Department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All Departments">All Departments</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <Tabs value={selectedStatus} onValueChange={setSelectedStatus} className="w-[260px]">
-                    <TabsList className="bg-bisu-purple-light border-bisu-yellow/30 text-bisu-yellow-light hover:text-bisu-yellow">
-                      <TabsTrigger value="all" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
-                        All
-                      </TabsTrigger>
-                      <TabsTrigger value="active" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
-                        Active
-                      </TabsTrigger>
-                      <TabsTrigger value="inactive" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
-                        Inactive
-                      </TabsTrigger>
-                      <TabsTrigger value="pending" className="data-[state=active]:bg-bisu-yellow data-[state=active]:text-bisu-purple-deep">
-                        Pending
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
+            ) : (
               <div className="overflow-x-auto">
                 <Table className="border-collapse">
                   <TableHeader>
@@ -494,8 +501,9 @@ export default function AdminUsersPage() {
                   </TableBody>
                 </Table>
               </div>
-            </CardContent>
-            <CardFooter className="flex items-center justify-between border-t border-gray-100 p-4 bg-gray-50/50">
+            )}
+          </CardContent>
+          <CardFooter className="flex items-center justify-between border-t border-gray-100 p-4 bg-gray-50/50">
               <div className="text-sm text-gray-500 font-medium">
                 Showing <span className="text-bisu-purple-deep">{currentPage * itemsPerPage - itemsPerPage + 1}</span> to <span className="text-bisu-purple-deep">{Math.min(currentPage * itemsPerPage, totalUsers)}</span> of <span className="text-bisu-purple-deep">{totalUsers}</span> users
               </div>
@@ -544,7 +552,6 @@ export default function AdminUsersPage() {
             </CardFooter>
           </Card>
         </motion.div>
-      )}
 
       {/* Dialogs */}
       <AddEmployeeDialog

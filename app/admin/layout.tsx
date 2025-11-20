@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useAuth } from "@/contexts/auth-context"
+import { SidebarProvider, useSidebar } from "@/contexts/sidebar-context"
 import { BisuLogo } from "@/components/bisu-logo"
 import { AnimatedSidebar } from "@/components/animated-sidebar"
 import { LayoutDashboard, Users, Activity, FileText, Calendar, DollarSign, Clock, ChevronRight, ChevronDown, Eye, Calculator, CalendarRange, Settings, BookOpen, PhilippinePeso  } from "lucide-react"
@@ -31,11 +32,18 @@ const adminNavItems = [
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </SidebarProvider>
+  )
+}
+
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { userRole, userName, logout } = useAuth()
+  const { isCollapsed, setCollapsed, isMobile } = useSidebar()
   const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
     // Simulate loading for demo purposes
@@ -44,30 +52,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }, 1000)
     return () => clearTimeout(timer)
   }, [])
-
-  // Handle sidebar state based on screen size
-  useEffect(() => {
-    const handleResize = () => {
-      const mobileView = window.innerWidth < 1024
-      setIsMobile(mobileView)
-      if (mobileView) {
-        setSidebarCollapsed(true)
-      }
-    }
-
-    // Set initial state
-    handleResize()
-
-    // Add event listener
-    window.addEventListener('resize', handleResize)
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  const handleSidebarToggle = (collapsed: boolean) => {
-    setSidebarCollapsed(collapsed)
-  }
 
   if (userRole !== "admin") {
     return (
@@ -95,13 +79,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="admin-light-scope flex h-screen bg-gray-50">
       <AnimatedSidebar
         items={adminNavItems}
-        logo={<BisuLogo size="md" variant="light" showText={!sidebarCollapsed || !isMobile} />}
+        logo={<BisuLogo size="md" variant="light" showText={!isCollapsed || !isMobile} />}
         userInfo={{
           name: userName || "Admin User",
           role: "Administrator",
         }}
         onLogout={logout}
-        onCollapsedChange={handleSidebarToggle}
+        onCollapsedChange={setCollapsed}
       />
 
       {/* Main content */}
@@ -109,7 +93,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (sidebarCollapsed ? 'ml-24' : 'ml-64')}`}
+        className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'ml-0 w-full' : (isCollapsed ? 'ml-24' : 'ml-64')}`}
       >
         {/* Page content */}
         <main className="flex-1 overflow-auto bg-gray-50 pt-4 px-2 sm:px-2 md:px-6 w-full mx-auto mr-0 max-w-[1460px] pb-5">
