@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Users, Building2, User, Briefcase } from "lucide-react"
+import { Users, Building2, User, Briefcase, Tag } from "lucide-react"
 import { motion } from "framer-motion"
 import { ConfigurationScope, ApplicationType } from "../types"
 
@@ -33,21 +33,18 @@ interface Employee {
 
 // Mock data - in real implementation, fetch from API
 const MOCK_DEPARTMENTS: Department[] = [
-  { id: "1", name: "Information Technology", employeeCount: 25 },
-  { id: "2", name: "Human Resources", employeeCount: 8 },
-  { id: "3", name: "Accounting", employeeCount: 12 },
-  { id: "4", name: "Academic Affairs", employeeCount: 45 },
-  { id: "5", name: "Student Affairs", employeeCount: 15 }
+  { id: "CCIS", name: "College of Computer and Information Sciences", employeeCount: 25 },
+  { id: "CTAS", name: "College of Technology and Allied Sciences", employeeCount: 45 },
+  { id: "CCJ", name: "College of Criminal Justice", employeeCount: 15 }
 ]
 
 const MOCK_EMPLOYEES: Employee[] = [
-  { id: "1", firstName: "John", lastName: "Doe", employeeId: "EMP001", department: "IT" },
-  { id: "2", firstName: "Jane", lastName: "Smith", employeeId: "EMP002", department: "HR" },
-  { id: "3", firstName: "Bob", lastName: "Johnson", employeeId: "EMP003", department: "Accounting" }
+  { id: "1", firstName: "John", lastName: "Doe", employeeId: "EMP001", department: "CCIS" },
+  { id: "2", firstName: "Jane", lastName: "Smith", employeeId: "EMP002", department: "CTAS" },
+  { id: "3", firstName: "Bob", lastName: "Johnson", employeeId: "EMP003", department: "CCJ" }
 ]
 
-const ROLES = ["ADMIN", "EMPLOYEE", "MANAGER", "SUPERVISOR"]
-const POSITIONS = ["Faculty", "Staff", "Administrator", "IT Support", "Accountant"]
+const STATUSES = ["Permanent", "Temporary", "Contractual"]
 
 export function ConfigurationScopeSelector({ 
   currentScope, 
@@ -90,7 +87,7 @@ export function ConfigurationScopeSelector({
     } else if (applicationType === 'INDIVIDUAL') {
       const emp = MOCK_EMPLOYEES.find(e => e.id === value)
       name = emp ? `${emp.firstName} ${emp.lastName}` : ''
-    } else if (applicationType === 'ROLE' || applicationType === 'POSITION') {
+    } else if (applicationType === 'STATUS') {
       name = value
     }
     setTargetName(name)
@@ -101,8 +98,7 @@ export function ConfigurationScopeSelector({
       case 'ALL': return <Users className="w-4 h-4" />
       case 'DEPARTMENT': return <Building2 className="w-4 h-4" />
       case 'INDIVIDUAL': return <User className="w-4 h-4" />
-      case 'ROLE': return <Briefcase className="w-4 h-4" />
-      case 'POSITION': return <Briefcase className="w-4 h-4" />
+      case 'STATUS': return <Tag className="w-4 h-4" />
       default: return <Users className="w-4 h-4" />
     }
   }
@@ -125,7 +121,7 @@ export function ConfigurationScopeSelector({
                     <div className="flex items-center justify-between w-full">
                       <span>{dept.name}</span>
                       <Badge variant="secondary" className="ml-2">
-                        {dept.employeeCount} employees
+                        {dept.id}
                       </Badge>
                     </div>
                   </SelectItem>
@@ -159,37 +155,18 @@ export function ConfigurationScopeSelector({
           </div>
         )
 
-      case 'ROLE':
+      case 'STATUS':
         return (
           <div>
-            <Label htmlFor="role-select">Select Role</Label>
+            <Label htmlFor="status-select">Select Status</Label>
             <Select value={targetId} onValueChange={handleTargetChange} disabled={disabled}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose a role" />
+                <SelectValue placeholder="Choose a status" />
               </SelectTrigger>
               <SelectContent>
-                {ROLES.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )
-
-      case 'POSITION':
-        return (
-          <div>
-            <Label htmlFor="position-select">Select Position</Label>
-            <Select value={targetId} onValueChange={handleTargetChange} disabled={disabled}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a position" />
-              </SelectTrigger>
-              <SelectContent>
-                {POSITIONS.map((position) => (
-                  <SelectItem key={position} value={position}>
-                    {position}
+                {STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -241,16 +218,10 @@ export function ConfigurationScopeSelector({
                     Individual Employee
                   </div>
                 </SelectItem>
-                <SelectItem value="ROLE">
+                <SelectItem value="STATUS">
                   <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4" />
-                    By Role
-                  </div>
-                </SelectItem>
-                <SelectItem value="POSITION">
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4" />
-                    By Position
+                    <Tag className="w-4 h-4" />
+                    By Status
                   </div>
                 </SelectItem>
               </SelectContent>

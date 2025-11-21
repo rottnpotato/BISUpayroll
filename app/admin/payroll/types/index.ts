@@ -514,7 +514,7 @@ export interface ConfigurationScope {
   isActive?: boolean
 }
 
-export type ApplicationType = 'ALL' | 'DEPARTMENT' | 'INDIVIDUAL' | 'ROLE' | 'POSITION'
+export type ApplicationType = 'ALL' | 'DEPARTMENT' | 'INDIVIDUAL' | 'ROLE' | 'POSITION' | 'STATUS'
 
 export type SettingsDataType = 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON' | 'DECIMAL'
 

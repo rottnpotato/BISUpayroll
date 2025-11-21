@@ -3,6 +3,7 @@ import { prisma } from "@/lib/database"
 import { decryptPayrollFile, cleanupDecryptedFile } from "@/lib/crypto-utils"
 import fs from 'fs'
 import path from 'path'
+import * as XLSX from 'xlsx'
 
 export async function GET(
   request: NextRequest,
@@ -86,20 +87,76 @@ export async function GET(
     const ext = path.extname(fileName).toLowerCase()
     let contentType = 'application/octet-stream'
     
-    switch (ext) {
-      case '.pdf':
-        contentType = 'application/pdf'
-        break
-      case '.xlsx':
-      case '.xls':
-        contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        break
-      case '.csv':
-        contentType = 'text/csv'
-        break
-      case '.txt':
-        contentType = 'text/plain'
-        break
+    // Convert JSON payroll files to Excel automatically
+    if (ext === '.json') {
+      try {
+        const jsonContent = JSON.parse(fileBuffer.toString('utf8'))
+        
+        if (jsonContent.employees && Array.isArray(jsonContent.employees)) {
+          // Flatten the data for Excel
+          const rows = jsonContent.employees.map((emp: any) => ({
+            'Employee ID': emp.employeeId,
+            'Name': emp.name,
+            'Department': emp.department,
+            'Position': emp.position,
+            'Daily Rate': emp.dailyRate,
+            'Days Present': emp.daysPresent,
+            'Hours Worked': emp.hoursWorked,
+            'Regular Pay': emp.regularPay,
+            'Overtime Pay': emp.overtimePay,
+            'Holiday Pay': emp.holidayPay,
+            'Allowances': emp.allowances,
+            'Bonuses': emp.bonuses,
+            '13th Month Pay': emp.thirteenthMonthPay,
+            'Service Incentive Leave': emp.serviceIncentiveLeave,
+            'Other Earnings': emp.otherEarnings,
+            'Gross Pay': emp.grossPay,
+            'Withholding Tax': emp.deductions?.withholdingTax || 0,
+            'GSIS': emp.deductions?.gsisContribution || 0,
+            'PhilHealth': emp.deductions?.philHealthContribution || 0,
+            'Pag-IBIG': emp.deductions?.pagibigContribution || 0,
+            'Late Deductions': emp.deductions?.lateDeductions || 0,
+            'Loan Deductions': emp.deductions?.loanDeductions || 0,
+            'Other Deductions': emp.deductions?.otherDeductions || 0,
+            'Total Deductions': emp.totalDeductions,
+            'Net Pay': emp.netPay
+          }))
+
+          // Create workbook and worksheet
+          const worksheet = XLSX.utils.json_to_sheet(rows)
+          const workbook = XLSX.utils.book_new()
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Payroll Ledger")
+
+          // Generate Excel buffer
+          fileBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+          
+          // Update filename and content type
+          fileName = fileName.replace('.json', '.xlsx')
+          contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        } else {
+          // Fallback for non-standard JSON
+          contentType = 'application/json'
+        }
+      } catch (e) {
+        console.error('Error converting JSON to Excel:', e)
+        contentType = 'application/json'
+      }
+    } else {
+      switch (ext) {
+        case '.pdf':
+          contentType = 'application/pdf'
+          break
+        case '.xlsx':
+        case '.xls':
+          contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          break
+        case '.csv':
+          contentType = 'text/csv'
+          break
+        case '.txt':
+          contentType = 'text/plain'
+          break
+      }
     }
 
     // Create response with file using Uint8Array for correct BodyInit typing

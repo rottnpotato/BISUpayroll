@@ -393,10 +393,10 @@ export const filterReports = (reports: any[], searchTerm: string, selectedReport
   })
 } 
 
-// Parse saved JSON ledger content into PayrollData[] and DateRange
+// Parse saved JSON ledger content into PayrollData[], DateRange, and employmentStatus
 export const parseSavedLedgerJsonToPayrollData = (
   content: string
-): { payrollData: PayrollData[]; dateRange: DateRange } => {
+): { payrollData: PayrollData[]; dateRange: DateRange; employmentStatus?: string } => {
   let parsed: any
   try {
     parsed = JSON.parse(content)
@@ -412,6 +412,7 @@ export const parseSavedLedgerJsonToPayrollData = (
   }
 
   const employees: any[] = Array.isArray(parsed.employees) ? parsed.employees : []
+  const employmentStatus = parsed.employmentStatus === 'All Statuses' ? 'all' : parsed.employmentStatus
 
   const payrollData: PayrollData[] = employees.map((emp: any, index: number) => {
     const name: string = emp.name || "Unknown"
@@ -481,5 +482,5 @@ export const parseSavedLedgerJsonToPayrollData = (
 
   const dateRange: DateRange = { from, to }
 
-  return { payrollData, dateRange }
+  return { payrollData, dateRange, employmentStatus }
 }

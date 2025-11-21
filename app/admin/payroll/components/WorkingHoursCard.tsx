@@ -120,7 +120,7 @@ export function WorkingHoursCard({ config, onConfigChange, onSave, hasUnsavedCha
               <Input 
                 type="number"
                 value={config.lateGraceMinutes.toString()}
-                onChange={(e) => handleInputChange('lateGraceMinutes', Math.max(0, parseInt(e.target.value) || 15))}
+                onChange={(e) => handleInputChange('lateGraceMinutes', Math.max(0, parseInt(e.target.value) || 0))}
                 className="mt-1"
               />
             </div>

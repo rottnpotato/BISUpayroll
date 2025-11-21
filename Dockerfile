@@ -51,6 +51,6 @@ EXPOSE 3000
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start development server with hot reload
-CMD ["sh", "-c", "pnpm run db:generate && pnpm run dev"]
+CMD ["sh", "-c", "pnpm run db:generate && pnpm run build && pnpm run start"]
 
 

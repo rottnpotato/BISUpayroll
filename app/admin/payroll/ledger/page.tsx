@@ -116,8 +116,8 @@ export default function PayrollLedgerPage() {
       if (content.trim().startsWith('<')) {
         htmlContent = content
       } else {
-        const { payrollData: parsedData, dateRange } = parseSavedLedgerJsonToPayrollData(content)
-        htmlContent = generatePrintHTML(parsedData, dateRange, null, selectedEmploymentStatus)
+        const { payrollData: parsedData, dateRange, employmentStatus } = parseSavedLedgerJsonToPayrollData(content)
+        htmlContent = generatePrintHTML(parsedData, dateRange, null, employmentStatus || selectedEmploymentStatus)
       }
 
       const printWindow = window.open('', '_blank')

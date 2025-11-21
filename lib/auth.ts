@@ -1,16 +1,11 @@
-import { jwtVerify, SignJWT } from 'jose'
 import bcrypt from 'bcryptjs'
 import { prisma } from './database'
 import { User, Role } from '@prisma/client'
+import { generateToken, verifyToken } from './auth-token'
+import type { AuthUser } from './auth-token'
 
-export interface AuthUser {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  role: Role
-  employeeId?: string | null
-}
+export { generateToken, verifyToken }
+export type { AuthUser }
 
 export interface LoginCredentials {
   email: string
@@ -24,51 +19,12 @@ export interface AuthResult {
   message?: string
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key'
-// Convert JWT_SECRET string to Uint8Array for jose library
-const JWT_SECRET_BYTES = new TextEncoder().encode(JWT_SECRET)
-
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12)
 }
 
 export async function comparePassword(password: string, hashedPassword: string): Promise<boolean> {
   return bcrypt.compare(password, hashedPassword)
-}
-
-export async function generateToken(user: AuthUser): Promise<string> {
-  // Use jose's SignJWT instead of jsonwebtoken
-  return new SignJWT({
-    id: user.id,
-    email: user.email,
-    role: user.role,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    employeeId: user.employeeId,
-  })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('1d')
-    .sign(JWT_SECRET_BYTES)
-}
-
-export async function verifyToken(token: string): Promise<AuthUser | null> {
-  try {
-    // Use jose's jwtVerify instead of jsonwebtoken.verify
-    const { payload } = await jwtVerify(token, JWT_SECRET_BYTES)
-    
-    return {
-      id: payload.id as string,
-      email: payload.email as string,
-      firstName: payload.firstName as string,
-      lastName: payload.lastName as string,
-      role: payload.role as Role,
-      employeeId: payload.employeeId as string | undefined,
-    }
-  } catch (error) {
-    console.error('Token verification error:', error)
-    return null
-  }
 }
 
 export async function authenticateUser(credentials: LoginCredentials): Promise<AuthResult> {
