@@ -16,7 +16,7 @@ RUN apt-get update \
     fonts-liberation \
     fontconfig \
   && rm -rf /var/lib/apt/lists/* \
-  && npm install -g pnpm@9
+  && npm install -g pnpm@9 
 
 # Set up working directory
 WORKDIR /app
@@ -49,8 +49,7 @@ EXPOSE 3000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-
 # Start development server with hot reload
-CMD ["sh", "-c", "pnpm run db:generate && pnpm run build && pnpm run start"]
+CMD ["sh", "-c", "pnpm run db:generate && pnpm run start"]
 
 

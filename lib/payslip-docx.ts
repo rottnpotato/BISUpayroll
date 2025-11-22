@@ -129,7 +129,7 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
   // Add late/undertime deductions
   if (data.calculations.lateDeductions > 0) {
     deductionsList.push({
-      name: 'Undertime/Absences',
+      name: 'Undertime / Late',
       amount: numberFmt(data.calculations.lateDeductions, currency)
     })
   }
@@ -172,7 +172,7 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
     // Deductions - Array for template loop (for table rows)
     deductions: deductionsList,
     // Deductions as formatted string with actual line breaks for single cell
-    deductions_formatted: deductionsList.map(d => `${d.name}: ${d.amount}`).join('\n'),
+    deductions_formatted: deductionsList.map(d => `${d.name + (d.name.length > 4 ? '' : '        ')}: ${d.amount}`).join('\n'),
     total_deductions: numberFmt(data.calculations.totalDeductions, currency),
     
     // Net Pay

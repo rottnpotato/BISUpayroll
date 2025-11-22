@@ -1,14 +1,28 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Users, Building2, User, Briefcase, Tag } from "lucide-react"
+import { Users, Building2, User, Briefcase, Tag, Check, ChevronsUpDown } from "lucide-react"
 import { motion } from "framer-motion"
 import { ConfigurationScope, ApplicationType } from "../types"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 interface ConfigurationScopeSelectorProps {
   currentScope?: ConfigurationScope
@@ -58,6 +72,21 @@ export function ConfigurationScopeSelector({
   const [targetId, setTargetId] = useState<string>(currentScope?.targetId || '')
   const [targetName, setTargetName] = useState<string>(currentScope?.targetName || '')
   const [priority, setPriority] = useState<number>(currentScope?.priority || 0)
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [triggerWidth, setTriggerWidth] = useState(0)
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (triggerRef.current) {
+        setTriggerWidth(triggerRef.current.offsetWidth)
+      }
+    }
+    
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
 
   useEffect(() => {
     const scope: ConfigurationScope = {
@@ -133,25 +162,60 @@ export function ConfigurationScopeSelector({
 
       case 'INDIVIDUAL':
         return (
-          <div>
+          <div className="flex flex-col gap-2">
             <Label htmlFor="employee-select">Select Employee</Label>
-            <Select value={targetId} onValueChange={handleTargetChange} disabled={disabled}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose an employee" />
-              </SelectTrigger>
-              <SelectContent>
-                {MOCK_EMPLOYEES.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    <div className="flex flex-col">
-                      <span>{emp.firstName} {emp.lastName}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {emp.employeeId} - {emp.department}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-full justify-between"
+                  disabled={disabled}
+                >
+                  {targetId
+                    ? (() => {
+                        const emp = MOCK_EMPLOYEES.find((e) => e.id === targetId)
+                        return emp ? `${emp.firstName} ${emp.lastName}` : "Select employee..."
+                      })()
+                    : "Select employee..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                  <CommandInput placeholder="Search employee..." />
+                  <CommandList>
+                    <CommandEmpty>No employee found.</CommandEmpty>
+                    <CommandGroup>
+                      {MOCK_EMPLOYEES.map((emp) => (
+                        <CommandItem
+                          key={emp.id}
+                          value={`${emp.firstName} ${emp.lastName} ${emp.employeeId}`}
+                          onSelect={() => {
+                            handleTargetChange(emp.id)
+                            setOpen(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              targetId === emp.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span>{emp.firstName} {emp.lastName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {emp.employeeId} - {emp.department}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         )
 
