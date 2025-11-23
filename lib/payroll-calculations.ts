@@ -127,23 +127,47 @@ export function calculateAnnualTaxableIncome(annualGross: number): number {
   return annualGross
 }
 
-export function calculateWithholdingTax(annualTaxableIncome: number, brackets: TaxBracket[]): number {
-  for (const bracket of brackets) {
-    if (annualTaxableIncome > bracket.min && annualTaxableIncome <= bracket.max) {
-      const taxableAmount = annualTaxableIncome - bracket.min
-      const rate = bracket.rate / 100
-      const tax = (bracket.fixedAmount ?? 0) + (taxableAmount * rate)
-      return tax / 12
-    }
+export function calculateWithholdingTax(
+  dailyRate: number,
+  gsisContribution: number,
+  philHealthContribution: number,
+  pagibigContribution: number,
+  thirteenthMonthPay: number,
+  serviceIncentiveLeave: number
+): number {
+  // Calculate Gross Annual Income = base pay * 22 (days/month) * 12 (months/year)
+  const grossAnnualIncome = dailyRate * 22 * 12
+  
+  // Calculate annual mandatory contributions
+  const annualContributions = (gsisContribution + philHealthContribution + pagibigContribution) * 12
+  
+  // Calculate annual non-taxable benefits
+  const annualNonTaxable = (thirteenthMonthPay + serviceIncentiveLeave) * 12
+  
+  // Net Taxable Income = Gross Annual Income - Mandatory Contributions - Non-Taxable Benefits
+  const netTaxableIncome = grossAnnualIncome - annualContributions - annualNonTaxable
+  
+  // Apply Philippine Tax Brackets (2025)
+  let annualTax = 0
+  
+  if (netTaxableIncome <= 250000) {
+    annualTax = 0
+  } else if (netTaxableIncome <= 400000) {
+    annualTax = (netTaxableIncome - 250000) * 0.15
+  } else if (netTaxableIncome <= 800000) {
+    annualTax = 22500 + ((netTaxableIncome - 400000) * 0.20)
+  } else if (netTaxableIncome <= 2000000) {
+    annualTax = 102500 + ((netTaxableIncome - 800000) * 0.25)
+  } else if (netTaxableIncome <= 8000000) {
+    annualTax = 402500 + ((netTaxableIncome - 2000000) * 0.30)
+  } else {
+    annualTax = 2202500 + ((netTaxableIncome - 8000000) * 0.35)
   }
-  const lastBracket = brackets[brackets.length - 1]
-  if (lastBracket && annualTaxableIncome > lastBracket.min) {
-    const rate = lastBracket.rate / 100
-    const taxableAmount = annualTaxableIncome - lastBracket.min
-    const tax = (lastBracket.fixedAmount ?? 0) + (taxableAmount * rate)
-    return tax / 12
-  }
-  return 0
+  
+  // Convert annual tax to monthly
+  const monthlyTax = annualTax / 12
+  
+  return Math.round(monthlyTax * 100) / 100
 }
 
 export function calculateGSISContribution(salaryBase: number, config: ContributionsConfig): number {
@@ -367,20 +391,18 @@ export async function calculateCompletePayroll(data: PayrollCalculationData): Pr
   
   // Calculate taxable income (gross pay minus non-taxable contributions)
   const taxableIncome = grossPay - gsisContribution - philHealthContribution - pagibigContribution - thirteenthMonthPay - serviceIncentiveLeave
-  // Annualize based on working days in year vs month
-  try {
-    const now = new Date()
-    const workingDaysMonth = await getWorkingDaysInMonth(now.getFullYear(), now.getMonth() + 1)
-    const workingDaysYear = await getWorkingDaysInYear(now.getFullYear())
-    const monthlyEquivalent = workingDaysMonth > 0 ? taxableIncome * (22 / workingDaysMonth) : taxableIncome
-    const annualGrossEquivalent = workingDaysYear > 0 ? (monthlyEquivalent * (workingDaysYear / 22)) : (monthlyEquivalent * 12)
-    const annualTaxableIncome = calculateAnnualTaxableIncome(annualGrossEquivalent)
-    var computedAnnualTaxableIncome = annualTaxableIncome
-  } catch {
-    // Fallback to 12x if calendar unavailable
-    var computedAnnualTaxableIncome = taxableIncome * 12
-  }
-  const withholdingTax = calculateWithholdingTax(computedAnnualTaxableIncome, taxConfig.brackets)
+  
+  // Calculate withholding tax using the correct formula:
+  // Gross Annual Income = daily_rate * 22 * 12
+  // Net Taxable Income = Gross Annual Income - Annual Contributions - Non-Taxable Benefits
+  const withholdingTax = calculateWithholdingTax(
+    dailyRate,
+    gsisContribution,
+    philHealthContribution,
+    pagibigContribution,
+    thirteenthMonthPay,
+    serviceIncentiveLeave
+  )
   
   // Calculate other deductions
   const lateDeductions = calculateLateDeductions(lateHours, hourlyRate, dailyRate, configurations.lateDeductionAmount, configurations.lateDeductionBasis)

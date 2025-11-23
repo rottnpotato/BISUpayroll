@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const startDate = payPeriodStart || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
     const endDate = payPeriodEnd || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
 
-    // Get user info
+    // Get user info with payroll roles
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -35,7 +35,12 @@ export async function POST(request: NextRequest) {
         email: true,
         employeeId: true,
         department: true,
-        position: true
+        position: true,
+        payrollRoles: {
+          include: {
+            payrollRole: true
+          }
+        }
       }
     })
 
@@ -144,6 +149,131 @@ export async function POST(request: NextRequest) {
 
     const calc = calculation[0]
 
+    // Helper to format currency
+    const formatCurrency = (amount: number) => 
+      new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount)
+
+    // Helper to format number
+    const formatNumber = (num: number) => 
+      new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num)
+
+    // Extract rates and settings
+    const dailyRate = Number(calc.daily_rate)
+    const hourlyRate = Number(calc.hourly_rate)
+    const dailyHours = Number(systemSettings.find(s => s.key === 'working_hours_dailyHours')?.value || 8)
+    const overtimeRate1 = Number(systemSettings.find(s => s.key === 'rates_overtimeRate1')?.value || 1.25)
+    const regularHolidayRate = Number(systemSettings.find(s => s.key === 'rates_regularHolidayRate')?.value || 2.0)
+    
+    // Extract hours
+    const hoursWorked = Number(calc.hours_worked)
+    const overtimeHours = Number(calc.overtime_hours)
+    const holidayHours = Number(calc.holiday_hours)
+    const regularHours = Math.max(0, hoursWorked - overtimeHours - holidayHours)
+
+    // Construct detailed breakdown
+    const breakdown = {
+      rates: {
+        dailyRate: {
+          value: dailyRate,
+          formatted: formatCurrency(dailyRate),
+          formula: "Base Salary / Working Days (or fixed daily rate)",
+          note: "Derived from Payroll Role or Global Rules"
+        },
+        hourlyRate: {
+          value: hourlyRate,
+          formatted: formatCurrency(hourlyRate),
+          formula: "Daily Rate / Daily Hours",
+          calculation: `${formatCurrency(dailyRate)} / ${dailyHours} = ${formatCurrency(hourlyRate)}`
+        }
+      },
+      earnings: {
+        regularPay: {
+          amount: Number(calc.regular_pay),
+          formatted: formatCurrency(Number(calc.regular_pay)),
+          formula: "Regular Hours * Hourly Rate",
+          calculation: `${formatNumber(regularHours)} hours * ${formatCurrency(hourlyRate)} = ${formatCurrency(Number(calc.regular_pay))}`
+        },
+        overtimePay: {
+          amount: Number(calc.overtime_pay),
+          formatted: formatCurrency(Number(calc.overtime_pay)),
+          formula: "Overtime Hours * Hourly Rate * Overtime Rate",
+          calculation: `${formatNumber(overtimeHours)} hours * ${formatCurrency(hourlyRate)} * ${overtimeRate1} = ${formatCurrency(Number(calc.overtime_pay))}`
+        },
+        holidayPay: {
+          amount: Number(calc.holiday_pay),
+          formatted: formatCurrency(Number(calc.holiday_pay)),
+          formula: "Holiday Hours * Hourly Rate * Holiday Rate",
+          calculation: `${formatNumber(holidayHours)} hours * ${formatCurrency(hourlyRate)} * ${regularHolidayRate} (approx) = ${formatCurrency(Number(calc.holiday_pay))}`
+        },
+        allowances: {
+          amount: Number(calc.allowances),
+          formatted: formatCurrency(Number(calc.allowances)),
+          formula: "Sum of active allowance rules",
+          note: "See 'rules.userSpecific' and 'rules.global' for details"
+        },
+        totalEarnings: {
+          amount: Number(calc.total_earnings),
+          formatted: formatCurrency(Number(calc.total_earnings)),
+          formula: "Sum of all earnings components"
+        },
+        grossPay: {
+          amount: Number(calc.gross_pay),
+          formatted: formatCurrency(Number(calc.gross_pay)),
+          formula: "Total Earnings"
+        }
+      },
+      deductions: {
+        lateDeductions: {
+          amount: Number(calc.late_deductions),
+          formatted: formatCurrency(Number(calc.late_deductions)),
+          formula: "Late Hours * Hourly Rate (or fixed deduction)",
+          calculation: `${formatNumber(Number(calc.late_hours))} hours * ${formatCurrency(hourlyRate)} = ${formatCurrency(Number(calc.late_deductions))}`
+        },
+        undertimeDeductions: {
+          amount: Number(calc.undertime_deductions),
+          formatted: formatCurrency(Number(calc.undertime_deductions)),
+          formula: "Undertime Hours * Hourly Rate",
+          calculation: `${formatNumber(Number(calc.undertime_hours))} hours * ${formatCurrency(hourlyRate)} = ${formatCurrency(Number(calc.undertime_deductions))}`
+        },
+        contributions: {
+          gsis: {
+            amount: Number(calc.gsis_contribution),
+            formatted: formatCurrency(Number(calc.gsis_contribution)),
+            formula: "Based on GSIS Contribution Table"
+          },
+          philHealth: {
+            amount: Number(calc.philhealth_contribution),
+            formatted: formatCurrency(Number(calc.philhealth_contribution)),
+            formula: "Based on PhilHealth Contribution Table"
+          },
+          pagibig: {
+            amount: Number(calc.pagibig_contribution),
+            formatted: formatCurrency(Number(calc.pagibig_contribution)),
+            formula: "Based on Pag-IBIG Contribution Table"
+          }
+        },
+        tax: {
+          withholdingTax: {
+            amount: Number(calc.withholding_tax),
+            formatted: formatCurrency(Number(calc.withholding_tax)),
+            formula: "Based on Tax Table (Annualized Taxable Income)",
+            taxableIncome: formatCurrency(Number(calc.taxable_income))
+          }
+        },
+        totalDeductions: {
+          amount: Number(calc.total_deductions),
+          formatted: formatCurrency(Number(calc.total_deductions)),
+          formula: "Sum of all deductions"
+        }
+      },
+      netPay: {
+        amount: Number(calc.net_pay),
+        formatted: formatCurrency(Number(calc.net_pay)),
+        formula: "Gross Pay - Total Deductions",
+        calculation: `${formatCurrency(Number(calc.gross_pay))} - ${formatCurrency(Number(calc.total_deductions))} = ${formatCurrency(Number(calc.net_pay))}`
+      }
+    }
+
     // Format the response with detailed breakdown
     return NextResponse.json({
       success: true,
@@ -160,10 +290,23 @@ export async function POST(request: NextRequest) {
         email: user.email,
         employeeId: user.employeeId,
         department: user.department,
-        position: user.position
+        position: user.position,
+        payrollRoles: user.payrollRoles.map(pr => ({
+          role: pr.payrollRole.name,
+          dailyRate: Number(pr.payrollRole.dailyRate)
+        }))
       },
       attendance: {
         recordCount: attendanceRecords.length,
+        summary: {
+          daysWorked: calc.days_worked,
+          totalHours: Number(calc.hours_worked),
+          regularHours: regularHours,
+          overtimeHours: Number(calc.overtime_hours),
+          lateHours: Number(calc.late_hours),
+          undertimeHours: Number(calc.undertime_hours),
+          holidayHours: Number(calc.holiday_hours)
+        },
         records: attendanceRecords.map(r => ({
           date: r.date,
           timeIn: r.timeIn,
@@ -196,7 +339,12 @@ export async function POST(request: NextRequest) {
         acc[s.key] = s.value
         return acc
       }, {} as Record<string, string>),
-      calculation: {
+      
+      // Detailed breakdown and formulas
+      breakdown,
+      
+      // Raw calculation results from DB
+      rawCalculation: {
         rates: {
           dailyRate: Number(calc.daily_rate),
           hourlyRate: Number(calc.hourly_rate)
@@ -240,11 +388,6 @@ export async function POST(request: NextRequest) {
         final: {
           netPay: Number(calc.net_pay)
         }
-      },
-      summary: {
-        grossPay: Number(calc.gross_pay),
-        totalDeductions: Number(calc.total_deductions),
-        netPay: Number(calc.net_pay)
       }
     })
 

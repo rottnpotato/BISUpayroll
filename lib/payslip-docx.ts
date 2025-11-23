@@ -134,6 +134,13 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
     })
   }
 
+  if(data.calculations.otherDeductions > 0) {
+    deductionsList.push({
+      name: 'Other Deductions',
+      amount: numberFmt(data.calculations.otherDeductions, currency)
+    })
+  }
+
   // Add user-defined deductions from applied rules
   const customDeductions = appliedRules.filter(r => r.type === 'deduction')
   customDeductions.forEach(deduction => {
@@ -189,7 +196,7 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
   }
 
   console.log('Payslip generation - Schedule type:', data.scheduleType, 'isMonthly:', isMonthlySchedule, 'show_half_payments:', !isMonthlySchedule)
-
+  console.log('Payslip context data:', data)
   try {
     // New API: pass context directly into render (setData deprecated)
     ;(doc as any).render(ctx)

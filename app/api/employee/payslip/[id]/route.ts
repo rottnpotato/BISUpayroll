@@ -95,10 +95,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     let loanDeductions: number
     let otherDeductions: number
     let totalDeductions: number
+    let undertimeDeductions: number
     let appliedRules: any[] = []
 
     if (payrollResult) {
       // Use actual calculated values from PayrollResult
+
+      console.log('Using PayrollResult for payslip generation:', payrollResult)
       grossPay = num(payrollResult.grossPay)
       netPay = num(payrollResult.netPay)
       basePay = num(payrollResult.regularPay)
@@ -106,16 +109,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       holidayPay = num(payrollResult.holidayPay)
       allowances = num(payrollResult.allowances)
       bonuses = num(payrollResult.bonuses)
+      undertimeDeductions = num(payrollResult.undertimeDeductions)
       
       // Deductions breakdown from actual calculation
       governmentDeductions = num(payrollResult.gsisContribution) + 
                             num(payrollResult.philHealthContribution) + 
                             num(payrollResult.pagibigContribution) +
                             num(payrollResult.withholdingTax)
-      lateDeductions = num(payrollResult.lateDeductions) + num(payrollResult.undertimeDeductions)
+      lateDeductions = num(payrollResult.lateDeductions)
       loanDeductions = num(payrollResult.loanDeductions)
       otherDeductions = num(payrollResult.otherDeductions)
       totalDeductions = num(payrollResult.totalDeductions)
+
 
       // Parse applied rules if available
       try {
@@ -133,6 +138,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       allowances = 0
       bonuses = num(record.bonuses)
       totalDeductions = num(record.deductions)
+      undertimeDeductions = 0
       
       // Can't break down deductions accurately without PayrollResult
       governmentDeductions = 0
@@ -165,7 +171,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         governmentDeductions: governmentDeductions,
         loanDeductions: loanDeductions,
         otherDeductions: otherDeductions,
-        totalDeductions: totalDeductions
+        totalDeductions: totalDeductions,
+        undertimeDeductions: undertimeDeductions
       },
       appliedRules
     }

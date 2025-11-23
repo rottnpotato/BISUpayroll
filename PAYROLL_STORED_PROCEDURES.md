@@ -235,6 +235,22 @@ When payroll rules are modified:
 
 ## Calculation Components
 
+### The "Singular Way" for Contributions & Tax
+
+To ensure consistency and avoid double deductions, the system enforces a strict separation of concerns:
+
+1.  **Mandatory Contributions (GSIS, PhilHealth, Pag-IBIG) & Tax**:
+    *   **Source**: Always calculated using the official `contribution_brackets` and `tax_bracket_configs` tables.
+    *   **Configuration**: Managed via the "Contributions" and "Tax" tabs in Payroll Configuration.
+    *   **Enforcement**: Any generic Payroll Rules named "GSIS", "PhilHealth", "Pag-IBIG", or "Tax" are **ignored** by the calculation engine to prevent conflicts.
+
+2.  **Other Earnings & Deductions**:
+    *   **Source**: Calculated from the `payroll_rules` table.
+    *   **Configuration**: Managed via the "Payroll Rules" section.
+    *   **Percentage Basis**:
+        *   **Allowances/Bonuses**: Percentage rules are calculated based on **Regular Pay** (Basic Pay for the period).
+        *   **Deductions**: Percentage rules are calculated based on **Gross Pay** (Total Earnings for the period).
+
 ### Helper Functions
 
 | Function | Purpose | Parameters |
@@ -279,27 +295,27 @@ When payroll rules are modified:
    ├─ Overtime pay = overtime formula
    ├─ Holiday pay = holiday formula
    ├─ Overload pay = sum of approved overload records
-   ├─ Allowances from payroll rules
-   ├─ Bonuses from payroll rules
+   ├─ Allowances from payroll rules (Percentage based on Regular Pay)
+   ├─ Bonuses from payroll rules (Percentage based on Regular Pay)
    ├─ 13th month pay
    ├─ Service incentive leave
    └─ Total earnings = sum of all
 
 6. Calculate Contributions
    ├─ Contribution base = daily_rate × days_worked
-   ├─ GSIS = contribution formula
-   ├─ PhilHealth = contribution formula
-   └─ Pag-IBIG = contribution formula
+   ├─ GSIS = contribution formula (from contribution_brackets)
+   ├─ PhilHealth = contribution formula (from contribution_brackets)
+   └─ Pag-IBIG = contribution formula (from contribution_brackets)
 
 7. Calculate Tax
    ├─ Taxable income = gross - contributions - exempt benefits
    ├─ Annualized taxable = taxable × 12
-   └─ Withholding tax = tax bracket formula / 12
+   └─ Withholding tax = tax bracket formula / 12 (from tax_bracket_configs)
 
 8. Calculate Deductions
    ├─ Late deductions
    ├─ Undertime deductions
-   ├─ Loan deductions from payroll rules
+   ├─ Loan deductions from payroll rules (Percentage based on Gross Pay)
    └─ Other deductions
 
 9. Calculate Net Pay
