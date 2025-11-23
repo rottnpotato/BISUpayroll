@@ -15,11 +15,13 @@ interface BulkEmployee {
   phone: string
   employeeId: string
   hireDate: string
-  salary: string // Used for status in this context
+  status: string
   address: string
   emergencyContactName: string
   emergencyContactRelationship: string
   emergencyContactPhone: string
+  salaryGrade?: string
+  dailyRate?: string
 }
 
 interface BulkImportResult {
@@ -89,14 +91,14 @@ export async function POST(request: NextRequest) {
         // Hash password
         const hashedPassword = await bcrypt.hash(employee.password, 12)
 
-        // Map status from salary field and validate
+        // Validate and map employment status
         const statusMap: { [key: string]: "PERMANENT" | "TEMPORARY" | "CONTRACTUAL" } = {
           "PERMANENT": "PERMANENT",
           "TEMPORARY": "TEMPORARY",
           "CONTRACTUAL": "CONTRACTUAL"
         }
-        const employmentStatus = employee.salary && statusMap[employee.salary.toUpperCase()] 
-          ? statusMap[employee.salary.toUpperCase()] 
+        const employmentStatus = employee.status && statusMap[employee.status.toUpperCase()] 
+          ? statusMap[employee.status.toUpperCase()] 
           : "CONTRACTUAL"
 
         // Validate employee type if provided
@@ -118,6 +120,8 @@ export async function POST(request: NextRequest) {
             employeeId: employee.employeeId || undefined,
             department: employee.department || undefined,
             position: employee.position || undefined,
+            salaryGrade: employee.salaryGrade ? parseInt(employee.salaryGrade) : undefined,
+            dailyRate: employee.dailyRate ? parseFloat(employee.dailyRate) : undefined,
             hireDate: employee.hireDate ? new Date(employee.hireDate) : undefined,
             phone: employee.phone || undefined,
             address: employee.address || undefined,

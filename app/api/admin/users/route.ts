@@ -49,6 +49,8 @@ export async function GET(request: NextRequest) {
           employeeId: true,
           department: true,
           position: true,
+          salaryGrade: true,
+          dailyRate: true,
           hireDate: true,
           phone: true,
           createdAt: true,
@@ -90,12 +92,15 @@ export async function POST(request: NextRequest) {
       employeeId,
       department,
       position,
+      salaryGrade,
+      dailyRate,
       hireDate,
       phone,
       address,
       emergencyContactName,
       emergencyContactRelationship,
-      emergencyContactPhone
+      emergencyContactPhone,
+      status
     } = body
 
     // Validate required fields
@@ -111,6 +116,15 @@ export async function POST(request: NextRequest) {
     if (employeeType && employeeType !== "" && !validEmployeeTypes.includes(employeeType)) {
       return NextResponse.json(
         { error: `Invalid employee type. Must be one of: ${validEmployeeTypes.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    // Validate status if provided
+    const validStatuses = ['PERMANENT', 'TEMPORARY', 'CONTRACTUAL', 'INACTIVE']
+    if (status && !validStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: `Invalid employment status. Must be one of: ${validStatuses.join(', ')}` },
         { status: 400 }
       )
     }
@@ -156,12 +170,15 @@ export async function POST(request: NextRequest) {
         employeeId,
         department,
         position,
+        salaryGrade: salaryGrade ? parseInt(salaryGrade) : null,
+        dailyRate: dailyRate ? parseFloat(dailyRate) : null,
         hireDate: hireDate ? new Date(hireDate) : null,
         phone,
         address,
         emergencyContactName,
         emergencyContactRelationship,
-        emergencyContactPhone
+        emergencyContactPhone,
+        status: status || "CONTRACTUAL"
       },
       select: {
         id: true,
@@ -174,6 +191,8 @@ export async function POST(request: NextRequest) {
         employeeId: true,
         department: true,
         position: true,
+        salaryGrade: true,
+        dailyRate: true,
         hireDate: true,
         phone: true,
         createdAt: true

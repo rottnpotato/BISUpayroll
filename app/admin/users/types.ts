@@ -13,6 +13,8 @@ export interface User {
   employeeId?: string
   salary?: number
   hireDate?: string
+  salaryGrade?: number
+  dailyRate?: number
 }
 
 export interface FormErrors {
@@ -37,10 +39,12 @@ export interface BulkEmployee {
   employeeType: string
   department: string
   position: string
+  salaryGrade: string
+  dailyRate: string
   phone: string
   employeeId: string
   hireDate: string
-  salary: string
+  status: string
   address: string
   emergencyContactName: string
   emergencyContactRelationship: string
@@ -67,6 +71,8 @@ export interface FormData {
   employeeType: string
   department: string
   position: string
+  salaryGrade: string
+  dailyRate: string
   phone: string
   employeeId: string
   hireDate: string

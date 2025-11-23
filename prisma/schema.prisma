@@ -20,6 +20,8 @@ model User {
   biometricNo                  String?                 @unique
   department                   String?
   position                     String?
+  salaryGrade                  Int?
+  dailyRate                    Decimal?                @db.Decimal(10, 2)
   hireDate                     DateTime?
   phone                        String?
   address                      String?
@@ -637,6 +639,25 @@ model Notification {
   @@map("notifications")
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+model SalaryGrade {
+  id            String   @id @default(cuid())
+  grade         Int      @unique
+  position      String   // e.g., "Instructor", "Assistant Professor", etc.
+  rank          Int      // 1, 2, 3, etc. for position rankings
+  monthlyRate   Decimal  @db.Decimal(10, 2)
+  dailyRate     Decimal  @db.Decimal(10, 2)
+  description   String?  // e.g., "Instructor 1 - Salary Grade 12"
+  isActive      Boolean  @default(true)
+  effectiveDate DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([position, rank])
+  @@map("salary_grades")
+  @@index([position])
+  @@index([grade])
 }
 
 enum NotificationType {

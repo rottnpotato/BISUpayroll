@@ -153,7 +153,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
             employeeType: values[4] || "",
             department: values[5] || "",
             position: values[6] || "",
-            salary: values[7] || "CONTRACTUAL", // Status field (PERMANENT, TEMPORARY, CONTRACTUAL)
+            status: values[7] || "CONTRACTUAL",
             phone: values[8] || "",
             employeeId: values[9] || "",
             hireDate: values[10] || "",
@@ -208,7 +208,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
       phone: "",
       employeeId: "",
       hireDate: "",
-      salary: "",
+      status: "",
       address: "",
       emergencyContactName: "",
       emergencyContactRelationship: "",
@@ -636,8 +636,8 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                             <div>
                               <Label className="text-xs">Status *</Label>
                               <Select
-                                value={emp.salary}
-                                onValueChange={(value) => updateBulkEmployee(emp.id, "salary", value)}
+                                value={emp.status}
+                                onValueChange={(value) => updateBulkEmployee(emp.id, "status", value)}
                               >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select" />

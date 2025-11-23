@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { X } from "lucide-react"
 import { FormData, FormErrors } from "../types"
 import { departments, roles, employeeTypes, employeeTypeLabels, employmentStatuses, employmentStatusLabels, positionsByDepartment } from "../constants"
+import { useEffect, useState } from "react"
 
 interface AddEmployeeDialogProps {
   open: boolean
@@ -27,6 +28,37 @@ export function AddEmployeeDialog({
   isSubmitting,
   onSubmit
 }: AddEmployeeDialogProps) {
+  const [salaryGradeOptions, setSalaryGradeOptions] = useState<Array<{ value: number; label: string; rate: number; rank: number }>>([])
+
+  // Fetch salary grade options when position changes
+  useEffect(() => {
+    async function fetchOptions() {
+      try {
+        const url = formData.position 
+          ? `/api/admin/salary-grades/options?position=${encodeURIComponent(formData.position)}`
+          : '/api/admin/salary-grades/options'
+        const response = await fetch(url)
+        if (response.ok) {
+          const data = await response.json()
+          setSalaryGradeOptions(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch salary grade options:', error)
+      }
+    }
+    fetchOptions()
+  }, [formData.position])
+
+  // Auto-update daily rate when salary grade changes
+  useEffect(() => {
+    if (formData.salaryGrade) {
+      const option = salaryGradeOptions.find(opt => opt.value === parseInt(formData.salaryGrade))
+      if (option) {
+        setFormData(prev => ({ ...prev, dailyRate: option.rate.toString() }))
+      }
+    }
+  }, [formData.salaryGrade, salaryGradeOptions, setFormData])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -191,6 +223,44 @@ export function AddEmployeeDialog({
                 <p className="text-red-500 text-xs">{errors.position}</p>
               )}
             </div>
+          </div>
+          <div className="grid grid-cols-1 items-center gap-2">
+            <Label htmlFor="add-salaryGrade" className="text-left font-medium">
+              Salary Grade
+            </Label>
+            <Select 
+              value={formData.salaryGrade} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, salaryGrade: value }))}
+              disabled={!formData.position}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={formData.position ? "Select salary grade" : "Select position first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {salaryGradeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value.toString()}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-1 items-center gap-2">
+            <Label htmlFor="add-dailyRate" className="text-left font-medium">
+              Daily Rate (editable)
+            </Label>
+            <Input 
+              id="add-dailyRate" 
+              type="number" 
+              step="0.01"
+              placeholder="Enter daily rate" 
+              value={formData.dailyRate}
+              onChange={(e) => setFormData(prev => ({ ...prev, dailyRate: e.target.value }))}
+              className="border-bisu-purple-light/30"
+            />
+            <p className="text-xs text-muted-foreground">
+              Auto-filled from salary grade, but can be edited
+            </p>
           </div>
           <div className="grid grid-cols-1 items-center gap-2">
             <Label htmlFor="add-phone" className="text-left font-medium">

@@ -4,53 +4,24 @@
 // These functions have been replaced by PostgreSQL stored procedures
 // that handle all payroll calculations at the database level.
 //
-// New system: See prisma/migrations/20251026000002_update_payroll_stored_procedures.sql
+// New system: See prisma/migrations/20251123000001_use_user_daily_rate.sql
 // Documentation: See PAYROLL_STORED_PROCEDURES.md
 //
 // Key changes:
 // 1. All calculations now done via calculate_payroll_for_period() stored procedure
-// 2. baseSalary concept replaced with dailyRate from payroll_rules
-// 3. Payroll results stored in payroll_results table with automatic triggers
-// 4. Real-time updates when attendance or rules change
+// 2. Users have dailyRate field that takes priority over payroll_rules
+// 3. Tax, GSIS, PhilHealth, Pag-IBIG calculations done in database procedures
+// 4. Payroll results stored in payroll_results table with automatic triggers
+// 5. Real-time updates when attendance or rules change
 //
 // Migration guide:
-// - Old: calculateBaseSalaryFromRules(rules) / 22 for daily rate
-// - New: Get daily_rate directly from payroll_rules where type='daily_rate'
+// - Old: Get rate from payroll_rules
+// - New: Get daily_rate from users table (with payroll_rules fallback)
 // - Old: Call calculateCompletePayroll() in application
 // - New: Use stored procedure via /api/admin/payroll/recalculate
+// - Old: Calculate contributions in app
+// - New: Contributions calculated in database procedures
 // =====================================================
-
-import { ContributionsConfig, TaxBracket, TaxBracketsConfig } from "@/app/admin/payroll/types"
-import { PayrollConfigurationService } from "@/app/admin/payroll/configuration/service"
-import { getWorkingDaysInMonth, getWorkingDaysInYear } from "./work-calendar"
-
-let cachedConfig: { contributions: ContributionsConfig; tax: TaxBracketsConfig } | null = null
-let lastConfigFetch = 0
-const CONFIG_CACHE_TTL_MS = 60_000
-
-const ensureConfigLoaded = async (): Promise<{ contributions: ContributionsConfig; tax: TaxBracketsConfig }> => {
-  const now = Date.now()
-  if (!cachedConfig || now - lastConfigFetch > CONFIG_CACHE_TTL_MS) {
-    const [contributions, tax] = (await Promise.all([
-      PayrollConfigurationService.loadType('contributions'),
-      PayrollConfigurationService.loadType('taxBrackets')
-    ])) as [ContributionsConfig, TaxBracketsConfig]
-
-    cachedConfig = { contributions, tax }
-    lastConfigFetch = now
-  }
-  return cachedConfig as { contributions: ContributionsConfig; tax: TaxBracketsConfig }
-}
-
-const getTaxConfig = async (): Promise<TaxBracketsConfig> => {
-  const config = await ensureConfigLoaded()
-  return config.tax
-}
-
-const getContributionConfig = async (): Promise<ContributionsConfig> => {
-  const config = await ensureConfigLoaded()
-  return config.contributions
-}
 
 export interface PayrollCalculationData {
   baseSalary: number
@@ -70,8 +41,6 @@ export interface PayrollCalculationData {
     specialHolidayRate: number
     lateDeductionAmount: number
     lateDeductionBasis: string
-    contributions?: ContributionsConfig
-    tax?: TaxBracketsConfig
   }
 }
 
@@ -92,12 +61,12 @@ export interface PayrollCalculationResult {
   totalEarnings: number
   grossPay: number
   
-  // Contributions
+  // Contributions (calculated in database)
   gsisContribution: number
   philHealthContribution: number
   pagibigContribution: number
   
-  // Tax
+  // Tax (calculated in database)
   taxableIncome: number
   withholdingTax: number
   
@@ -123,101 +92,22 @@ export function calculateHourlyRate(dailyRate: number, dailyHours: number = 8): 
   return dailyRate / dailyHours
 }
 
-export function calculateAnnualTaxableIncome(annualGross: number): number {
-  return annualGross
-}
-
-export function calculateWithholdingTax(
-  dailyRate: number,
-  gsisContribution: number,
-  philHealthContribution: number,
-  pagibigContribution: number,
-  thirteenthMonthPay: number,
-  serviceIncentiveLeave: number
-): number {
-  // Calculate Gross Annual Income = base pay * 22 (days/month) * 12 (months/year)
-  const grossAnnualIncome = dailyRate * 22 * 12
+export function calculatePagibigContribution(salaryBase: number): number {
+  // NOTE: This is deprecated - contributions are now calculated in database procedures
+  // See calculate_pagibig_contribution() in stored procedures
+  // Kept for backwards compatibility only
+  console.warn('calculatePagibigContribution is deprecated - use database procedure instead')
   
-  // Calculate annual mandatory contributions
-  const annualContributions = (gsisContribution + philHealthContribution + pagibigContribution) * 12
+  const rate = 0.02 // 2% employee share
+  const minSalary = 1000
+  const maxSalary = 5000
   
-  // Calculate annual non-taxable benefits
-  const annualNonTaxable = (thirteenthMonthPay + serviceIncentiveLeave) * 12
-  
-  // Net Taxable Income = Gross Annual Income - Mandatory Contributions - Non-Taxable Benefits
-  const netTaxableIncome = grossAnnualIncome - annualContributions - annualNonTaxable
-  
-  // Apply Philippine Tax Brackets (2025)
-  let annualTax = 0
-  
-  if (netTaxableIncome <= 250000) {
-    annualTax = 0
-  } else if (netTaxableIncome <= 400000) {
-    annualTax = (netTaxableIncome - 250000) * 0.15
-  } else if (netTaxableIncome <= 800000) {
-    annualTax = 22500 + ((netTaxableIncome - 400000) * 0.20)
-  } else if (netTaxableIncome <= 2000000) {
-    annualTax = 102500 + ((netTaxableIncome - 800000) * 0.25)
-  } else if (netTaxableIncome <= 8000000) {
-    annualTax = 402500 + ((netTaxableIncome - 2000000) * 0.30)
-  } else {
-    annualTax = 2202500 + ((netTaxableIncome - 8000000) * 0.35)
-  }
-  
-  // Convert annual tax to monthly
-  const monthlyTax = annualTax / 12
-  
-  return Math.round(monthlyTax * 100) / 100
-}
-
-export function calculateGSISContribution(salaryBase: number, config: ContributionsConfig): number {
-  const { employeeRate, minSalary, maxSalary, brackets } = config.gsis
-  if (brackets && brackets.length > 0) {
-    const matched = brackets.find(bracket => salaryBase >= bracket.salaryMin && salaryBase <= bracket.salaryMax)
-    if (matched) {
-      return salaryBase * (matched.employeeRate / 100)
-    }
-  }
-  const contributionBase = Math.max(minSalary, Math.min(maxSalary, salaryBase))
-  return contributionBase * (employeeRate / 100)
-}
-
-export function calculatePhilHealthContribution(salaryBase: number, config: ContributionsConfig): number {
-  const { employeeRate, minContribution, maxContribution, minSalary, maxSalary, brackets } = config.philHealth
-  if (brackets && brackets.length > 0) {
-    const matched = brackets.find(bracket => salaryBase >= bracket.salaryMin && salaryBase <= bracket.salaryMax)
-    if (matched) {
-      const contribution = salaryBase * (matched.employeeRate / 100)
-      return Math.max(minContribution, Math.min(maxContribution, contribution))
-    }
-  }
-
   if (salaryBase < minSalary) {
-    return minContribution
+    return minSalary * rate
   }
-
+  
   const contributionBase = Math.min(maxSalary, salaryBase)
-  const contribution = contributionBase * (employeeRate / 100)
-  return Math.max(minContribution, Math.min(maxContribution, contribution))
-}
-
-export function calculatePagibigContribution(salaryBase: number, config: ContributionsConfig): number {
-  const { employeeRate, minContribution, maxContribution, minSalary, maxSalary, brackets } = config.pagibig
-  if (brackets && brackets.length > 0) {
-    const matched = brackets.find(bracket => salaryBase >= bracket.salaryMin && salaryBase <= bracket.salaryMax)
-    if (matched) {
-      const contribution = salaryBase * (matched.employeeRate / 100)
-      return Math.max(minContribution, Math.min(maxContribution, contribution))
-    }
-  }
-
-  if (salaryBase < minSalary) {
-    return minContribution
-  }
-
-  const contributionBase = Math.min(maxSalary, salaryBase)
-  const contribution = contributionBase * (employeeRate / 100)
-  return Math.max(minContribution, Math.min(maxContribution, contribution))
+  return contributionBase * rate
 }
 
 export function calculateOvertimePay(
@@ -340,7 +230,12 @@ export function calculateBaseSalaryFromRules(appliedRules: any[]): number {
   return 0
 }
 
+// NOTE: calculateCompletePayroll is DEPRECATED
+// This function is kept for backwards compatibility but should not be used in new code
+// Use the database stored procedure calculate_payroll_for_period() instead
 export async function calculateCompletePayroll(data: PayrollCalculationData): Promise<PayrollCalculationResult> {
+  console.warn('calculateCompletePayroll is deprecated - use database stored procedure calculate_payroll_for_period() instead')
+  
   const {
     baseSalary,
     daysWorked,
@@ -353,9 +248,6 @@ export async function calculateCompletePayroll(data: PayrollCalculationData): Pr
     appliedRules,
     configurations
   } = data
-
-  const contributionConfig = configurations.contributions || await getContributionConfig()
-  const taxConfig = configurations.tax || await getTaxConfig()
 
   const dailyRate = calculateDailyRate(baseSalary)
   const hourlyRate = calculateHourlyRate(dailyRate, configurations.dailyHours)
@@ -370,7 +262,6 @@ export async function calculateCompletePayroll(data: PayrollCalculationData): Pr
     configurations.regularHolidayRate,
     configurations.specialHolidayRate
   )
-  // Night differential removed
   
   // Apply payroll rules for earnings
   const earningsRules = applyPayrollRules(appliedRules, baseSalary, 0, 'earnings')
@@ -383,30 +274,18 @@ export async function calculateCompletePayroll(data: PayrollCalculationData): Pr
   const totalEarnings = regularPay + overtimePay + holidayPay + allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave + otherEarnings
   const grossPay = totalEarnings
   
-  // Calculate mandatory contributions based on daily rate and actual days worked
+  // NOTE: Contributions and tax are now calculated in database - returning zeros for compatibility
   const contributionBase = dailyRate * daysWorked
-  const gsisContribution = calculateGSISContribution(contributionBase, contributionConfig)
-  const philHealthContribution = calculatePhilHealthContribution(contributionBase, contributionConfig)
-  const pagibigContribution = calculatePagibigContribution(contributionBase, contributionConfig)
+  const gsisContribution = 0 // Calculated in database
+  const philHealthContribution = 0 // Calculated in database
+  const pagibigContribution = 0 // Calculated in database
   
-  // Calculate taxable income (gross pay minus non-taxable contributions)
   const taxableIncome = grossPay - gsisContribution - philHealthContribution - pagibigContribution - thirteenthMonthPay - serviceIncentiveLeave
-  
-  // Calculate withholding tax using the correct formula:
-  // Gross Annual Income = daily_rate * 22 * 12
-  // Net Taxable Income = Gross Annual Income - Annual Contributions - Non-Taxable Benefits
-  const withholdingTax = calculateWithholdingTax(
-    dailyRate,
-    gsisContribution,
-    philHealthContribution,
-    pagibigContribution,
-    thirteenthMonthPay,
-    serviceIncentiveLeave
-  )
+  const withholdingTax = 0 // Calculated in database
   
   // Calculate other deductions
   const lateDeductions = calculateLateDeductions(lateHours, hourlyRate, dailyRate, configurations.lateDeductionAmount, configurations.lateDeductionBasis)
-  const undertimeDeductions = undertimeHours * hourlyRate // Simple undertime calculation
+  const undertimeDeductions = undertimeHours * hourlyRate
   
   // Apply payroll rules for deductions
   const deductionRules = applyPayrollRules(appliedRules, baseSalary, grossPay, 'deductions')
