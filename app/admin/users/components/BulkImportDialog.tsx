@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,14 +25,40 @@ interface BulkImportDialogProps {
   onSuccess: () => void
 }
 
+interface SalaryGradeOption {
+  value: number
+  label: string
+  rate: number
+  rank: number
+}
+
 export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDialogProps) {
   const [bulkEmployees, setBulkEmployees] = useState<BulkEmployee[]>([])
   const [bulkImportTab, setBulkImportTab] = useState<"csv" | "manual">("csv")
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [salaryGradeOptions, setSalaryGradeOptions] = useState<{ [position: string]: SalaryGradeOption[] }>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  // Fetch salary grades for a position
+  const fetchSalaryGradesForPosition = async (position: string) => {
+    if (salaryGradeOptions[position]) return // Already cached
+
+    try {
+      const response = await fetch(`/api/salary-grades?position=${encodeURIComponent(position)}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSalaryGradeOptions(prev => ({
+          ...prev,
+          [position]: data.grades || []
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching salary grades:', error)
+    }
+  }
 
   // Download CSV Template
   const downloadCsvTemplate = () => {
@@ -46,6 +72,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
       "TEACHING_PERSONNEL",
       "CCIS",
       "Professor",
+      "24",
       "PERMANENT",
       "09123456789",
       "BISU-2024-001",
@@ -122,7 +149,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
         const employees: BulkEmployee[] = []
 
         // Expected header order
-        const expectedHeaders = ["firstname", "lastname", "email", "password", "employeetype", "department", "position", "status", "phone", "employeeid", "hiredate", "address", "emergencycontactname", "emergencycontactrelationship", "emergencycontactphone"]
+        const expectedHeaders = ["firstname", "lastname", "email", "password", "employeetype", "department", "position", "salarygrade", "status", "phone", "employeeid", "hiredate", "address", "emergencycontactname", "emergencycontactrelationship", "emergencycontactphone"]
         
         // Validate headers
         const hasValidHeaders = expectedHeaders.every(expected => 
@@ -153,14 +180,15 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
             employeeType: values[4] || "",
             department: values[5] || "",
             position: values[6] || "",
-            status: values[7] || "CONTRACTUAL",
-            phone: values[8] || "",
-            employeeId: values[9] || "",
-            hireDate: values[10] || "",
-            address: values[11] || "",
-            emergencyContactName: values[12] || "",
-            emergencyContactRelationship: values[13] || "",
-            emergencyContactPhone: values[14] || ""
+            salaryGrade: values[7] || "",
+            status: values[8] || "CONTRACTUAL",
+            phone: values[9] || "",
+            employeeId: values[10] || "",
+            hireDate: values[11] || "",
+            address: values[12] || "",
+            emergencyContactName: values[13] || "",
+            emergencyContactRelationship: values[14] || "",
+            emergencyContactPhone: values[15] || ""
           }
 
           employees.push(employee)
@@ -209,6 +237,8 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
       employeeId: "",
       hireDate: "",
       status: "",
+      salaryGrade: "",
+      dailyRate: "",
       address: "",
       emergencyContactName: "",
       emergencyContactRelationship: "",
@@ -369,6 +399,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                     <p className="font-semibold text-amber-900 mb-2">CSV Format Guidelines:</p>
                     <ul className="space-y-1 text-amber-800 list-disc list-inside">
                       <li><span className="font-medium">Required fields:</span> firstName, lastName, email, password, employeeId</li>
+                      <li><span className="font-medium">Salary Grade:</span> Enter grade number based on position (e.g., 12-14 for Instructor, 15-18 for Assistant Professor, 19-23 for Associate Professor, 24-29 for Professor). Leave empty to auto-assign lowest grade.</li>
                       <li><span className="font-medium">Status field:</span> Use PERMANENT, TEMPORARY, or CONTRACTUAL</li>
                       <li><span className="font-medium">Date format:</span> Use YYYY-MM-DD for hireDate (e.g., 2024-01-15)</li>
                       <li><span className="font-medium">Email:</span> Must be unique and valid format</li>
@@ -618,7 +649,11 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                               <Label className="text-xs">Position</Label>
                               <Select
                                 value={emp.position}
-                                onValueChange={(value) => updateBulkEmployee(emp.id, "position", value)}
+                                onValueChange={(value) => {
+                                  updateBulkEmployee(emp.id, "position", value)
+                                  updateBulkEmployee(emp.id, "salaryGrade", "") // Reset salary grade
+                                  fetchSalaryGradesForPosition(value)
+                                }}
                                 disabled={!emp.department}
                               >
                                 <SelectTrigger>
@@ -632,6 +667,28 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                                   ))}
                                 </SelectContent>
                               </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Salary Grade</Label>
+                              <Select
+                                value={emp.salaryGrade}
+                                onValueChange={(value) => updateBulkEmployee(emp.id, "salaryGrade", value)}
+                                disabled={!emp.position}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder={emp.position ? "Select grade" : "Select position first"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {emp.position && salaryGradeOptions[emp.position]?.map((grade) => (
+                                    <SelectItem key={grade.value} value={grade.value.toString()}>
+                                      {grade.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {!emp.salaryGrade && emp.position && (
+                                <p className="text-xs text-gray-500 mt-1">Optional - lowest grade will be auto-assigned</p>
+                              )}
                             </div>
                             <div>
                               <Label className="text-xs">Status *</Label>

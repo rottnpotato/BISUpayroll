@@ -58,6 +58,7 @@ export const csvHeaders = [
   "employeeType",
   "department",
   "position",
+  "salaryGrade",
   "status",
   "phone",
   "employeeId",

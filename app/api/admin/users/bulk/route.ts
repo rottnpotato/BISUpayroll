@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
 import bcrypt from "bcryptjs"
 import { AuditLogger } from "@/lib/audit-logger"
+import { getSalaryGradesByPosition, getDailyRateByGrade } from "@/lib/salary-grades-server"
 
 interface BulkEmployee {
   firstName: string
@@ -107,6 +108,24 @@ export async function POST(request: NextRequest) {
           ? employee.employeeType.toUpperCase()
           : null
 
+        // Handle salary grade and daily rate
+        let salaryGrade: number | undefined
+        let dailyRate: number | undefined
+
+        if (employee.salaryGrade) {
+          // Salary grade provided - use it
+          salaryGrade = parseInt(employee.salaryGrade)
+          dailyRate = await getDailyRateByGrade(salaryGrade)
+        } else if (employee.position) {
+          // No salary grade but position provided - get lowest grade for position
+          const gradesForPosition = await getSalaryGradesByPosition(employee.position)
+          if (gradesForPosition.length > 0) {
+            // Get the first (lowest rank) salary grade for this position
+            salaryGrade = gradesForPosition[0].grade
+            dailyRate = gradesForPosition[0].dailyRate
+          }
+        }
+
         // Create user
         const user = await prisma.user.create({
           data: {
@@ -120,8 +139,8 @@ export async function POST(request: NextRequest) {
             employeeId: employee.employeeId || undefined,
             department: employee.department || undefined,
             position: employee.position || undefined,
-            salaryGrade: employee.salaryGrade ? parseInt(employee.salaryGrade) : undefined,
-            dailyRate: employee.dailyRate ? parseFloat(employee.dailyRate) : undefined,
+            salaryGrade: salaryGrade,
+            dailyRate: dailyRate,
             hireDate: employee.hireDate ? new Date(employee.hireDate) : undefined,
             phone: employee.phone || undefined,
             address: employee.address || undefined,

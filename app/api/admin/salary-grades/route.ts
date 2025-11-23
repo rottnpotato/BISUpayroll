@@ -1,18 +1,31 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
 
-// GET /api/admin/salary-grades - Get all salary grades
-export async function GET() {
+// GET /api/admin/salary-grades - Get all salary grades (optionally filtered by position)
+export async function GET(request: NextRequest) {
   try {
     // TODO: Add authentication check when needed
 
+    const { searchParams } = new URL(request.url)
+    const position = searchParams.get('position')
+
     const salaryGrades = await prisma.salaryGrade.findMany({
+      where: position ? { position, isActive: true } : { isActive: true },
       orderBy: [
+        { rank: 'asc' },
         { grade: 'asc' }
       ]
     })
 
-    return NextResponse.json(salaryGrades)
+    // Format for UI dropdown
+    const grades = salaryGrades.map(sg => ({
+      value: sg.grade,
+      label: `${sg.position} ${sg.rank} - SG ${sg.grade} (₱${Number(sg.dailyRate).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/day)`,
+      rate: Number(sg.dailyRate),
+      rank: sg.rank
+    }))
+
+    return NextResponse.json({ grades, rawGrades: salaryGrades })
   } catch (error) {
     console.error("Error fetching salary grades:", error)
     return NextResponse.json(
