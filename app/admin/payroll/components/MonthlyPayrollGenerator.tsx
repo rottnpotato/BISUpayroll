@@ -224,6 +224,7 @@ export function MonthlyPayrollGenerator({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Departments</SelectItem>
+                <SelectItem value="NON_TEACHING">Non-Teaching Personnel</SelectItem>
                 <SelectItem value="CCIS">CCIS</SelectItem>
                 <SelectItem value="CTAS">CTAS</SelectItem>
                 <SelectItem value="CCJ">CCJ</SelectItem>

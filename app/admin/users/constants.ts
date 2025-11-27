@@ -2,7 +2,8 @@
 export const departments = [
   "CTAS",
   "CCJ",
-  "CCIS"
+  "CCIS",
+  "NON-TEACHING"
 ] as const
 
 // Role options
@@ -15,7 +16,8 @@ export const roles = [
 export const positionsByDepartment = {
   "CTAS": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Lecturer", "Dean", "Department Head"],
   "CCJ": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Lecturer", "Dean", "Department Head"],
-  "CCIS": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Lecturer", "Dean", "Department Head", "System Administrator", "IT Support"]
+  "CCIS": ["Professor", "Associate Professor", "Assistant Professor", "Instructor", "Lecturer", "Dean", "Department Head", "System Administrator", "IT Support"],
+  "NON-TEACHING": ["Administrative Aide", "Administrative Assistant", "Administrative Officer", "Accountant", "Budget Officer", "Cashier", "Clerk", "Driver", "Guard", "Janitor", "Librarian", "Nurse", "Records Officer", "Registrar", "Secretary", "Supply Officer", "Utility Worker"]
 } as const
 
 // Status options

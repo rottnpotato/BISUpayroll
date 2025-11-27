@@ -2,26 +2,48 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// Salary grades following the 2024 SSL (Salary Standardization Law)
+// Each grade maps to a position-rank combination
+// Grade is NOT unique - same salary grade can apply to different positions
 const salaryGradesData = [
-  // Instructors
+  // Non-Teaching Staff: Administrative Aides (Salary Grade 1-6)
+  { grade: 1, position: "Administrative Aide", rank: 1, monthlyRate: 14061, dailyRate: 639.14 },
+  { grade: 2, position: "Administrative Aide", rank: 2, monthlyRate: 14925, dailyRate: 678.41 },
+  { grade: 3, position: "Administrative Aide", rank: 3, monthlyRate: 15852, dailyRate: 720.55 },
+  { grade: 4, position: "Administrative Aide", rank: 4, monthlyRate: 16833, dailyRate: 765.14 },
+  { grade: 5, position: "Administrative Aide", rank: 5, monthlyRate: 17866, dailyRate: 812.09 },
+  { grade: 6, position: "Administrative Aide", rank: 6, monthlyRate: 18957, dailyRate: 861.68 },
+  
+  // Non-Teaching Staff: Administrative Assistants (Salary Grade 7-8)
+  { grade: 7, position: "Administrative Assistant", rank: 1, monthlyRate: 20110, dailyRate: 914.09 },
+  { grade: 8, position: "Administrative Assistant", rank: 2, monthlyRate: 21448, dailyRate: 974.91 },
+  
+  // Non-Teaching Staff: Administrative Officers (Salary Grade 10, 11, 14, 15, 18)
+  { grade: 10, position: "Administrative Officer", rank: 1, monthlyRate: 25586, dailyRate: 1163.00 },
+  { grade: 11, position: "Administrative Officer", rank: 2, monthlyRate: 30024, dailyRate: 1364.73 },
+  { grade: 14, position: "Administrative Officer", rank: 3, monthlyRate: 37024, dailyRate: 1682.91 },
+  { grade: 15, position: "Administrative Officer", rank: 4, monthlyRate: 40208, dailyRate: 1827.64 },
+  { grade: 18, position: "Administrative Officer", rank: 5, monthlyRate: 51304, dailyRate: 2332.00 },
+  
+  // Teaching Personnel: Instructors (Salary Grade 12-14)
   { grade: 12, position: "Instructor", rank: 1, monthlyRate: 32245, dailyRate: 1465.68 },
   { grade: 13, position: "Instructor", rank: 2, monthlyRate: 34421, dailyRate: 1564.59 },
   { grade: 14, position: "Instructor", rank: 3, monthlyRate: 37024, dailyRate: 1682.91 },
   
-  // Assistant Professors
+  // Teaching Personnel: Assistant Professors (Salary Grade 15-18)
   { grade: 15, position: "Assistant Professor", rank: 1, monthlyRate: 40208, dailyRate: 1827.64 },
   { grade: 16, position: "Assistant Professor", rank: 2, monthlyRate: 43560, dailyRate: 1980.00 },
   { grade: 17, position: "Assistant Professor", rank: 3, monthlyRate: 47247, dailyRate: 2147.59 },
   { grade: 18, position: "Assistant Professor", rank: 4, monthlyRate: 51304, dailyRate: 2332.00 },
   
-  // Associate Professors
+  // Teaching Personnel: Associate Professors (Salary Grade 19-23)
   { grade: 19, position: "Associate Professor", rank: 1, monthlyRate: 56390, dailyRate: 2563.18 },
   { grade: 20, position: "Associate Professor", rank: 2, monthlyRate: 62967, dailyRate: 2862.14 },
   { grade: 21, position: "Associate Professor", rank: 3, monthlyRate: 70103, dailyRate: 3186.50 },
   { grade: 22, position: "Associate Professor", rank: 4, monthlyRate: 78162, dailyRate: 3552.82 },
   { grade: 23, position: "Associate Professor", rank: 5, monthlyRate: 87315, dailyRate: 3968.86 },
   
-  // Professors
+  // Teaching Personnel: Professors (Salary Grade 24-29)
   { grade: 24, position: "Professor", rank: 1, monthlyRate: 98185, dailyRate: 4462.95 },
   { grade: 25, position: "Professor", rank: 2, monthlyRate: 111727, dailyRate: 5078.50 },
   { grade: 26, position: "Professor", rank: 3, monthlyRate: 126252, dailyRate: 5738.73 },
@@ -40,7 +62,8 @@ async function seedSalaryGrades() {
     
     // Insert new salary grades
     for (const data of salaryGradesData) {
-      const description = `${data.position} ${data.rank} - Salary Grade ${data.grade} - ₱${data.monthlyRate.toLocaleString('en-US')}/month`
+      const positionLabel = `${data.position} ${data.rank}`
+      const description = `${positionLabel} (Salary Grade ${data.grade}) - ₱${data.monthlyRate.toLocaleString()}/month`
       
       await prisma.salaryGrade.create({
         data: {

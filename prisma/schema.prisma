@@ -643,7 +643,7 @@ model Notification {
 
 model SalaryGrade {
   id            String   @id @default(cuid())
-  grade         Int      @unique
+  grade         Int
   position      String   // e.g., "Instructor", "Assistant Professor", etc.
   rank          Int      // 1, 2, 3, etc. for position rankings
   monthlyRate   Decimal  @db.Decimal(10, 2)

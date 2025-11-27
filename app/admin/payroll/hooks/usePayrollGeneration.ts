@@ -40,7 +40,8 @@ export const usePayrollGeneration = () => {
         template: template.type,
         payPeriodStart: start.toISOString(),
         payPeriodEnd: end.toISOString(),
-        department: selectedDepartment === "all" ? undefined : selectedDepartment,
+        department: selectedDepartment === "all" ? undefined : (selectedDepartment === "NON_TEACHING" ? undefined : selectedDepartment),
+        employeeType: selectedDepartment === "NON_TEACHING" ? "NON_TEACHING_PERSONNEL" : undefined,
         role: "EMPLOYEE",
         employmentStatus: selectedEmploymentStatus && selectedEmploymentStatus !== 'all' ? selectedEmploymentStatus : undefined
       })
@@ -56,7 +57,8 @@ export const usePayrollGeneration = () => {
           requestBody = {
             payPeriodStart: start.toISOString(),
             payPeriodEnd: end.toISOString(),
-            department: selectedDepartment === "all" ? undefined : selectedDepartment,
+            department: selectedDepartment === "all" ? undefined : (selectedDepartment === "NON_TEACHING" ? undefined : selectedDepartment),
+            employeeType: selectedDepartment === "NON_TEACHING" ? "NON_TEACHING_PERSONNEL" : undefined,
             role: "EMPLOYEE",
             employmentStatus: selectedEmploymentStatus && selectedEmploymentStatus !== 'all' ? selectedEmploymentStatus : undefined
           }

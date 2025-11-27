@@ -10,13 +10,14 @@ import { PayrollResultStatus, EmploymentStatus } from '@prisma/client'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { payPeriodStart, payPeriodEnd, userIds, department, role, employmentStatus } = body as {
+    const { payPeriodStart, payPeriodEnd, userIds, department, role, employmentStatus, employeeType } = body as {
       payPeriodStart: string
       payPeriodEnd: string
       userIds?: string[]
       department?: string
       role?: string
       employmentStatus?: string
+      employeeType?: string
     }
 
     if (!payPeriodStart || !payPeriodEnd) {
@@ -42,6 +43,11 @@ export async function POST(request: NextRequest) {
     // Filter by department if specified
     if (department && department !== "all") {
       whereClause.department = department
+    }
+
+    // Filter by employee type if specified (e.g., NON_TEACHING_PERSONNEL)
+    if (employeeType) {
+      whereClause.employeeType = employeeType
     }
 
     // Filter by employment status if specified; otherwise exclude INACTIVE by default
@@ -278,7 +284,8 @@ export async function POST(request: NextRequest) {
           payPeriodStart: startDate.toISOString(),
           payPeriodEnd: endDate.toISOString(),
           generatedAt: new Date().toISOString(),
-          department: department || 'All Departments',
+          department: employeeType ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'Non-Teaching Personnel' : employeeType) : (department || 'All Departments'),
+          employeeType: employeeType || null,
           employmentStatus: (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? employmentStatus : 'All Statuses',
           employees: payrollResults.map((result: any) => ({
             employeeId: result.user?.employeeId || 'N/A',
@@ -324,7 +331,8 @@ export async function POST(request: NextRequest) {
         
   const timestamp = Date.now()
   const statusSlug = (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? (employmentStatus as string).toLowerCase() : 'all'
-  const tempFileName = `payroll_${department || 'all'}_${statusSlug}_${timestamp}.json`
+  const deptSlug = employeeType ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'non-teaching' : employeeType.toLowerCase()) : (department || 'all')
+  const tempFileName = `payroll_${deptSlug}_${statusSlug}_${timestamp}.json`
         const tempFilePath = path.join(tempDir, tempFileName)
         
         await fs.promises.writeFile(tempFilePath, JSON.stringify(payrollSummary, null, 2))
@@ -364,6 +372,7 @@ export async function POST(request: NextRequest) {
 
         // Create PayrollFile record
         if (currentUserId) {
+          const deptLabel = employeeType ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'Non-Teaching' : employeeType) : (department || null)
           payrollFileRecord = await prisma.payrollFile.create({
             data: {
             fileName: encryptionResult.metadata.originalFileName,
@@ -374,7 +383,7 @@ export async function POST(request: NextRequest) {
             payPeriodStart: startDate,
             payPeriodEnd: endDate,
               generatedBy: currentUserId,
-            department: department || null,
+            department: deptLabel,
             employeeCount: payrollResults.length,
             totalGrossPay: payrollSummary.totals.totalGrossPay,
             totalNetPay: payrollSummary.totals.totalNetPay,
@@ -384,7 +393,8 @@ export async function POST(request: NextRequest) {
               encryptedAt: encryptionResult.metadata.encryptedAt,
               checksum: encryptionResult.metadata.checksum,
               originalFileName: encryptionResult.metadata.originalFileName,
-              employmentStatus: (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? employmentStatus : 'all'
+              employmentStatus: (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? employmentStatus : 'all',
+              employeeType: employeeType || null
             }),
             checksum: encryptionResult.metadata.checksum
             }
