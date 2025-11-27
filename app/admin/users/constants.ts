@@ -31,16 +31,14 @@ export const employmentStatuses = [
 export const employeeTypes = [
   "TEACHING_PERSONNEL",
   "NON_TEACHING_PERSONNEL",
-  "CASUAL",
-  "PLANTILLA"
+  "CASUAL_PLANTILLA"
 ] as const
 
 // Employee type display names
 export const employeeTypeLabels: { [key: string]: string } = {
   "TEACHING_PERSONNEL": "Teaching Personnel",
   "NON_TEACHING_PERSONNEL": "Non-Teaching Personnel",
-  "CASUAL": "Casual",
-  "PLANTILLA": "Plantilla"
+  "CASUAL_PLANTILLA": "Casual Plantilla"
 }
 
 // Employment status display names

@@ -546,8 +546,7 @@ enum EmploymentStatus {
 enum EmployeeType {
   TEACHING_PERSONNEL
   NON_TEACHING_PERSONNEL
-  CASUAL
-  PLANTILLA
+  CASUAL_PLANTILLA
 }
 
 enum LeaveStatus {
