@@ -255,7 +255,16 @@ export function AddEmployeeDialog({
               placeholder="09XXXXXXXXX" 
               value={formData.phone}
               onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+                let value = e.target.value.replace(/\D/g, '')
+                // Only allow input that starts with 0 or is empty
+                if (value.length > 0 && value[0] !== '0') {
+                  return
+                }
+                // Only allow second digit to be 9 if first is 0
+                if (value.length > 1 && value[0] === '0' && value[1] !== '9') {
+                  return
+                }
+                value = value.slice(0, 11)
                 setFormData(prev => ({ ...prev, phone: value }))
               }}
               maxLength={11}
@@ -265,7 +274,7 @@ export function AddEmployeeDialog({
               <p className="text-red-500 text-xs">{errors.phone}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              11 digits starting with 09
+              Must start with 09 (11 digits total)
             </p>
           </div>
           <div className="grid grid-cols-1 items-center gap-2">
@@ -374,7 +383,16 @@ export function AddEmployeeDialog({
               placeholder="09XXXXXXXXX" 
               value={formData.emergencyContactPhone}
               onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+                let value = e.target.value.replace(/\D/g, '')
+                // Only allow input that starts with 0 or is empty
+                if (value.length > 0 && value[0] !== '0') {
+                  return
+                }
+                // Only allow second digit to be 9 if first is 0
+                if (value.length > 1 && value[0] === '0' && value[1] !== '9') {
+                  return
+                }
+                value = value.slice(0, 11)
                 setFormData(prev => ({ ...prev, emergencyContactPhone: value }))
               }}
               maxLength={11}
@@ -384,7 +402,7 @@ export function AddEmployeeDialog({
               <p className="text-red-500 text-xs">{errors.emergencyContactPhone}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              11 digits starting with 09
+              Must start with 09 (11 digits total)
             </p>
           </div>
         </div>
