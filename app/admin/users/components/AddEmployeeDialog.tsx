@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { X } from "lucide-react"
 import { FormData, FormErrors } from "../types"
-import { departments, roles, employeeTypes, employeeTypeLabels, employmentStatuses, employmentStatusLabels, positionsByDepartment } from "../constants"
+import { departments, roles, employeeTypes, employeeTypeLabels, employmentStatuses, employmentStatusLabels, positionsByDepartment, positionToSalaryGrade } from "../constants"
 import { useEffect, useState } from "react"
 
 interface AddEmployeeDialogProps {
@@ -30,34 +30,27 @@ export function AddEmployeeDialog({
 }: AddEmployeeDialogProps) {
   const [salaryGradeOptions, setSalaryGradeOptions] = useState<Array<{ value: number; label: string; rate: number; rank: number }>>([])
 
-  // Fetch salary grade options when position changes
+  // Auto-select salary grade when position changes
   useEffect(() => {
-    async function fetchOptions() {
-      try {
-        const url = formData.position 
-          ? `/api/admin/salary-grades/options?position=${encodeURIComponent(formData.position)}`
-          : '/api/admin/salary-grades/options'
-        const response = await fetch(url)
-        if (response.ok) {
-          const data = await response.json()
-          setSalaryGradeOptions(data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch salary grade options:', error)
+    if (formData.position) {
+      const grade = positionToSalaryGrade[formData.position]
+      if (grade) {
+        setFormData(prev => ({ ...prev, salaryGrade: grade.toString() }))
+        // Fetch the daily rate for this grade
+        fetch(`/api/admin/salary-grades/options?position=${encodeURIComponent(formData.position)}`)
+          .then(res => res.json())
+          .then(data => {
+            const option = data.find((opt: any) => opt.value === grade)
+            if (option) {
+              setFormData(prev => ({ ...prev, dailyRate: option.rate.toString() }))
+            }
+          })
+          .catch(error => console.error('Failed to fetch salary grade info:', error))
       }
     }
-    fetchOptions()
-  }, [formData.position])
+  }, [formData.position, setFormData])
 
-  // Auto-update daily rate when salary grade changes
-  useEffect(() => {
-    if (formData.salaryGrade) {
-      const option = salaryGradeOptions.find(opt => opt.value === parseInt(formData.salaryGrade))
-      if (option) {
-        setFormData(prev => ({ ...prev, dailyRate: option.rate.toString() }))
-      }
-    }
-  }, [formData.salaryGrade, salaryGradeOptions, setFormData])
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -226,24 +219,17 @@ export function AddEmployeeDialog({
           </div>
           <div className="grid grid-cols-1 items-center gap-2">
             <Label htmlFor="add-salaryGrade" className="text-left font-medium">
-              Salary Grade
+              Salary Grade (Auto-assigned)
             </Label>
-            <Select 
-              value={formData.salaryGrade} 
-              onValueChange={(value) => setFormData(prev => ({ ...prev, salaryGrade: value }))}
-              disabled={!formData.position}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={formData.position ? "Select salary grade" : "Select position first"} />
-              </SelectTrigger>
-              <SelectContent>
-                {salaryGradeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value.toString()}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input 
+              id="add-salaryGrade" 
+              value={formData.salaryGrade ? `SG ${formData.salaryGrade}` : "Select position first"}
+              disabled
+              className="bg-muted"
+            />
+            <p className="text-xs text-muted-foreground">
+              Automatically assigned based on selected position
+            </p>
           </div>
           <div className="grid grid-cols-1 items-center gap-2">
             <Label htmlFor="add-dailyRate" className="text-left font-medium">
@@ -270,12 +256,19 @@ export function AddEmployeeDialog({
               id="add-phone" 
               placeholder="09XXXXXXXXX" 
               value={formData.phone}
-              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+                setFormData(prev => ({ ...prev, phone: value }))
+              }}
+              maxLength={11}
               className={errors.phone ? "border-red-500" : ""}
             />
             {errors.phone && (
               <p className="text-red-500 text-xs">{errors.phone}</p>
             )}
+            <p className="text-xs text-muted-foreground">
+              11 digits starting with 09
+            </p>
           </div>
           <div className="grid grid-cols-1 items-center gap-2">
             <Label htmlFor="add-employeeId" className="text-left font-medium">
@@ -380,11 +373,21 @@ export function AddEmployeeDialog({
             </Label>
             <Input 
               id="add-emergencyContactPhone" 
-              placeholder="Enter phone number" 
+              placeholder="09XXXXXXXXX" 
               value={formData.emergencyContactPhone}
-              onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactPhone: e.target.value }))}
-              className="border-bisu-purple-light/30"
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 11)
+                setFormData(prev => ({ ...prev, emergencyContactPhone: value }))
+              }}
+              maxLength={11}
+              className={errors.emergencyContactPhone ? "border-red-500" : "border-bisu-purple-light/30"}
             />
+            {errors.emergencyContactPhone && (
+              <p className="text-red-500 text-xs">{errors.emergencyContactPhone}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              11 digits starting with 09
+            </p>
           </div>
         </div>
         <DialogFooter className="flex justify-between">

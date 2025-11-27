@@ -38,6 +38,12 @@ export const getStatusVariant = (status: string) => {
   }
 }
 
+// Validate Philippine phone number (11 digits starting with 09)
+export const validatePhoneNumber = (phone: string): boolean => {
+  const phoneRegex = /^09\d{9}$/
+  return phoneRegex.test(phone)
+}
+
 // Validate form
 export const validateForm = (formData: FormData, isEdit: boolean = false): FormErrors => {
   const errors: FormErrors = {}
@@ -48,6 +54,12 @@ export const validateForm = (formData: FormData, isEdit: boolean = false): FormE
   if (!formData.email.includes('@')) errors.email = "Invalid email format"
   if (!isEdit && !formData.password) errors.password = "Password is required"
   if (!formData.role) errors.role = "Role is required"
+  if (formData.phone && !validatePhoneNumber(formData.phone)) {
+    errors.phone = "Phone must be 11 digits starting with 09 (e.g., 09123456789)"
+  }
+  if (formData.emergencyContactPhone && !validatePhoneNumber(formData.emergencyContactPhone)) {
+    errors.emergencyContactPhone = "Phone must be 11 digits starting with 09"
+  }
 
   return errors
 }
