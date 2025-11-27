@@ -27,6 +27,7 @@ export interface FormErrors {
   phone?: string
   employeeId?: string
   password?: string
+  emergencyContactPhone?: string
 }
 
 export interface BulkEmployee {

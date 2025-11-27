@@ -28,8 +28,6 @@ export function AddEmployeeDialog({
   isSubmitting,
   onSubmit
 }: AddEmployeeDialogProps) {
-  const [salaryGradeOptions, setSalaryGradeOptions] = useState<Array<{ value: number; label: string; rate: number; rank: number }>>([])
-
   // Auto-select salary grade when position changes
   useEffect(() => {
     if (formData.position) {

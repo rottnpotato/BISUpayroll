@@ -16,7 +16,6 @@ export const roles = [
 export const basePositions = {
   teaching: ["Professor", "Associate Professor", "Assistant Professor", "Instructor"],
   nonTeaching: ["Administrative Aide", "Administrative Assistant", "Administrative Officer"],
-  other: ["System Administrator", "IT Support", "Accountant", "Budget Officer", "Cashier", "Clerk", "Driver", "Guard", "Janitor", "Librarian", "Nurse", "Records Officer", "Registrar", "Secretary", "Supply Officer", "Utility Worker"]
 } as const
 
 // Position ranks configuration
@@ -65,7 +64,7 @@ export const positionsByDepartment = {
   "CTAS": [...teachingPositions],
   "CCJ": [...teachingPositions],
   "CCIS": [...teachingPositions, "System Administrator", "IT Support"],
-  "NON-TEACHING": [...nonTeachingPositions, ...basePositions.other]
+  "NON-TEACHING": [...nonTeachingPositions,]
 } as const
 
 // Position to Salary Grade mapping (each position rank has exactly one salary grade)
