@@ -5,6 +5,7 @@ export interface User {
   employeeId: string
   department: string
   position: string
+  employeeType?: string | null
 }
 
 export interface AttendanceRecord {

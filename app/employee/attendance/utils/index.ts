@@ -1,36 +1,44 @@
 import { AttendanceRecord } from "../types"
+import { getManilaHours, getManilaMinutes } from "@/lib/timezone"
+import { getScheduleInMinutes } from "@/lib/attendance-schedules"
 
 export const calculateUndertime = (record: AttendanceRecord): string => {
   if (record.status.toLowerCase() === 'absent') return "-"
 
   let totalUndertimeMinutes = 0
 
-  // Helper to get minutes from time string (e.g. "08:00 AM")
-  const getMinutes = (timeStr: string) => {
+  // Helper to get minutes from time string using standardized Manila time utilities
+  const getMinutes = (timeStr: string): number => {
     if (!timeStr) return 0
-    const [time, period] = timeStr.split(' ')
-    let [hours, minutes] = time.split(':').map(Number)
     
-    if (period === 'PM' && hours !== 12) hours += 12
-    if (period === 'AM' && hours === 12) hours = 0
+    // Check if it's already a formatted time string (e.g., "08:00 AM")
+    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+      const [time, period] = timeStr.split(' ')
+      let [hours, minutes] = time.split(':').map(Number)
+      
+      if (period === 'PM' && hours !== 12) hours += 12
+      if (period === 'AM' && hours === 12) hours = 0
+      
+      return hours * 60 + minutes
+    }
     
+    // Otherwise, assume it's an ISO date string
+    const date = new Date(timeStr)
+    const hours = getManilaHours(date)
+    const minutes = getManilaMinutes(date)
     return hours * 60 + minutes
   }
 
-  // Morning Schedule: 8:00 - 12:00
-  const MORNING_START = 8 * 60 // 8:00
-  const MORNING_END = 12 * 60 // 12:00
-  
-  // Afternoon Schedule: 13:00 - 17:00
-  const AFTERNOON_START = 13 * 60 // 13:00
-  const AFTERNOON_END = 17 * 60 // 17:00
-
-  // Grace period
-  const GRACE_PERIOD = 15
+  // Get employee-specific schedule (fallback to default if no employeeType)
+  const schedule = getScheduleInMinutes((record as any).user?.employeeType || null)
+  const MORNING_START = schedule.morningStart
+  const MORNING_END = schedule.morningEnd
+  const AFTERNOON_START = schedule.afternoonStart
+  const AFTERNOON_END = schedule.afternoonEnd
 
   if (record.morningTimeIn) {
     const inMinutes = getMinutes(record.morningTimeIn)
-    if (inMinutes > MORNING_START + GRACE_PERIOD) {
+    if (inMinutes > MORNING_START) {
       totalUndertimeMinutes += (inMinutes - MORNING_START)
     }
   }
@@ -44,7 +52,7 @@ export const calculateUndertime = (record: AttendanceRecord): string => {
 
   if (record.afternoonTimeIn) {
     const inMinutes = getMinutes(record.afternoonTimeIn)
-    if (inMinutes > AFTERNOON_START + GRACE_PERIOD) {
+    if (inMinutes > AFTERNOON_START) {
       totalUndertimeMinutes += (inMinutes - AFTERNOON_START)
     }
   }
@@ -60,11 +68,11 @@ export const calculateUndertime = (record: AttendanceRecord): string => {
   if (!record.morningTimeIn && !record.afternoonTimeIn && record.timeIn) {
      const inMinutes = getMinutes(record.timeIn)
      if (inMinutes < 12 * 60) {
-        if (inMinutes > MORNING_START + GRACE_PERIOD) {
+        if (inMinutes > MORNING_START) {
            totalUndertimeMinutes += (inMinutes - MORNING_START)
         }
      } else {
-        if (inMinutes > AFTERNOON_START + GRACE_PERIOD) {
+        if (inMinutes > AFTERNOON_START) {
            totalUndertimeMinutes += (inMinutes - AFTERNOON_START)
         }
      }

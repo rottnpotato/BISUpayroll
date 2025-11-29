@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { AttendancePunchType } from '@prisma/client'
+import { getScheduleForEmployeeType, timeToMinutes } from '@/lib/attendance-schedules'
 
 const ADMIN_APPROVED_STATUS = 'APPROVED'
 const ADMIN_REJECTED_STATUS = 'REJECTED'
@@ -236,6 +237,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Unauthorized access' }, { status: 403 })
     }
 
+    // Fetch full user details including employeeType
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { employeeType: true }
+    })
+
     // Get action from request body
     const body = await request.json()
     const action = body.action // 'time-in' or 'time-out'
@@ -292,11 +299,14 @@ export async function POST(request: NextRequest) {
     const dailyHours = parseFloat(configs['working_hours_dailyHours'] || '8')
     const lateGraceMinutes = parseInt(configs['working_hours_lateGraceMinutes'] || '15')
     
-    // New attendance policy configurations
-    const morningStart = configs['attendance_morning_start'] || '08:00'
-    const morningEnd = configs['attendance_morning_end'] || '12:00'
-    const afternoonStart = configs['attendance_afternoon_start'] || '13:00'
-    const afternoonEnd = configs['attendance_afternoon_end'] || '17:00'
+    // Get employee-specific schedule based on employee type
+    const employeeSchedule = getScheduleForEmployeeType(fullUser?.employeeType)
+    
+    // Override with employee-specific schedule
+    const morningStart = employeeSchedule.morningStart
+    const morningEnd = employeeSchedule.morningEnd
+    const afternoonStart = employeeSchedule.afternoonStart
+    const afternoonEnd = employeeSchedule.afternoonEnd
     const allowHalfDay = configs['attendance_allow_half_day'] === 'true'
     const allowEarlyOut = configs['attendance_allow_early_out'] === 'true'
     const earlyOutThresholdMinutes = parseInt(configs['attendance_early_out_threshold_minutes'] || '60')
@@ -438,8 +448,10 @@ export async function POST(request: NextRequest) {
       // If no record exists for today, create one
       if (!attendanceRecord) {
         // Check if the employee is late (only for morning session)
-        const isLate = sessionType === 'morning' && (now.getHours() > workStartHour || 
-          (now.getHours() === workStartHour && now.getMinutes() > (workStartMinute + lateGraceMinutes)))
+        // Compare current time to employee's morning start time (no grace period)
+        const currentMinutes = now.getHours() * 60 + now.getMinutes()
+        const morningStartMinutes = timeToMinutes(morningStart)
+        const isLate = sessionType === 'morning' && currentMinutes > morningStartMinutes
 
         // Auto-approve time-in for regular attendance
         // Time-in records are always auto-approved since final determination

@@ -80,7 +80,7 @@ export async function PUT(
     } = body
 
     // Validate employeeType if provided
-    const validEmployeeTypes = ['TEACHING_PERSONNEL', 'NON_TEACHING_PERSONNEL', 'CASUAL', 'PLANTILLA']
+    const validEmployeeTypes = ['TEACHING_PERSONNEL', 'NON_TEACHING_PERSONNEL', 'CASUAL_PLANTILLA']
     if (employeeType && employeeType !== "" && !validEmployeeTypes.includes(employeeType)) {
       return NextResponse.json(
         { error: `Invalid employee type. Must be one of: ${validEmployeeTypes.join(', ')}` },

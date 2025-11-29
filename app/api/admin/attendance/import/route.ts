@@ -8,6 +8,7 @@ import { AttendancePunchType, Prisma } from "@prisma/client"
 import * as XLSX from "xlsx"
 import { getManilaHours, getManilaMinutes, isLateInManila } from "@/lib/timezone"
 import { getWorkingDayKeysInMonth } from "@/lib/work-calendar"
+import { getScheduleForEmployeeType, timeToMinutes } from "@/lib/attendance-schedules"
 
 const MANILA_TIME_ZONE = "Asia/Manila"
 const MANILA_TIME_OFFSET_HOURS = 8
@@ -341,7 +342,7 @@ export async function POST(request: NextRequest) {
     }
 
     const allUsers = await prisma.user.findMany({
-      select: { id: true, firstName: true, lastName: true, biometricNo: true }
+      select: { id: true, firstName: true, lastName: true, biometricNo: true, employeeType: true }
     })
 
     const userByBiometric = new Map<string, typeof allUsers[0]>()
@@ -545,38 +546,44 @@ export async function POST(request: NextRequest) {
           const timeIn = morningTimeIn || afternoonTimeIn || sortedPunches[0]?.timestamp || null
           const timeOut = afternoonTimeOut || morningTimeOut || null
 
-          // Calculate late status based on Manila time for morning time-in
-          const isLate = morningTimeIn ? isLateInManila(morningTimeIn, 8, 15) : false
+          // Get employee-specific schedule
+          const employeeSchedule = getScheduleForEmployeeType(matchedUser.employeeType)
+          const morningStartMinutes = timeToMinutes(employeeSchedule.morningStart)
+          const afternoonEndMinutes = timeToMinutes(employeeSchedule.afternoonEnd)
+          const morningEndMinutes = timeToMinutes(employeeSchedule.morningEnd)
+          
+          // Calculate late status based on employee's schedule (no grace period)
+          const isLate = morningTimeIn ? (() => {
+            const inMinutes = getManilaHours(morningTimeIn) * 60 + getManilaMinutes(morningTimeIn)
+            return inMinutes > morningStartMinutes
+          })() : false
 
           const isAbsent = !timeOut || !timeIn
 
-          // Determine half-day rules for single-session days based on Manila local time:
-          // - If only one IN/OUT pair and OUT is before 1:00 PM, mark half-day
-          // - If OUT is 5:00 PM or later, it's a whole day
-          // - Between 1:00 PM and before 5:00 PM, treat as half-day and early-out
+          // Determine half-day rules based on employee's schedule
           let isHalfDay = false
           if (totalSessions <= 1) {
             if (!timeOut) {
               isHalfDay = true
             } else {
-              const outH = getManilaHours(timeOut)
-              const outM = getManilaMinutes(timeOut)
-              if (outH < 13) {
-                // Strictly before 1:00 PM counts as half-day
+              const outMinutes = getManilaHours(timeOut) * 60 + getManilaMinutes(timeOut)
+              if (outMinutes < morningEndMinutes) {
+                // OUT before morning end time counts as half-day
                 isHalfDay = true
-              } else if (outH >= 17) {
+              } else if (outMinutes >= afternoonEndMinutes) {
+                // OUT at or after afternoon end time is a full day
                 isHalfDay = false
               } else {
-                // 1:01 PM up to 4:59 PM
+                // Between morning end and afternoon end = half-day
                 isHalfDay = true
               }
             }
           }
 
-          // Early out if final OUT is before 5:00 PM Manila
+          // Early out if final OUT is before employee's afternoon end time
           const isEarlyOut = timeOut ? (() => {
-            const h = getManilaHours(timeOut)
-            return h < 17
+            const outMinutes = getManilaHours(timeOut) * 60 + getManilaMinutes(timeOut)
+            return outMinutes < afternoonEndMinutes
           })() : false
 
           const recordDate = manilaDateKeyToUTC(dateKey)

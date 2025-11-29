@@ -104,6 +104,7 @@ export async function GET(request: NextRequest) {
               employeeId: true,
               department: true,
               position: true,
+              employeeType: true,
             },
           },
           approvedBy: { select: { id: true, firstName: true, lastName: true } },

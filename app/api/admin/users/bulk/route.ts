@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
           : "CONTRACTUAL"
 
         // Validate employee type if provided
-        const validEmployeeTypes = ["TEACHING_PERSONNEL", "NON_TEACHING_PERSONNEL", "CASUAL", "PLANTILLA"]
+        const validEmployeeTypes = ["TEACHING_PERSONNEL", "NON_TEACHING_PERSONNEL", "CASUAL_PLANTILLA"]
         const employeeType = employee.employeeType && validEmployeeTypes.includes(employee.employeeType.toUpperCase())
           ? employee.employeeType.toUpperCase()
           : null

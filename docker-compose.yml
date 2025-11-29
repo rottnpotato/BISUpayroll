@@ -15,7 +15,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "3000:3000"
+      - "0.0.0.0:3000:3000"
     volumes:
       - .:/app:delegated
       - pnpm-store:/app/.pnpm-store

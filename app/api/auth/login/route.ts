@@ -48,9 +48,10 @@ export async function POST(request: NextRequest) {
 
     console.log("Login API response AUTHRESULT:", authResult.token)
     // Set HTTP-only cookie with the token
+    // Use secure: false for local network access, secure: true only for HTTPS
     response.cookies.set('auth-token', authResult.token!, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Allow HTTP for local network
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',

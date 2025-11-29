@@ -1,9 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "./database"
 import { getManilaHours, getManilaMinutes, manilaStartOfDayUTC, manilaEndOfDayUTC, toManilaDateKey } from "./timezone"
-
-const WORK_START_MINUTES = 8 * 60
-const LATE_GRACE_MINUTES = 15
+import { getScheduleInMinutes } from "./attendance-schedules"
 
 export interface PunchAttendanceFilters {
   startDate?: Date
@@ -56,6 +54,7 @@ interface PunchRow {
   employee_id: string | null
   department: string | null
   position: string | null
+  employee_type: string | null
 }
 
 interface PunchCountRow {
@@ -117,7 +116,8 @@ const toAttendanceRecord = (row: PunchRow): PunchAttendanceRecord => {
   }
 
   const timeInMinutes = timeInDate ? (getManilaHours(timeInDate) * 60 + getManilaMinutes(timeInDate)) : null
-  const isLate = timeInMinutes !== null ? timeInMinutes > (WORK_START_MINUTES + LATE_GRACE_MINUTES) : false
+  const schedule = getScheduleInMinutes(row.employee_type)
+  const isLate = timeInMinutes !== null ? timeInMinutes > schedule.morningStart : false
   const isAbsent = !timeInDate
 
   // Build a date string representing the Manila day at midday UTC for stability
@@ -203,7 +203,8 @@ export const fetchPunchAttendance = async (
         u."lastName" AS last_name,
         u."employeeId" AS employee_id,
         u."department" AS department,
-        u."position" AS position
+        u."position" AS position,
+        u."employeeType" AS employee_type
       FROM punch_data pd
       JOIN users u ON u.id = pd.user_id
       ${ORDER_CLAUSE}
@@ -256,7 +257,8 @@ export const fetchAllPunchAttendance = async (
         u."lastName" AS last_name,
         u."employeeId" AS employee_id,
         u."department" AS department,
-        u."position" AS position
+        u."position" AS position,
+        u."employeeType" AS employee_type
       FROM punch_data pd
       JOIN users u ON u.id = pd.user_id
       ${ORDER_CLAUSE}

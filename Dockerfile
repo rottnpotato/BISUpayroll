@@ -49,7 +49,7 @@ EXPOSE 3000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-# Start development server with hot reload
+# Start server (respects HOSTNAME env var set in docker-compose.yml)
 CMD ["sh", "-c", "pnpm run db:generate && pnpm run start"]
 
 
