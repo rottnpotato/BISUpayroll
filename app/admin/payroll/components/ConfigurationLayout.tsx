@@ -41,13 +41,9 @@ interface ConfigurationLayoutProps {
   setWorkingHoursConfig: (config: WorkingHoursConfig) => void
   setRatesConfig: (config: RatesConfig) => void
   setLeaveBenefitsConfig: (config: LeaveBenefitsConfig) => void
-  setContributionsConfig: (config: ContributionsConfig) => void
-  setTaxBracketsConfig: (config: TaxBracketsConfig) => void
   saveWorkingHoursConfig: any
   saveRatesConfig: any
   saveLeaveBenefitsConfig: any
-  saveContributionsConfig: any
-  saveTaxBracketsConfig: any
   fetchExternalData: any
   unsavedChanges: any
   hasUnsavedChanges: boolean
@@ -59,8 +55,6 @@ type ConfigSection =
   | 'working-hours' 
   | 'rates' 
   | 'leave-benefits' 
-  | 'contributions' 
-  | 'tax-brackets' 
   | 'holidays'
   | 'role-toggles'
   | 'summary'
@@ -99,20 +93,6 @@ export function ConfigurationLayout(props: ConfigurationLayoutProps) {
       hasUnsavedChanges: props.unsavedChanges.leaveBenefits
     },
     {
-      id: 'contributions',
-      title: 'Government Contributions',
-      description: 'Configure SSS, PhilHealth, and Pag-IBIG contributions',
-      icon: PiggyBank,
-      hasUnsavedChanges: props.unsavedChanges.contributions
-    },
-    {
-      id: 'tax-brackets',
-      title: 'Tax Configuration',
-      description: 'Set up income tax brackets and withholding rates',
-      icon: Receipt,
-      hasUnsavedChanges: props.unsavedChanges.taxBrackets
-    },
-    {
       id: 'holidays',
       title: 'Holiday Management',
       description: 'Define public holidays and special work days',
@@ -147,26 +127,6 @@ export function ConfigurationLayout(props: ConfigurationLayoutProps) {
             onConfigChange={props.setLeaveBenefitsConfig}
             onSave={props.saveLeaveBenefitsConfig}
             hasUnsavedChanges={props.unsavedChanges.leaveBenefits}
-          />
-        )
-      case 'contributions':
-        return (
-          <ContributionsConfigCard
-            config={props.contributionsConfig}
-            onConfigChange={props.setContributionsConfig}
-            onSave={props.saveContributionsConfig}
-            onFetchExternalData={props.fetchExternalData}
-            hasUnsavedChanges={props.unsavedChanges.contributions}
-          />
-        )
-      case 'tax-brackets':
-        return (
-          <TaxBracketsConfigCard
-            config={props.taxBracketsConfig}
-            onConfigChange={props.setTaxBracketsConfig}
-            onSave={props.saveTaxBracketsConfig}
-            onFetchExternalData={props.fetchExternalData}
-            hasUnsavedChanges={props.unsavedChanges.taxBrackets}
           />
         )
       case 'holidays':

@@ -22,7 +22,10 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Maximize2
+  Maximize2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -54,6 +57,8 @@ interface LogFilters {
   startDate: Date | undefined
   endDate: Date | undefined
   search: string
+  sortBy: string
+  sortOrder: 'asc' | 'desc'
 }
 
 interface Pagination {
@@ -81,7 +86,9 @@ export default function LogsPage() {
     userId: "",
     startDate: undefined,
     endDate: undefined,
-    search: ""
+    search: "",
+    sortBy: "createdAt",
+    sortOrder: "desc"
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -105,6 +112,9 @@ export default function LogsPage() {
       if (filters.userId) searchParams.set("userId", filters.userId)
       if (filters.startDate) searchParams.set("startDate", filters.startDate.toISOString())
       if (filters.endDate) searchParams.set("endDate", filters.endDate.toISOString())
+      if (filters.search) searchParams.set("search", filters.search)
+      searchParams.set("sortBy", filters.sortBy)
+      searchParams.set("sortOrder", filters.sortOrder)
 
       const response = await fetch(`/api/admin/logs?${searchParams}`)
       
@@ -145,9 +155,19 @@ export default function LogsPage() {
       userId: "",
       startDate: undefined,
       endDate: undefined,
-      search: ""
+      search: "",
+      sortBy: "createdAt",
+      sortOrder: "desc"
     })
     setPagination(prev => ({ ...prev, page: 1 }))
+  }
+
+  const handleSort = (column: string) => {
+    setFilters(prev => ({
+      ...prev,
+      sortBy: column,
+      sortOrder: prev.sortBy === column && prev.sortOrder === 'desc' ? 'asc' : 'desc'
+    }))
   }
 
   const getActionBadgeColor = (action: string) => {
@@ -213,7 +233,7 @@ export default function LogsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
                       <div className="space-y-1">
                         <Label className="text-sm">Action</Label>
-                        <Select value={filters.action} onValueChange={(value) => setFilters(prev => ({ ...prev, action: value === "all" ? "" : value }))}>
+                        <Select value={filters.action} onValueChange={(value) => setFilters(prev => ({ ...prev, action: value }))}>
                           <SelectTrigger className="h-8">
                             <SelectValue placeholder="All Actions" />
                           </SelectTrigger>
@@ -236,7 +256,7 @@ export default function LogsPage() {
 
                       <div className="space-y-1">
                         <Label className="text-sm">Entity Type</Label>
-                        <Select value={filters.entityType} onValueChange={(value) => setFilters(prev => ({ ...prev, entityType: value === "all" ? "" : value }))}>
+                        <Select value={filters.entityType} onValueChange={(value) => setFilters(prev => ({ ...prev, entityType: value }))}>
                           <SelectTrigger className="h-8">
                             <SelectValue placeholder="All Types" />
                           </SelectTrigger>
@@ -343,10 +363,46 @@ export default function LogsPage() {
                           <Table>
                             <TableHeader className="sticky top-0 bg-white z-10">
                               <TableRow className="text-center">
-                                <TableHead className="text-center">Timestamp</TableHead>
+                                <TableHead className="text-center">
+                                  <button 
+                                    onClick={() => handleSort('createdAt')} 
+                                    className="flex items-center gap-1 hover:text-bisu-purple-deep transition-colors mx-auto"
+                                  >
+                                    Timestamp
+                                    {filters.sortBy === 'createdAt' ? (
+                                      filters.sortOrder === 'desc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />
+                                    ) : (
+                                      <ArrowUpDown className="h-3 w-3 opacity-40" />
+                                    )}
+                                  </button>
+                                </TableHead>
                                 <TableHead className="text-center">User</TableHead>
-                                <TableHead className="text-center">Action</TableHead>
-                                <TableHead className="text-center">Entity</TableHead>
+                                <TableHead className="text-center">
+                                  <button 
+                                    onClick={() => handleSort('action')} 
+                                    className="flex items-center gap-1 hover:text-bisu-purple-deep transition-colors mx-auto"
+                                  >
+                                    Action
+                                    {filters.sortBy === 'action' ? (
+                                      filters.sortOrder === 'desc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />
+                                    ) : (
+                                      <ArrowUpDown className="h-3 w-3 opacity-40" />
+                                    )}
+                                  </button>
+                                </TableHead>
+                                <TableHead className="text-center">
+                                  <button 
+                                    onClick={() => handleSort('entityType')} 
+                                    className="flex items-center gap-1 hover:text-bisu-purple-deep transition-colors mx-auto"
+                                  >
+                                    Entity
+                                    {filters.sortBy === 'entityType' ? (
+                                      filters.sortOrder === 'desc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />
+                                    ) : (
+                                      <ArrowUpDown className="h-3 w-3 opacity-40" />
+                                    )}
+                                  </button>
+                                </TableHead>
                                 <TableHead className="text-center">Details</TableHead>
                                 <TableHead className="text-center">IP Address</TableHead>
                               </TableRow>
@@ -465,7 +521,7 @@ export default function LogsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
             <div className="space-y-2">
               <Label>Action</Label>
-              <Select value={filters.action} onValueChange={(value) => setFilters(prev => ({ ...prev, action: value === "all" ? "" : value }))}>
+              <Select value={filters.action} onValueChange={(value) => setFilters(prev => ({ ...prev, action: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Actions" />
                 </SelectTrigger>
@@ -488,7 +544,7 @@ export default function LogsPage() {
 
             <div className="space-y-2">
               <Label>Entity Type</Label>
-              <Select value={filters.entityType} onValueChange={(value) => setFilters(prev => ({ ...prev, entityType: value === "all" ? "" : value }))}>
+              <Select value={filters.entityType} onValueChange={(value) => setFilters(prev => ({ ...prev, entityType: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
@@ -594,10 +650,46 @@ export default function LogsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-center">
-                    <TableHead className="text-center">Timestamp</TableHead>
+                    <TableHead className="text-center">
+                      <button 
+                        onClick={() => handleSort('createdAt')} 
+                        className="flex items-center gap-1 hover:text-bisu-purple-deep transition-colors mx-auto"
+                      >
+                        Timestamp
+                        {filters.sortBy === 'createdAt' ? (
+                          filters.sortOrder === 'desc' ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="h-4 w-4 opacity-40" />
+                        )}
+                      </button>
+                    </TableHead>
                     <TableHead className="text-center">User</TableHead>
-                    <TableHead className="text-center">Action</TableHead>
-                    <TableHead className="text-center">Entity</TableHead>
+                    <TableHead className="text-center">
+                      <button 
+                        onClick={() => handleSort('action')} 
+                        className="flex items-center gap-1 hover:text-bisu-purple-deep transition-colors mx-auto"
+                      >
+                        Action
+                        {filters.sortBy === 'action' ? (
+                          filters.sortOrder === 'desc' ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="h-4 w-4 opacity-40" />
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <button 
+                        onClick={() => handleSort('entityType')} 
+                        className="flex items-center gap-1 hover:text-bisu-purple-deep transition-colors mx-auto"
+                      >
+                        Entity
+                        {filters.sortBy === 'entityType' ? (
+                          filters.sortOrder === 'desc' ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="h-4 w-4 opacity-40" />
+                        )}
+                      </button>
+                    </TableHead>
                     <TableHead className="text-center">Details</TableHead>
                     <TableHead className="text-center">IP Address</TableHead>
                   </TableRow>

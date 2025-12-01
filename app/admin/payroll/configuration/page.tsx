@@ -30,15 +30,11 @@ export default function PayrollConfigurationPage() {
     setWorkingHoursConfig,
     setRatesConfig,
     setLeaveBenefitsConfig,
-    setContributionsConfig,
-    setTaxBracketsConfig,
     loadConfigurations,
     saveAllConfigurations,
     saveWorkingHoursConfig,
     saveRatesConfig,
     saveLeaveBenefitsConfig,
-    saveContributionsConfig,
-    saveTaxBracketsConfig,
     fetchExternalData,
     unsavedChanges,
     hasUnsavedChanges,
@@ -56,8 +52,6 @@ export default function PayrollConfigurationPage() {
     if (unsavedChanges.workingHours) sections.push('workingHours')
     if (unsavedChanges.rates) sections.push('rates')
     if (unsavedChanges.leaveBenefits) sections.push('leaveBenefits')
-    if (unsavedChanges.contributions) sections.push('contributions')
-    if (unsavedChanges.taxBrackets) sections.push('taxBrackets')
     return sections
   }
 
@@ -115,13 +109,9 @@ export default function PayrollConfigurationPage() {
           setWorkingHoursConfig={setWorkingHoursConfig}
           setRatesConfig={setRatesConfig}
           setLeaveBenefitsConfig={setLeaveBenefitsConfig}
-          setContributionsConfig={setContributionsConfig}
-          setTaxBracketsConfig={setTaxBracketsConfig}
           saveWorkingHoursConfig={saveWorkingHoursConfig}
           saveRatesConfig={saveRatesConfig}
           saveLeaveBenefitsConfig={saveLeaveBenefitsConfig}
-          saveContributionsConfig={saveContributionsConfig}
-          saveTaxBracketsConfig={saveTaxBracketsConfig}
           fetchExternalData={fetchExternalData}
           unsavedChanges={unsavedChanges}
           hasUnsavedChanges={hasUnsavedChanges}

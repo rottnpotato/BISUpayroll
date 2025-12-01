@@ -40,6 +40,8 @@ interface ConfigItem {
   isActive: boolean
   scope: ApplicationType
   scopeTarget?: string
+  isPermanentOnly?: boolean
+  isDbDefined?: boolean
   values: { label: string; value: string | number }[]
 }
 
@@ -62,12 +64,13 @@ export function ConfigurationStatusCard({
     }
   }
 
-  const getScopeBadge = (type: ApplicationType, targetName?: string) => {
-    const label = type === 'ALL' ? 'All Employees' : 
+  const getScopeBadge = (type: ApplicationType, targetName?: string, isPermanentOnly?: boolean) => {
+    const label = isPermanentOnly ? 'Permanent Employees Only' :
+                  type === 'ALL' ? 'All Employees' : 
                   type === 'DEPARTMENT' ? `Dept: ${targetName || 'N/A'}` :
                   type === 'INDIVIDUAL' ? `Employee: ${targetName || 'N/A'}` :
                   type === 'ROLE' ? `Role: ${targetName || 'N/A'}` :
-                  type === 'POSITION' ? `Position: ${targetName || 'N/A'}` : 'Permanent Only'
+                  type === 'POSITION' ? `Position: ${targetName || 'N/A'}` : 'All Employees'
     
     return (
       <Badge variant="outline" className="text-xs">
@@ -87,8 +90,7 @@ export function ConfigurationStatusCard({
       values: [
         { label: "Daily Hours", value: `${workingHoursConfig.dailyHours}h` },
         { label: "Weekly Hours", value: `${workingHoursConfig.weeklyHours}h` },
-        { label: "Overtime Threshold", value: `${workingHoursConfig.overtimeThreshold}h` },
-        { label: "Late Grace", value: `${workingHoursConfig.lateGraceMinutes} min` }
+        { label: "Overtime Threshold", value: `${workingHoursConfig.overtimeThreshold}h` }
       ]
     },
     {
@@ -122,8 +124,9 @@ export function ConfigurationStatusCard({
       title: "Government Contributions",
       icon: PiggyBank,
       isActive: contributionsConfig.isActive !== false,
-      scope: contributionsConfig.applicationScope?.applicationType || 'Permanent Only' as ApplicationType,
-      scopeTarget: contributionsConfig.applicationScope?.targetName,
+      scope: 'ALL' as ApplicationType,
+      scopeTarget: undefined,
+      isPermanentOnly: true,
       values: [
         { label: "GSIS Employee", value: `${(contributionsConfig.gsis.employeeRate * 100).toFixed(2)}%` },
         { label: "PhilHealth Employee", value: `${(contributionsConfig.philHealth.employeeRate * 100).toFixed(2)}%` },
@@ -134,8 +137,9 @@ export function ConfigurationStatusCard({
       title: "Tax Configuration",
       icon: Receipt,
       isActive: taxBracketsConfig.isActive !== false,
-      scope: taxBracketsConfig.applicationScope?.applicationType || 'ALL',
-      scopeTarget: taxBracketsConfig.applicationScope?.targetName,
+      scope: 'ALL' as ApplicationType,
+      scopeTarget: undefined,
+      isDbDefined: true,
       values: [
         { label: "Tax Brackets", value: `${taxBracketsConfig.brackets.length} configured` },
         { label: "Withholding", value: taxBracketsConfig.withholdingEnabled ? 'Enabled' : 'Disabled' },
@@ -186,8 +190,15 @@ export function ConfigurationStatusCard({
                     )}
                   </div>
                   <div className="mt-2">
-                    {getScopeBadge(config.scope, config.scopeTarget)}
+                    {getScopeBadge(config.scope, config.scopeTarget, config.isPermanentOnly)}
                   </div>
+                  {config.isDbDefined && (
+                    <div className="mt-1">
+                      <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+                        Database Defined
+                      </Badge>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-1.5">

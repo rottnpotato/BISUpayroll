@@ -26,8 +26,11 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId")
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
+    const search = searchParams.get("search")
+    const sortBy = searchParams.get("sortBy") || "createdAt"
+    const sortOrder = searchParams.get("sortOrder") || "desc"
 
-    console.log('Search params:', { page, limit, entityType, action, userId, startDate, endDate })
+    console.log('Search params:', { page, limit, entityType, action, userId, startDate, endDate, search, sortBy, sortOrder })
 
     const skip = (page - 1) * limit
 
@@ -55,7 +58,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Add search functionality
+    if (search) {
+      where.OR = [
+        { action: { contains: search, mode: 'insensitive' } },
+        { entityType: { contains: search, mode: 'insensitive' } },
+        { details: { contains: search, mode: 'insensitive' } },
+        { ipAddress: { contains: search, mode: 'insensitive' } },
+        { user: { firstName: { contains: search, mode: 'insensitive' } } },
+        { user: { lastName: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } }
+      ]
+    }
+
     console.log('Where clause:', where)
+
+    // Build orderBy clause
+    const orderBy: any = {}
+    const validSortFields = ['createdAt', 'action', 'entityType']
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt'
+    orderBy[sortField] = sortOrder === 'asc' ? 'asc' : 'desc'
 
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({
@@ -71,7 +93,7 @@ export async function GET(request: NextRequest) {
             }
           }
         },
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit
       }),
