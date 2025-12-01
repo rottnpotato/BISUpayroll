@@ -107,6 +107,7 @@ interface PayrollCalculations {
   loanDeductions: number
   otherDeductions: number
   lateDeductions: number
+  undertimeDeductions: number
   totalDeductions: number
   grossPay: number
   netPay: number
@@ -485,12 +486,14 @@ export default function PayslipDetailsPage() {
                     <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.loanDeductions)}</span>
                   </div>
                 )}
-                {payrollData.calculations.lateDeductions > 0 && (
-                  <div className="flex justify-between">
-                    <span>Late Deductions:</span>
-                    <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.lateDeductions)}</span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span>Late Deductions:</span>
+                  <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.lateDeductions ?? 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Undertime Deductions:</span>
+                  <span className="font-medium text-bisu-purple-deep">{formatCurrency(payrollData.calculations.undertimeDeductions ?? 0)}</span>
+                </div>
                 {payrollData.calculations.otherDeductions > 0 && (
                   <div className="flex justify-between">
                     <span>Other Deductions:</span>

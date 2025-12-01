@@ -8,7 +8,7 @@ import { AttendancePunchType, Prisma } from "@prisma/client"
 import * as XLSX from "xlsx"
 import { getManilaHours, getManilaMinutes, isLateInManila } from "@/lib/timezone"
 import { getWorkingDayKeysInMonth } from "@/lib/work-calendar"
-import { getScheduleForEmployeeType, timeToMinutes } from "@/lib/attendance-schedules"
+import { getScheduleForEmployeeType, timeToMinutes, calculateLateAndUndertime } from "@/lib/attendance-schedules"
 
 const MANILA_TIME_ZONE = "Asia/Manila"
 const MANILA_TIME_OFFSET_HOURS = 8
@@ -591,6 +591,15 @@ export async function POST(request: NextRequest) {
           const recordKey = `${matchedUser.id}|${dateKey}`
           const existingRecord = existingRecordLookup.get(recordKey)
 
+          // Calculate late and undertime minutes based on employee type
+          const { lateMinutes, undertimeMinutes } = calculateLateAndUndertime(
+            morningTimeIn,
+            morningTimeOut,
+            afternoonTimeIn,
+            afternoonTimeOut,
+            matchedUser.employeeType
+          )
+
           const createPayload: Prisma.AttendanceRecordCreateManyInput = {
             userId: matchedUser.id,
             date: recordDate,
@@ -599,6 +608,8 @@ export async function POST(request: NextRequest) {
             hoursWorked: hoursWorkedValue,
             isLate,
             isAbsent,
+            lateMinutes,
+            undertimeMinutes,
             morningTimeIn,
             morningTimeOut,
             afternoonTimeIn,
@@ -620,6 +631,8 @@ export async function POST(request: NextRequest) {
                 hoursWorked: hoursWorkedValue,
                 isLate,
                 isAbsent,
+                lateMinutes,
+                undertimeMinutes,
                 morningTimeIn,
                 morningTimeOut,
                 afternoonTimeIn,
@@ -731,6 +744,8 @@ export async function POST(request: NextRequest) {
             hoursWorked: null,
             isLate: false,
             isAbsent: true,
+            lateMinutes: 0,
+            undertimeMinutes: 0,
             morningTimeIn: null,
             morningTimeOut: null,
             afternoonTimeIn: null,

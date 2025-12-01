@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react"
 import type { AttendanceRecord } from "../types"
-import { formatTime, formatHours, calculateUndertime } from "../utils"
+import { formatTime, formatHours, calculateUndertime, calculateLate } from "../utils"
 import AttendanceApprovalDialog from "./AttendanceApprovalDialog"
 
 interface AttendanceTableProps {
@@ -20,7 +20,7 @@ const getStatusBadge = (record: AttendanceRecord) => {
     return <Badge className="bg-red-500">Absent</Badge>
   }
   if (record.timeIn && record.isLate) {
-    return <Badge className="bg-yellow-500">Late</Badge>
+    return <Badge className="bg-yellow-500">Undertime</Badge>
   }
   if (record.timeIn) {
     return <Badge className="bg-green-500">Present</Badge>
@@ -116,6 +116,7 @@ export default function AttendanceTable({ records }: AttendanceTableProps) {
             <TableHead colSpan={2} className="text-center">Morning</TableHead>
             <TableHead colSpan={2} className="text-center">Afternoon</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Undertime</TableHead>
             <TableHead>Hours Worked</TableHead>
             <TableHead>Approval Status</TableHead>
             <TableHead className="text-center">Actions</TableHead>
@@ -130,6 +131,7 @@ export default function AttendanceTable({ records }: AttendanceTableProps) {
             <TableHead className="text-xs text-gray-500">Out</TableHead>
             <TableHead className="text-xs text-gray-500">In</TableHead>
             <TableHead className="text-xs text-gray-500">Out</TableHead>
+            <TableHead></TableHead>
             <TableHead></TableHead>
             <TableHead></TableHead>
             <TableHead></TableHead>
@@ -197,7 +199,14 @@ export default function AttendanceTable({ records }: AttendanceTableProps) {
               <TableCell className="text-green-600">{formatTime(record.afternoonTimeIn ?? null)}</TableCell>
               <TableCell className="text-orange-600">{formatTime(record.afternoonTimeOut ?? null)}</TableCell>
               <TableCell>{getStatusBadge(record)}</TableCell>
-              <TableCell className="text-red-500 font-medium">{calculateUndertime(record)}</TableCell>
+              <TableCell className="text-red-500 font-medium">{(() => {
+                const late = calculateLate(record)
+                const undertime = calculateUndertime(record)
+                if (late === '-' && undertime === '-') return '-'
+                if (late === '-') return undertime
+                if (undertime === '-') return late
+                return `${late} + ${undertime}`
+              })()}</TableCell>
               <TableCell>{formatHours(record.hoursWorked)}</TableCell>
               <TableCell>
                 {needsApproval(record) ? (

@@ -36,12 +36,17 @@ export const usePayrollGeneration = () => {
       const end = new Date(templateDateRange.to)
       end.setHours(23, 59, 59, 999)
 
+      const employeeType = selectedDepartment === "all" ? undefined 
+        : selectedDepartment === "TEACHING" ? "TEACHING_PERSONNEL" 
+        : selectedDepartment === "NON-TEACHING" ? "NON_TEACHING_PERSONNEL" 
+        : selectedDepartment === "CASUAL_PLANTILLA" ? "CASUAL_PLANTILLA"
+        : undefined
+
       console.log("Generating report with params:", {
         template: template.type,
         payPeriodStart: start.toISOString(),
         payPeriodEnd: end.toISOString(),
-        department: selectedDepartment === "all" ? undefined : (selectedDepartment === "NON_TEACHING" ? undefined : selectedDepartment),
-        employeeType: selectedDepartment === "NON_TEACHING" ? "NON_TEACHING_PERSONNEL" : undefined,
+        employeeType,
         role: "EMPLOYEE",
         employmentStatus: selectedEmploymentStatus && selectedEmploymentStatus !== 'all' ? selectedEmploymentStatus : undefined
       })
@@ -53,12 +58,10 @@ export const usePayrollGeneration = () => {
       switch (template.type) {
         case "monthly":
         case "custom":
-          // Use existing payroll generation endpoint for monthly and custom period reports
           requestBody = {
             payPeriodStart: start.toISOString(),
             payPeriodEnd: end.toISOString(),
-            department: selectedDepartment === "all" ? undefined : (selectedDepartment === "NON_TEACHING" ? undefined : selectedDepartment),
-            employeeType: selectedDepartment === "NON_TEACHING" ? "NON_TEACHING_PERSONNEL" : undefined,
+            employeeType,
             role: "EMPLOYEE",
             employmentStatus: selectedEmploymentStatus && selectedEmploymentStatus !== 'all' ? selectedEmploymentStatus : undefined
           }
@@ -70,11 +73,10 @@ export const usePayrollGeneration = () => {
           break
 
         case "department":
-          // Use reports endpoint for department-specific payroll
           if (selectedDepartment === "all") {
             toast({
               title: "Error",
-              description: "Please select a specific department for the department payroll report",
+              description: "Please select a specific category for the payroll report",
               variant: "destructive"
             })
             return
@@ -84,19 +86,20 @@ export const usePayrollGeneration = () => {
           deptUrl.searchParams.set('type', 'department-payroll')
           deptUrl.searchParams.set('startDate', start.toISOString())
           deptUrl.searchParams.set('endDate', end.toISOString())
-          deptUrl.searchParams.set('department', selectedDepartment)
+          if (employeeType) {
+            deptUrl.searchParams.set('employeeType', employeeType)
+          }
           
           response = await fetch(deptUrl.toString())
           break
 
         case "tax":
-          // Use reports endpoint for tax withholding summary
           const taxUrl = new URL('/api/admin/reports', window.location.origin)
           taxUrl.searchParams.set('type', 'tax-withholding-summary')
           taxUrl.searchParams.set('startDate', start.toISOString())
           taxUrl.searchParams.set('endDate', end.toISOString())
-          if (selectedDepartment !== "all") {
-            taxUrl.searchParams.set('department', selectedDepartment)
+          if (employeeType) {
+            taxUrl.searchParams.set('employeeType', employeeType)
           }
           
           response = await fetch(taxUrl.toString())

@@ -8,7 +8,7 @@ export const DEPARTMENTS = [
 export const ATTENDANCE_STATUSES = [
   { value: "all", label: "All" },
   { value: "present", label: "Present" },
-  { value: "late", label: "Late" },
+  { value: "late", label: "Undertime" },
   { value: "absent", label: "Absent" }
 ] as const
 

@@ -32,7 +32,8 @@ export default function AdminDashboard() {
       weekday: 'long', 
       year: 'numeric', 
       month: 'long', 
-      day: 'numeric' 
+      day: 'numeric',
+      timeZone: 'Asia/Manila'
     }
     setCurrentDate(now.toLocaleDateString('en-US', options))
     

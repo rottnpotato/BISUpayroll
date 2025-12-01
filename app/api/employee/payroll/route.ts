@@ -218,6 +218,7 @@ export async function GET(request: NextRequest) {
         loanDeductions,
         otherDeductions,
         lateDeductions,
+        undertimeDeductions,
         totalDeductions,
         grossPay,
         netPay

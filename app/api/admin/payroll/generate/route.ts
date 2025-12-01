@@ -279,14 +279,36 @@ export async function POST(request: NextRequest) {
     let payrollFileRecord = null
     if (payrollResults.length > 0) {
       try {
+        // Build category label
+        const categoryLabel = employeeType 
+          ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'NON-TEACHING' 
+            : employeeType === 'TEACHING_PERSONNEL' ? 'TEACHING' 
+            : employeeType === 'CASUAL_PLANTILLA' ? 'CASUAL PLANTILLA' 
+            : employeeType) 
+          : null
+        
+        const statusLabel = (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) 
+          ? employmentStatus 
+          : null
+        
+        // Combine category and status for display
+        let combinedLabel = 'ALL'
+        if (categoryLabel && statusLabel) {
+          combinedLabel = `${categoryLabel}: ${statusLabel}`
+        } else if (categoryLabel) {
+          combinedLabel = categoryLabel
+        } else if (statusLabel) {
+          combinedLabel = statusLabel
+        }
+
         // Create payroll summary data
         const payrollSummary = {
           payPeriodStart: startDate.toISOString(),
           payPeriodEnd: endDate.toISOString(),
           generatedAt: new Date().toISOString(),
-          department: employeeType ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'Non-Teaching Personnel' : employeeType) : (department || 'All Departments'),
+          department: combinedLabel,
           employeeType: employeeType || null,
-          employmentStatus: (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? employmentStatus : 'All Statuses',
+          employmentStatus: statusLabel || 'All Statuses',
           employees: payrollResults.map((result: any) => ({
             employeeId: result.user?.employeeId || 'N/A',
             name: `${result.user?.firstName || ''} ${result.user?.lastName || ''}`.trim(),
@@ -331,7 +353,12 @@ export async function POST(request: NextRequest) {
         
   const timestamp = Date.now()
   const statusSlug = (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? (employmentStatus as string).toLowerCase() : 'all'
-  const deptSlug = employeeType ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'non-teaching' : employeeType.toLowerCase()) : (department || 'all')
+  const deptSlug = employeeType 
+    ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'non-teaching' 
+      : employeeType === 'TEACHING_PERSONNEL' ? 'teaching' 
+      : employeeType === 'CASUAL_PLANTILLA' ? 'casual-plantilla' 
+      : employeeType.toLowerCase()) 
+    : 'all'
   const tempFileName = `payroll_${deptSlug}_${statusSlug}_${timestamp}.json`
         const tempFilePath = path.join(tempDir, tempFileName)
         
@@ -372,7 +399,7 @@ export async function POST(request: NextRequest) {
 
         // Create PayrollFile record
         if (currentUserId) {
-          const deptLabel = employeeType ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'Non-Teaching' : employeeType) : (department || null)
+          const deptLabel = combinedLabel !== 'ALL' ? combinedLabel : null
           payrollFileRecord = await prisma.payrollFile.create({
             data: {
             fileName: encryptionResult.metadata.originalFileName,

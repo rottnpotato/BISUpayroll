@@ -26,6 +26,7 @@ export interface PayslipData {
     grossPay: number
     netPay: number
     lateDeductions: number
+    undertimeDeductions: number
     governmentDeductions: number
     loanDeductions: number
     otherDeductions: number
@@ -126,11 +127,21 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
     })
   }
 
-  // Add late/undertime deductions
-  if (data.calculations.lateDeductions > 0) {
+  // Add late deductions
+  const lateDeductionsAmount = data.calculations.lateDeductions ?? 0
+  if (lateDeductionsAmount > 0) {
     deductionsList.push({
-      name: 'Undertime / Late',
-      amount: numberFmt(data.calculations.lateDeductions, currency)
+      name: 'Late Deductions',
+      amount: numberFmt(lateDeductionsAmount, currency)
+    })
+  }
+
+  // Add undertime deductions
+  const undertimeDeductionsAmount = data.calculations.undertimeDeductions ?? 0
+  if (undertimeDeductionsAmount > 0) {
+    deductionsList.push({
+      name: 'Undertime Deductions',
+      amount: numberFmt(undertimeDeductionsAmount, currency)
     })
   }
 

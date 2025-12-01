@@ -150,9 +150,10 @@ export function OvertimeModal({
     try {
       const date = new Date(timeString)
       return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: true 
+        hour12: true,
+        timeZone: 'Asia/Manila'
       })
     } catch {
       return timeString

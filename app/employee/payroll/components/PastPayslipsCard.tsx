@@ -74,19 +74,25 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
   }
 
   const handleViewPayslip = async (record: PayrollRecord) => {
-    if (!record.isGenerated) {
-      toast.error('Payslip not yet generated for this period')
-      return
-    }
-
     try {
       setIsGenerating(record.id)
       setSelectedPayslip(record)
-      toast.message('Generating payslip…')
+      toast.message('Loading payslip…')
       
-      const res = await fetch(`/api/employee/payslip/${record.id}?format=pdf`)
+      // Use on-demand generation API for all records
+      const res = await fetch('/api/employee/payslip/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payPeriodStart: new Date(record.payPeriodStart).toISOString(),
+          payPeriodEnd: new Date(record.payPeriodEnd).toISOString(),
+          format: 'pdf'
+        })
+      })
+      
       if (!res.ok) {
-        toast.error('Failed to generate payslip')
+        const errorData = await res.json().catch(() => ({}))
+        toast.error(errorData.message || 'Failed to load payslip')
         setIsGenerating(null)
         return
       }
@@ -96,28 +102,14 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
       
       if (isPdf) {
         const objectUrl = URL.createObjectURL(blob)
-        const printWindow = window.open(objectUrl, '_blank')
-        if (printWindow) {
-          printWindow.onload = () => {
-            setTimeout(() => {
-              printWindow.print()
-            }, 250)
-          }
-          toast.success('Payslip opened for printing')
-        } else {
-          // Fallback if popup blocked
-          setPdfUrl(prev => {
-            if (prev) URL.revokeObjectURL(prev)
-            return objectUrl
-          })
-          setShowPdf(true)
-          toast.success('Payslip ready')
-        }
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000)
+        setPdfUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev)
+          return objectUrl
+        })
+        setShowPdf(true)
+        toast.success('Payslip loaded')
       } else {
-        // Fallback to download if PDF not produced
-        const ext = 'docx'
-        const fileName = `Payslip_${record.payPeriodStart}_${record.payPeriodEnd}.${ext}`
+        const fileName = `Payslip_${formatDate(record.payPeriodStart)}_to_${formatDate(record.payPeriodEnd)}.docx`
         const objectUrl = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = objectUrl
@@ -125,30 +117,36 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
         document.body.appendChild(a)
         a.click()
         a.remove()
-        toast.success('Payslip (DOCX) download started')
+        toast.success('Payslip downloaded as DOCX')
         setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
       }
     } catch (err) {
       console.error(err)
-      toast.error('Error generating payslip')
+      toast.error('Error loading payslip')
     } finally {
       setIsGenerating(null)
     }
   }
 
   const handleDownloadPayslip = async (record: PayrollRecord) => {
-    if (!record.isGenerated) {
-      toast.error('Payslip not yet generated for this period')
-      return
-    }
-
     try {
       setIsGenerating(record.id)
-      toast.message('Downloading payslip…')
+      toast.message('Preparing download…')
       
-      const res = await fetch(`/api/employee/payslip/${record.id}?format=pdf`)
+      // Use on-demand generation API for all records
+      const res = await fetch('/api/employee/payslip/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payPeriodStart: new Date(record.payPeriodStart).toISOString(),
+          payPeriodEnd: new Date(record.payPeriodEnd).toISOString(),
+          format: 'pdf'
+        })
+      })
+      
       if (!res.ok) {
-        toast.error('Failed to download payslip')
+        const errorData = await res.json().catch(() => ({}))
+        toast.error(errorData.message || 'Failed to download payslip')
         setIsGenerating(null)
         return
       }
@@ -156,7 +154,9 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
       const blob = await res.blob()
       const isPdf = blob.type === 'application/pdf'
       const ext = isPdf ? 'pdf' : 'docx'
-      const fileName = `Payslip_${record.payPeriodStart}_${record.payPeriodEnd}.${ext}`
+      const periodStart = formatDate(record.payPeriodStart).replace(/,?\s+/g, '-')
+      const periodEnd = formatDate(record.payPeriodEnd).replace(/,?\s+/g, '-')
+      const fileName = `Payslip_${periodStart}_to_${periodEnd}.${ext}`
       
       const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -165,7 +165,7 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
       document.body.appendChild(a)
       a.click()
       a.remove()
-      toast.success('Payslip downloaded')
+      toast.success(`Payslip downloaded as ${ext.toUpperCase()}`)
       setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
     } catch (err) {
       console.error(err)
@@ -173,6 +173,32 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
     } finally {
       setIsGenerating(null)
     }
+  }
+
+  const handlePrintPayslip = () => {
+    const iframe = document.getElementById('payslip-pdf-frame') as HTMLIFrameElement | null
+    try { 
+      iframe?.contentWindow?.focus()
+      iframe?.contentWindow?.print()
+    } catch {
+      toast.error('Unable to print. Please use your browser\'s print function.')
+    }
+  }
+
+  const handleDownloadFromPreview = () => {
+    if (!pdfUrl || !selectedPayslip) return
+    
+    const periodStart = formatDate(selectedPayslip.payPeriodStart).replace(/,?\s+/g, '-')
+    const periodEnd = formatDate(selectedPayslip.payPeriodEnd).replace(/,?\s+/g, '-')
+    const fileName = `Payslip_${periodStart}_to_${periodEnd}.pdf`
+    
+    const a = document.createElement('a')
+    a.href = pdfUrl
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    toast.success('Payslip downloaded')
   }
 
   const handleGenerateCustomPeriod = async () => {
@@ -196,13 +222,11 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
 
     try {
       setIsGeneratingCustom(true)
-      toast.message('Generating payslip for custom period…')
+      toast.message('Generating payslip…')
       
       const res = await fetch(`/api/employee/payslip/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           payPeriodStart: startDate.toISOString(),
           payPeriodEnd: endDate.toISOString(),
@@ -221,30 +245,34 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
       
       if (isPdf) {
         const objectUrl = URL.createObjectURL(blob)
-        const printWindow = window.open(objectUrl, '_blank')
-        if (printWindow) {
-          printWindow.onload = () => {
-            setTimeout(() => {
-              printWindow.print()
-            }, 250)
-          }
-          setShowCustomPeriodDialog(false)
-          toast.success('Payslip opened for printing')
-        } else {
-          // Fallback if popup blocked
-          setPdfUrl(prev => {
-            if (prev) URL.revokeObjectURL(prev)
-            return objectUrl
-          })
-          setShowPdf(true)
-          setShowCustomPeriodDialog(false)
-          toast.success('Payslip generated successfully')
-        }
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000)
+        // Set a temporary payslip record for the custom period
+        setSelectedPayslip({
+          id: 'custom',
+          payPeriodStart: customPeriodStart,
+          payPeriodEnd: customPeriodEnd,
+          dailyRate: 0,
+          overtime: 0,
+          deductions: 0,
+          bonuses: 0,
+          grossPay: 0,
+          netPay: 0,
+          isPaid: false,
+          paidAt: null,
+          isGenerated: true,
+          generatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
+        })
+        setPdfUrl(prev => {
+          if (prev) URL.revokeObjectURL(prev)
+          return objectUrl
+        })
+        setShowCustomPeriodDialog(false)
+        setShowPdf(true)
+        toast.success('Payslip generated successfully')
       } else {
-        // Fallback to download if PDF not produced
-        const ext = 'docx'
-        const fileName = `Payslip_${customPeriodStart}_${customPeriodEnd}.${ext}`
+        const periodStart = formatDate(customPeriodStart).replace(/,?\s+/g, '-')
+        const periodEnd = formatDate(customPeriodEnd).replace(/,?\s+/g, '-')
+        const fileName = `Payslip_${periodStart}_to_${periodEnd}.docx`
         const objectUrl = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = objectUrl
@@ -252,12 +280,11 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
         document.body.appendChild(a)
         a.click()
         a.remove()
-        toast.success('Payslip (DOCX) download started')
+        toast.success('Payslip downloaded as DOCX')
         setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
         setShowCustomPeriodDialog(false)
       }
 
-      // Reset form
       setCustomPeriodStart('')
       setCustomPeriodEnd('')
     } catch (err) {
@@ -368,7 +395,7 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
                             size="sm"
                             variant="outline"
                             onClick={() => handleViewPayslip(record)}
-                            disabled={!record.isGenerated || isGenerating === record.id}
+                            disabled={isGenerating === record.id}
                             className="text-bisu-purple-deep border-bisu-purple-deep hover:bg-bisu-purple-extralight"
                           >
                             {isGenerating === record.id ? (
@@ -384,7 +411,7 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
                             size="sm"
                             variant="outline"
                             onClick={() => handleDownloadPayslip(record)}
-                            disabled={!record.isGenerated || isGenerating === record.id}
+                            disabled={isGenerating === record.id}
                             className="text-bisu-purple-deep border-bisu-purple-deep hover:bg-bisu-purple-extralight"
                           >
                             <Download className="h-3 w-3 mr-1" />
@@ -415,62 +442,59 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
         }}
       >
         <DialogContent className="max-w-5xl w-full h-[90vh] p-4 flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between w-full">
-              <span>
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                <FileText className="h-5 w-5" />
                 Payslip Preview
                 {selectedPayslip && (
                   <span className="ml-2 text-sm font-normal text-gray-500">
                     ({formatDate(selectedPayslip.payPeriodStart)} - {formatDate(selectedPayslip.payPeriodEnd)})
                   </span>
                 )}
-              </span>
+              </DialogTitle>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    const iframe = document.getElementById('payslip-pdf-frame') as HTMLIFrameElement | null
-                    try { 
-                      iframe?.contentWindow?.focus()
-                      iframe?.contentWindow?.print()
-                    } catch {}
-                  }}
+                  onClick={handleDownloadFromPreview}
+                  className="text-bisu-purple-deep border-bisu-purple-deep hover:bg-bisu-purple-extralight"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Download
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handlePrintPayslip}
+                  className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
                 >
                   <Printer className="h-4 w-4 mr-1" />
                   Print
                 </Button>
               </div>
-            </DialogTitle>
+            </div>
           </DialogHeader>
-          <div className="flex-1 border rounded bg-muted overflow-hidden">
+          <div className="flex-1 border rounded-lg bg-gray-100 overflow-hidden shadow-inner">
             {pdfUrl ? (
               <iframe
                 id="payslip-pdf-frame"
                 src={pdfUrl}
                 className="w-full h-full"
-                onLoad={(e) => {
-                  // Auto attempt print once after load
-                  setTimeout(() => {
-                    try { 
-                      const iframe = e.target as HTMLIFrameElement
-                      if (iframe.contentWindow) {
-                        iframe.contentWindow.focus()
-                        iframe.contentWindow.print()
-                      }
-                    } catch {}
-                  }, 400)
-                }}
+                title="Payslip PDF Preview"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                Loading PDF…
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-8 w-8 rounded-full border-2 border-t-transparent border-bisu-purple-deep animate-spin" />
+                  <span>Loading payslip…</span>
+                </div>
               </div>
             )}
           </div>
-          <div className="mt-3 text-xs text-muted-foreground">
-            If the print dialog does not appear automatically, click the Print button.
+          <div className="mt-3 text-xs text-muted-foreground text-center">
+            Use the buttons above to download or print your payslip.
           </div>
         </DialogContent>
       </Dialog>

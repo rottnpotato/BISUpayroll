@@ -67,7 +67,7 @@ export function ConfigurationStatusCard({
                   type === 'DEPARTMENT' ? `Dept: ${targetName || 'N/A'}` :
                   type === 'INDIVIDUAL' ? `Employee: ${targetName || 'N/A'}` :
                   type === 'ROLE' ? `Role: ${targetName || 'N/A'}` :
-                  type === 'POSITION' ? `Position: ${targetName || 'N/A'}` : 'Unknown'
+                  type === 'POSITION' ? `Position: ${targetName || 'N/A'}` : 'Permanent Only'
     
     return (
       <Badge variant="outline" className="text-xs">
@@ -122,7 +122,7 @@ export function ConfigurationStatusCard({
       title: "Government Contributions",
       icon: PiggyBank,
       isActive: contributionsConfig.isActive !== false,
-      scope: contributionsConfig.applicationScope?.applicationType || 'ALL',
+      scope: contributionsConfig.applicationScope?.applicationType || 'Permanent Only' as ApplicationType,
       scopeTarget: contributionsConfig.applicationScope?.targetName,
       values: [
         { label: "GSIS Employee", value: `${(contributionsConfig.gsis.employeeRate * 100).toFixed(2)}%` },

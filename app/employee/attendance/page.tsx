@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AttendanceDetailModal } from "./components/attendance-detail-modal"
 import { AttendanceRecord, AttendanceData, AttendanceSummary } from "./types"
-import { calculateUndertime } from "./utils"
+import { calculateUndertime, calculateLate } from "./utils"
 
 export default function EmployeeAttendancePage() {
   const [isLoading, setIsLoading] = useState(true)
@@ -51,14 +51,33 @@ export default function EmployeeAttendancePage() {
     fetchAttendanceData()
   }, [selectedMonth, selectedYear])
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, record: AttendanceRecord) => {
+    const late = calculateLate(record)
+    const undertime = calculateUndertime(record)
+    const hasLate = late !== '-'
+    const hasUndertime = undertime !== '-'
+    
     switch (status.toLowerCase()) {
       case 'on time':
+        if (hasUndertime) {
+          return <Badge className="bg-yellow-500 text-white">Undertime</Badge>
+        }
         return <Badge className="bg-green-500 text-white">On Time</Badge>
       case 'late':
-        return <Badge className="bg-yellow-500 text-white">Late</Badge>
+        if (hasLate && hasUndertime) {
+          return <Badge className="bg-yellow-500 text-white">Undertime</Badge>
+        } else if (hasLate) {
+          return <Badge className="bg-yellow-500 text-white">Undertime</Badge>
+        } else if (hasUndertime) {
+          return <Badge className="bg-yellow-500 text-white">Undertime</Badge>
+        }
+        return <Badge className="bg-yellow-500 text-white">Undertime</Badge>
+      case 'undertime':
+        return <Badge className="bg-yellow-500 text-white">Undertime</Badge>
       case 'absent':
         return <Badge className="bg-red-500 text-white">Absent</Badge>
+      case 'half-day':
+        return <Badge className="bg-blue-500 text-white">Half-Day</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
@@ -218,7 +237,7 @@ export default function EmployeeAttendancePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
-                  Late Days
+                  Undertime Days
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -336,9 +355,16 @@ export default function EmployeeAttendancePage() {
                             <TableCell>
                               {record.afternoonTimeOut || <span className="text-gray-400">--</span>}
                             </TableCell>
-                            <TableCell className="text-red-500 font-medium">{calculateUndertime(record)}</TableCell>
+                            <TableCell className="text-red-500 font-medium">{(() => {
+                              const late = calculateLate(record)
+                              const undertime = calculateUndertime(record)
+                              if (late === '-' && undertime === '-') return '-'
+                              if (late === '-') return undertime
+                              if (undertime === '-') return late
+                              return `${late} + ${undertime}`
+                            })()}</TableCell>
                             <TableCell>{formatHours(record.hours)}</TableCell>
-                            <TableCell>{getStatusBadge(record.status)}</TableCell>
+                            <TableCell>{getStatusBadge(record.status, record)}</TableCell>
                             <TableCell>
                               {getApprovalStatusBadge(record.approvalStatus!, record.rejectionReason)}
                             </TableCell>

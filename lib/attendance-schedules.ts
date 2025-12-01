@@ -75,3 +75,95 @@ export function getScheduleInMinutes(employeeType: string | null | undefined) {
     afternoonEnd: timeToMinutes(schedule.afternoonEnd)
   }
 }
+
+/**
+ * Calculate late minutes and undertime minutes based on actual clock in/out times
+ * @param morningTimeIn Morning clock in time
+ * @param morningTimeOut Morning clock out time  
+ * @param afternoonTimeIn Afternoon clock in time
+ * @param afternoonTimeOut Afternoon clock out time
+ * @param employeeType Employee type to determine schedule
+ * @returns Object with lateMinutes and undertimeMinutes
+ */
+export function calculateLateAndUndertime(
+  morningTimeIn: Date | null,
+  morningTimeOut: Date | null,
+  afternoonTimeIn: Date | null,
+  afternoonTimeOut: Date | null,
+  employeeType: string | null | undefined
+): { lateMinutes: number; undertimeMinutes: number } {
+  const schedule = getScheduleInMinutes(employeeType)
+  let lateMinutes = 0
+  let undertimeMinutes = 0
+
+  // Helper to get minutes from midnight in Manila time
+  const getManilaMinutesFromMidnight = (date: Date): number => {
+    const manilaDate = new Date(date.getTime() + 8 * 60 * 60 * 1000)
+    return manilaDate.getUTCHours() * 60 + manilaDate.getUTCMinutes()
+  }
+
+  // Calculate late minutes (morning session)
+  if (morningTimeIn) {
+    const actualMorningInMinutes = getManilaMinutesFromMidnight(morningTimeIn)
+    if (actualMorningInMinutes > schedule.morningStart) {
+      lateMinutes = actualMorningInMinutes - schedule.morningStart
+    }
+  } else if (afternoonTimeIn && !morningTimeIn && !morningTimeOut) {
+    // No morning session at all - late for entire morning
+    const actualAfternoonInMinutes = getManilaMinutesFromMidnight(afternoonTimeIn)
+    if (actualAfternoonInMinutes > schedule.morningStart) {
+      // Consider late from morning start until afternoon start
+      lateMinutes = schedule.afternoonStart - schedule.morningStart
+    }
+  }
+
+  // Calculate afternoon late minutes if applicable
+  if (afternoonTimeIn && morningTimeOut) {
+    const actualAfternoonInMinutes = getManilaMinutesFromMidnight(afternoonTimeIn)
+    if (actualAfternoonInMinutes > schedule.afternoonStart) {
+      const afternoonLate = actualAfternoonInMinutes - schedule.afternoonStart
+      lateMinutes += afternoonLate
+    }
+  }
+
+  // Calculate undertime minutes
+  // Morning undertime
+  if (morningTimeIn && morningTimeOut) {
+    const actualMorningOutMinutes = getManilaMinutesFromMidnight(morningTimeOut)
+    if (actualMorningOutMinutes < schedule.morningEnd) {
+      undertimeMinutes = schedule.morningEnd - actualMorningOutMinutes
+    }
+  }
+
+  // Afternoon undertime
+  if (afternoonTimeIn && afternoonTimeOut) {
+    const actualAfternoonOutMinutes = getManilaMinutesFromMidnight(afternoonTimeOut)
+    if (actualAfternoonOutMinutes < schedule.afternoonEnd) {
+      const afternoonUndertime = schedule.afternoonEnd - actualAfternoonOutMinutes
+      undertimeMinutes += afternoonUndertime
+    }
+  } else if ((morningTimeIn || morningTimeOut) && !afternoonTimeIn && !afternoonTimeOut) {
+    // Had morning session but no afternoon session - entire afternoon is undertime
+    const afternoonDuration = schedule.afternoonEnd - schedule.afternoonStart
+    undertimeMinutes += afternoonDuration
+  }
+
+  // If only afternoon session exists and it ended before scheduled end
+  if (!morningTimeIn && !morningTimeOut && afternoonTimeOut) {
+    const actualAfternoonOutMinutes = getManilaMinutesFromMidnight(afternoonTimeOut)
+    if (actualAfternoonOutMinutes < schedule.afternoonEnd) {
+      // Already calculated above, but also need to account for missing morning
+      const morningDuration = schedule.morningEnd - schedule.morningStart
+      undertimeMinutes += morningDuration
+    } else {
+      // Afternoon ended on time but missing morning
+      const morningDuration = schedule.morningEnd - schedule.morningStart
+      undertimeMinutes += morningDuration
+    }
+  }
+
+  return {
+    lateMinutes: Math.max(0, lateMinutes),
+    undertimeMinutes: Math.max(0, undertimeMinutes)
+  }
+}

@@ -217,17 +217,16 @@ export function MonthlyPayrollGenerator({
           </div>
 
           <div>
-            <p className="text-xs text-gray-700 mb-2">Department (Optional)</p>
+            <p className="text-xs text-gray-700 mb-2">Category</p>
             <Select value={selectedDepartment} onValueChange={onDepartmentChange}>
               <SelectTrigger>
-                <SelectValue placeholder="All Departments" />
+                <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="NON_TEACHING">Non-Teaching Personnel</SelectItem>
-                <SelectItem value="CCIS">CCIS</SelectItem>
-                <SelectItem value="CTAS">CTAS</SelectItem>
-                <SelectItem value="CCJ">CCJ</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="TEACHING">TEACHING</SelectItem>
+                <SelectItem value="NON-TEACHING">NON-TEACHING</SelectItem>
+                <SelectItem value="CASUAL_PLANTILLA">CASUAL PLANTILLA</SelectItem>
               </SelectContent>
             </Select>
             <div className="mt-4">

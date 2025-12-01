@@ -37,29 +37,14 @@ export const calculateUndertime = (record: AttendanceRecord): string => {
 
   // Get employee-specific schedule
   const schedule = getScheduleInMinutes(record.user.employeeType)
-  const MORNING_START = schedule.morningStart
   const MORNING_END = schedule.morningEnd
-  const AFTERNOON_START = schedule.afternoonStart
   const AFTERNOON_END = schedule.afternoonEnd
 
-  if (record.morningTimeIn) {
-    const inMinutes = getMinutes(record.morningTimeIn)
-    if (inMinutes > MORNING_START) {
-      totalUndertimeMinutes += (inMinutes - MORNING_START)
-    }
-  }
-
+  // UNDERTIME: Only count early departures (leaving before scheduled end time)
   if (record.morningTimeOut) {
     const outMinutes = getMinutes(record.morningTimeOut)
     if (outMinutes < MORNING_END) {
       totalUndertimeMinutes += (MORNING_END - outMinutes)
-    }
-  }
-
-  if (record.afternoonTimeIn) {
-    const inMinutes = getMinutes(record.afternoonTimeIn)
-    if (inMinutes > AFTERNOON_START) {
-      totalUndertimeMinutes += (inMinutes - AFTERNOON_START)
     }
   }
 
@@ -70,39 +55,84 @@ export const calculateUndertime = (record: AttendanceRecord): string => {
     }
   }
 
-  // Fallback for single punch records (if morning/afternoon fields are missing but timeIn/timeOut exist)
-  if (!record.morningTimeIn && !record.afternoonTimeIn && record.timeIn) {
-     const inMinutes = getMinutes(record.timeIn)
-     // Assume morning start if before 12:00, else afternoon start
-     if (inMinutes < 12 * 60) {
-        if (inMinutes > MORNING_START) {
-           totalUndertimeMinutes += (inMinutes - MORNING_START)
-        }
-     } else {
-        if (inMinutes > AFTERNOON_START) {
-           totalUndertimeMinutes += (inMinutes - AFTERNOON_START)
-        }
-     }
-  }
-  
+  // Fallback for single punch records (legacy support)
   if (!record.morningTimeOut && !record.afternoonTimeOut && record.timeOut) {
-      const outMinutes = getMinutes(record.timeOut)
-      // Assume afternoon end if after 13:00, else morning end
-      if (outMinutes > 13 * 60) {
-          if (outMinutes < AFTERNOON_END) {
-              totalUndertimeMinutes += (AFTERNOON_END - outMinutes)
-          }
-      } else {
-          if (outMinutes < MORNING_END) {
-              totalUndertimeMinutes += (MORNING_END - outMinutes)
-          }
+    const outMinutes = getMinutes(record.timeOut)
+    // Assume afternoon end if after 13:00, else morning end
+    if (outMinutes > 13 * 60) {
+      if (outMinutes < AFTERNOON_END) {
+        totalUndertimeMinutes += (AFTERNOON_END - outMinutes)
       }
+    } else {
+      if (outMinutes < MORNING_END) {
+        totalUndertimeMinutes += (MORNING_END - outMinutes)
+      }
+    }
   }
 
   if (totalUndertimeMinutes <= 0) return "-"
 
   const h = Math.floor(totalUndertimeMinutes / 60)
   const m = totalUndertimeMinutes % 60
+  
+  if (h > 0) {
+    return `${h}h ${m}m`
+  }
+  return `${m}m`
+}
+
+export const calculateLate = (record: AttendanceRecord): string => {
+  if (record.isAbsent) return "-"
+  
+  let totalLateMinutes = 0
+
+  // Helper to get minutes from time string using standardized Manila time utilities
+  const getMinutes = (dateStr: string): number => {
+    const date = new Date(dateStr)
+    const hours = getManilaHours(date)
+    const minutes = getManilaMinutes(date)
+    return hours * 60 + minutes
+  }
+
+  // Get employee-specific schedule
+  const schedule = getScheduleInMinutes(record.user.employeeType)
+  const MORNING_START = schedule.morningStart
+  const AFTERNOON_START = schedule.afternoonStart
+
+  // LATE: Only count late arrivals (arriving after scheduled start time)
+  if (record.morningTimeIn) {
+    const inMinutes = getMinutes(record.morningTimeIn)
+    if (inMinutes > MORNING_START) {
+      totalLateMinutes += (inMinutes - MORNING_START)
+    }
+  }
+
+  if (record.afternoonTimeIn) {
+    const inMinutes = getMinutes(record.afternoonTimeIn)
+    if (inMinutes > AFTERNOON_START) {
+      totalLateMinutes += (inMinutes - AFTERNOON_START)
+    }
+  }
+
+  // Fallback for single punch records (legacy support)
+  if (!record.morningTimeIn && !record.afternoonTimeIn && record.timeIn) {
+    const inMinutes = getMinutes(record.timeIn)
+    // Assume morning start if before 12:00, else afternoon start
+    if (inMinutes < 12 * 60) {
+      if (inMinutes > MORNING_START) {
+        totalLateMinutes += (inMinutes - MORNING_START)
+      }
+    } else {
+      if (inMinutes > AFTERNOON_START) {
+        totalLateMinutes += (inMinutes - AFTERNOON_START)
+      }
+    }
+  }
+
+  if (totalLateMinutes <= 0) return "-"
+
+  const h = Math.floor(totalLateMinutes / 60)
+  const m = totalLateMinutes % 60
   
   if (h > 0) {
     return `${h}h ${m}m`

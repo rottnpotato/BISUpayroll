@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/database'
 import { AttendancePunchType } from '@prisma/client'
 import { getScheduleForEmployeeType, timeToMinutes } from '@/lib/attendance-schedules'
+import { formatManila, toManilaDateKey } from '@/lib/timezone'
 
 const ADMIN_APPROVED_STATUS = 'APPROVED'
 const ADMIN_REJECTED_STATUS = 'REJECTED'
@@ -65,6 +66,11 @@ export async function GET(request: NextRequest) {
         },
       },
       include: {
+        user: {
+          select: {
+            employeeType: true,
+          },
+        },
         overloadRecords: {
           orderBy: {
             createdAt: 'desc',
@@ -143,9 +149,15 @@ export async function GET(request: NextRequest) {
     // Format the records for the response
     const formattedRecords = attendanceRecords.map((r) => {
       const dateObj = new Date(r.date)
-      const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(dateObj)
+      // Use Manila timezone for date formatting to avoid UTC date shift
+      const manilaDateKey = toManilaDateKey(dateObj)
+      const dayOfWeek = new Intl.DateTimeFormat('en-US', { 
+        weekday: 'long',
+        timeZone: 'Asia/Manila'
+      }).format(dateObj)
 
       const fmt = (d?: Date | null) => (d ? formatTime(d) : null)
+      const iso = (d?: Date | null) => (d ? d.toISOString() : null)
 
       const morningIn = fmt((r as any).morningTimeIn)
       const morningOut = fmt((r as any).morningTimeOut)
@@ -178,7 +190,7 @@ export async function GET(request: NextRequest) {
 
       return {
         id: r.id,
-        date: dateObj.toISOString().split('T')[0],
+        date: manilaDateKey,
         dayOfWeek,
         timeIn,
         timeOut,
@@ -187,14 +199,25 @@ export async function GET(request: NextRequest) {
         approvalStatus: (r as any).status || 'APPROVED',
         rejectionReason: (r as any).rejectionReason || null,
         approvedAt: (r as any).approvedAt ? new Date((r as any).approvedAt).toISOString() : null,
-        // Session fields for UI
+        // Session fields for UI (formatted for display)
         morningTimeIn: morningIn,
         morningTimeOut: morningOut,
         afternoonTimeIn: afternoonIn,
         afternoonTimeOut: afternoonOut,
+        // ISO datetime fields for calculations
+        morningTimeInISO: iso((r as any).morningTimeIn),
+        morningTimeOutISO: iso((r as any).morningTimeOut),
+        afternoonTimeInISO: iso((r as any).afternoonTimeIn),
+        afternoonTimeOutISO: iso((r as any).afternoonTimeOut),
+        timeInISO: iso(overallInDate),
+        timeOutISO: iso(overallOutDate),
         isHalfDay,
         isEarlyOut: Boolean((r as any).isEarlyOut),
         earlyOutReason: (r as any).earlyOutReason || null,
+        // Include user data for late/undertime calculations
+        user: (r as any).user ? {
+          employeeType: (r as any).user.employeeType
+        } : null,
       }
     })
 
@@ -922,11 +945,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to format time
+// Helper function to format time in Manila timezone
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
+    timeZone: 'Asia/Manila'
   })
 } 

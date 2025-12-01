@@ -60,6 +60,8 @@ model AttendanceRecord {
   hoursWorked       Decimal?         @db.Decimal(6, 2)
   isLate            Boolean          @default(false)
   isAbsent          Boolean          @default(false)
+  lateMinutes       Int              @default(0)
+  undertimeMinutes  Int              @default(0)
   
   // New fields for improved attendance tracking
   sessionType       AttendanceSessionType?

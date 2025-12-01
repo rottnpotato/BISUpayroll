@@ -226,14 +226,14 @@ export async function POST(request: NextRequest) {
         lateDeductions: {
           amount: Number(calc.late_deductions),
           formatted: formatCurrency(Number(calc.late_deductions)),
-          formula: "Late Hours * Hourly Rate (or fixed deduction)",
-          calculation: `${formatNumber(Number(calc.late_hours))} hours * ${formatCurrency(hourlyRate)} = ${formatCurrency(Number(calc.late_deductions))}`
+          formula: "Late Minutes * (Hourly Rate / 60)",
+          calculation: `${formatNumber(Number(calc.late_minutes))} minutes * (${formatCurrency(hourlyRate)} / 60) = ${formatCurrency(Number(calc.late_deductions))}`
         },
         undertimeDeductions: {
           amount: Number(calc.undertime_deductions),
           formatted: formatCurrency(Number(calc.undertime_deductions)),
-          formula: "Undertime Hours * Hourly Rate",
-          calculation: `${formatNumber(Number(calc.undertime_hours))} hours * ${formatCurrency(hourlyRate)} = ${formatCurrency(Number(calc.undertime_deductions))}`
+          formula: "Undertime Minutes * (Hourly Rate / 60)",
+          calculation: `${formatNumber(Number(calc.undertime_minutes))} minutes * (${formatCurrency(hourlyRate)} / 60) = ${formatCurrency(Number(calc.undertime_deductions))}`
         },
         contributions: {
           gsis: {
@@ -303,8 +303,8 @@ export async function POST(request: NextRequest) {
           totalHours: Number(calc.hours_worked),
           regularHours: regularHours,
           overtimeHours: Number(calc.overtime_hours),
-          lateHours: Number(calc.late_hours),
-          undertimeHours: Number(calc.undertime_hours),
+          lateMinutes: Number(calc.late_minutes),
+          undertimeMinutes: Number(calc.undertime_minutes),
           holidayHours: Number(calc.holiday_hours)
         },
         records: attendanceRecords.map(r => ({
@@ -353,8 +353,8 @@ export async function POST(request: NextRequest) {
           daysWorked: calc.days_worked,
           hoursWorked: Number(calc.hours_worked),
           overtimeHours: Number(calc.overtime_hours),
-          undertimeHours: Number(calc.undertime_hours),
-          lateHours: Number(calc.late_hours),
+          undertimeMinutes: Number(calc.undertime_minutes),
+          lateMinutes: Number(calc.late_minutes),
           holidayHours: Number(calc.holiday_hours)
         },
         earnings: {

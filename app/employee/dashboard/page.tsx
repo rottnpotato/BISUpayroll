@@ -250,7 +250,8 @@ export default function EmployeeDashboard() {
         const currentTime = new Date().toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
-          hour12: true
+          hour12: true,
+          timeZone: 'Asia/Manila'
         })
         
         setIsTimedIn(!isTimedIn)
@@ -332,7 +333,8 @@ export default function EmployeeDashboard() {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'Asia/Manila'
     })
   }
 
@@ -388,7 +390,7 @@ export default function EmployeeDashboard() {
           <div className="space-y-4 px-6">
             <div className="text-center py-4">
               <div className="text-2xl font-mono font-bold text-bisu-purple-deep mb-2">
-                {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Manila' })}
               </div>
               <div className="text-sm text-gray-600">
                 {getCurrentTime().split(', ')[0]}, {getCurrentTime().split(', ')[1]}

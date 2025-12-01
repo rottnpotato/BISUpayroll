@@ -6,6 +6,8 @@ export interface AttendanceRecord {
   timeOut: string | null
   status: string
   hours: number
+  lateMinutes?: number
+  undertimeMinutes?: number
   
   // New fields for improved attendance tracking
   sessionType?: string | null // 'morning', 'afternoon', 'full_day'
@@ -16,6 +18,12 @@ export interface AttendanceRecord {
   morningTimeOut?: string | null
   afternoonTimeIn?: string | null
   afternoonTimeOut?: string | null
+  morningTimeInISO?: string | null
+  morningTimeOutISO?: string | null
+  afternoonTimeInISO?: string | null
+  afternoonTimeOutISO?: string | null
+  timeInISO?: string | null
+  timeOutISO?: string | null
   totalSessions?: number
   isLate?: boolean
   approvalStatus?: string
@@ -23,6 +31,9 @@ export interface AttendanceRecord {
   approvedAt?: string | null
   overloadRecords?: OverloadRecord[]
   overtimeRequests?: OvertimeRequest[]
+  user?: {
+    employeeType?: string | null
+  } | null
 }
 
 export interface OvertimeRequest {

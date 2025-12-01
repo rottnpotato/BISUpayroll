@@ -21,6 +21,7 @@ export const YEARS = Array.from(
 export const ATTENDANCE_STATUS = {
   PRESENT: "Present",
   ABSENT: "Absent", 
-  LATE: "Late",
+  LATE: "Undertime",
+  UNDERTIME: "Undertime",
   EARLY_OUT: "Early Out"
 } as const 

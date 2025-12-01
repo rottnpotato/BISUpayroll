@@ -244,9 +244,10 @@ export async function POST(request: NextRequest) {
         grossPay: grossPay,
         netPay: netPay,
         lateDeductions: lateDeductions,
+        undertimeDeductions: undertimeDeductions,
         governmentDeductions: governmentDeductions,
         loanDeductions: loanDeductions,
-        otherDeductions: otherDeductions + undertimeDeductions,
+        otherDeductions: otherDeductions,
         totalDeductions: totalDeductions
       },
       deductionBreakdown: deductionBreakdown,

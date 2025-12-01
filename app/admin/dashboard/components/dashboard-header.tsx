@@ -25,7 +25,8 @@ export default function DashboardHeader() {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
-                day: 'numeric'
+                day: 'numeric',
+                timeZone: 'Asia/Manila'
               })}
             </div>
             <div className="text-bisu-yellow-light/80">
