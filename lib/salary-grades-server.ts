@@ -31,13 +31,38 @@ export async function getAllSalaryGrades(): Promise<SalaryGradeInfo[]> {
   }))
 }
 
+// Helper to parse position with rank (e.g., "Professor I" -> { basePosition: "Professor", rank: 1 })
+function parsePositionWithRank(positionWithRank: string): { basePosition: string; rank: number | null } {
+  const romanNumerals: { [key: string]: number } = {
+    'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8
+  }
+  const match = positionWithRank.match(/^(.+?)\s+([IVX]+)$/)
+  if (match) {
+    return {
+      basePosition: match[1].trim(),
+      rank: romanNumerals[match[2]] || null
+    }
+  }
+  return { basePosition: positionWithRank, rank: null }
+}
+
 // Fetch salary grades for a specific position (returns all steps)
+// Supports both "Professor" (base position) and "Professor I" (position with rank)
 export async function getSalaryGradesByPosition(position: string): Promise<SalaryGradeInfo[]> {
+  const { basePosition, rank } = parsePositionWithRank(position)
+  
+  const whereClause: { position: string; rank?: number; isActive: boolean } = {
+    position: basePosition,
+    isActive: true
+  }
+  
+  // If rank is specified, filter by rank as well
+  if (rank !== null) {
+    whereClause.rank = rank
+  }
+  
   const grades = await prisma.salaryGrade.findMany({
-    where: { 
-      position,
-      isActive: true 
-    },
+    where: whereClause,
     orderBy: [{ rank: 'asc' }, { step: 'asc' }]
   })
   
@@ -71,8 +96,19 @@ export async function getDailyRateByGrade(grade: number): Promise<number> {
 }
 
 export async function getAvailableGradesForPosition(position: string): Promise<number[]> {
+  const { basePosition, rank } = parsePositionWithRank(position)
+  
+  const whereClause: { position: string; rank?: number; isActive: boolean } = {
+    position: basePosition,
+    isActive: true
+  }
+  
+  if (rank !== null) {
+    whereClause.rank = rank
+  }
+  
   const grades = await prisma.salaryGrade.findMany({
-    where: { position, isActive: true },
+    where: whereClause,
     distinct: ['grade'],
     orderBy: { grade: 'asc' },
     select: { grade: true }
@@ -82,14 +118,23 @@ export async function getAvailableGradesForPosition(position: string): Promise<n
 }
 
 // Validation function
+// Supports both "Professor" (base position) and "Professor I" (position with rank)
 export async function isValidGradeForPosition(position: string, grade: number, step: number = 1): Promise<boolean> {
+  const { basePosition, rank } = parsePositionWithRank(position)
+  
+  const whereClause: { position: string; grade: number; step: number; rank?: number; isActive: boolean } = {
+    position: basePosition,
+    grade,
+    step,
+    isActive: true
+  }
+  
+  if (rank !== null) {
+    whereClause.rank = rank
+  }
+  
   const salaryGrade = await prisma.salaryGrade.findFirst({
-    where: { 
-      position,
-      grade,
-      step,
-      isActive: true 
-    }
+    where: whereClause
   })
   
   return !!salaryGrade

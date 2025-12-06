@@ -28,34 +28,56 @@ export function EditEmployeeDialog({
   isSubmitting,
   onSubmit
 }: EditEmployeeDialogProps) {
-  const [salarySteps, setSalarySteps] = useState<Array<{ value: number; label: string; rate: number }>>([])
+  const [salarySteps, setSalarySteps] = useState<Array<{ value: number; label: string; rate: number; step: number }>>([])
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
-  // Auto-select salary grade when position changes
+  // Reset initial load flag when dialog opens with new data
+  useEffect(() => {
+    if (open) {
+      setIsInitialLoad(true)
+    }
+  }, [open])
+
+  // Fetch salary steps when position changes or on initial load
   useEffect(() => {
     if (formData.position) {
       const gradeInfo = positionToSalaryGrade[formData.position]
       if (gradeInfo) {
+        // Only update salary grade (always sync this)
         setFormData(prev => ({ ...prev, salaryGrade: gradeInfo.grade.toString() }))
-        // If no step is set, default to step 1
-        if (!formData.salaryStep) {
-          setFormData(prev => ({ ...prev, salaryStep: gradeInfo.defaultStep.toString() }))
-        }
+        
         // Fetch available steps for this grade
         fetch(`/api/admin/salary-grades/options?position=${encodeURIComponent(formData.position)}`)
           .then(res => res.json())
           .then(data => {
             setSalarySteps(data)
-            // Update daily rate based on current step
-            const currentStep = formData.salaryStep || gradeInfo.defaultStep.toString()
-            const option = data.find((opt: any) => opt.step === parseInt(currentStep))
-            if (option) {
-              setFormData(prev => ({ ...prev, dailyRate: option.rate.toString() }))
+            
+            // On initial load, keep the existing step; otherwise set default if empty
+            if (isInitialLoad) {
+              setIsInitialLoad(false)
+              // If we have existing step data, find the matching rate
+              if (formData.salaryStep) {
+                const option = data.find((opt: any) => opt.step === parseInt(formData.salaryStep))
+                if (option && !formData.dailyRate) {
+                  setFormData(prev => ({ ...prev, dailyRate: option.rate.toString() }))
+                }
+              }
+            } else {
+              // Not initial load - this means position was changed by user
+              // Set default step if no step is selected
+              if (!formData.salaryStep) {
+                setFormData(prev => ({ ...prev, salaryStep: gradeInfo.defaultStep.toString() }))
+                const option = data.find((opt: any) => opt.step === gradeInfo.defaultStep)
+                if (option) {
+                  setFormData(prev => ({ ...prev, dailyRate: option.rate.toString() }))
+                }
+              }
             }
           })
           .catch(error => console.error('Failed to fetch salary grade info:', error))
       }
     }
-  }, [formData.position, setFormData])
+  }, [formData.position])
 
 
 
@@ -197,7 +219,13 @@ export function EditEmployeeDialog({
               </Label>
               <Select 
                 value={formData.department} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, department: value, position: "" }))}
+                onValueChange={(value) => {
+                  // Only clear position if department is actually changing
+                  if (value !== formData.department) {
+                    setFormData(prev => ({ ...prev, department: value, position: "", salaryGrade: "", salaryStep: "", dailyRate: "" }))
+                    setIsInitialLoad(false)
+                  }
+                }}
               >
                 <SelectTrigger className={errors.department ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select department" />
@@ -220,7 +248,10 @@ export function EditEmployeeDialog({
               </Label>
               <Select 
                 value={formData.position} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, position: value }))}
+                onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, position: value }))
+                  setIsInitialLoad(false)
+                }}
               >
                 <SelectTrigger className={errors.position ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select position" />
@@ -258,6 +289,7 @@ export function EditEmployeeDialog({
                 value={formData.salaryStep || ""}
                 onValueChange={(value) => {
                   setFormData(prev => ({ ...prev, salaryStep: value }))
+                  setIsInitialLoad(false)
                   const selectedStep = salarySteps.find(s => s.value.toString() === value)
                   if (selectedStep) {
                     setFormData(prev => ({ ...prev, dailyRate: selectedStep.rate.toString() }))
@@ -268,9 +300,9 @@ export function EditEmployeeDialog({
                 <SelectTrigger className={errors.salaryStep ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select step" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="start">
                   {salarySteps.map((step) => (
-                    <SelectItem key={step.value} value={step.value.toString()}>
+                    <SelectItem key={step.value} value={step.value.toString()} className="text-left">
                       {step.label}
                     </SelectItem>
                   ))}
@@ -345,6 +377,74 @@ export function EditEmployeeDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-1 items-center gap-2">
+            <Label htmlFor="edit-address" className="text-left font-medium">
+              Address
+            </Label>
+            <Textarea 
+              id="edit-address" 
+              placeholder="Complete address..." 
+              value={formData.address || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+              className="resize-none"
+              rows={2}
+            />
+          </div>
+          <div className="border-t pt-4 mt-2">
+            <h4 className="font-medium text-bisu-purple-deep mb-3">Emergency Contact Information</h4>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 items-center gap-2">
+                  <Label htmlFor="edit-emergencyContactName" className="text-left font-medium">
+                    Contact Name
+                  </Label>
+                  <Input 
+                    id="edit-emergencyContactName" 
+                    placeholder="Full Name" 
+                    value={formData.emergencyContactName || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactName: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-1 items-center gap-2">
+                  <Label htmlFor="edit-emergencyContactRelationship" className="text-left font-medium">
+                    Relationship
+                  </Label>
+                  <Input 
+                    id="edit-emergencyContactRelationship" 
+                    placeholder="e.g., Spouse, Parent" 
+                    value={formData.emergencyContactRelationship || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactRelationship: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 items-center gap-2">
+                <Label htmlFor="edit-emergencyContactPhone" className="text-left font-medium">
+                  Contact Phone
+                </Label>
+                <Input 
+                  id="edit-emergencyContactPhone" 
+                  placeholder="09XXXXXXXXX" 
+                  value={formData.emergencyContactPhone || ''}
+                  onChange={(e) => {
+                    let value = e.target.value.replace(/\D/g, '')
+                    if (value.length > 0 && value[0] !== '0') {
+                      return
+                    }
+                    if (value.length > 1 && value[0] === '0' && value[1] !== '9') {
+                      return
+                    }
+                    value = value.slice(0, 11)
+                    setFormData(prev => ({ ...prev, emergencyContactPhone: value }))
+                  }}
+                  maxLength={11}
+                  className={errors.emergencyContactPhone ? "border-red-500" : ""}
+                />
+                {errors.emergencyContactPhone && (
+                  <p className="text-red-500 text-xs">{errors.emergencyContactPhone}</p>
+                )}
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-1 items-center gap-2">
             <Label htmlFor="edit-notes" className="text-left font-medium">

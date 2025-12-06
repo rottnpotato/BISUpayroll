@@ -202,10 +202,10 @@ export default function AdminUsersPage() {
       employeeId: user.employeeId || "",
       hireDate: user.hireDate ? new Date(user.hireDate).toISOString().split('T')[0] : "",
       salary: "",
-      address: "",
-      emergencyContactName: "",
-      emergencyContactRelationship: "",
-      emergencyContactPhone: "",
+      address: user.address || "",
+      emergencyContactName: user.emergencyContactName || "",
+      emergencyContactRelationship: user.emergencyContactRelationship || "",
+      emergencyContactPhone: user.emergencyContactPhone || "",
       status: user.status,
       notes: ""
     })

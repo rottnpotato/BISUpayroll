@@ -16,6 +16,10 @@ export interface User {
   salaryGrade?: number
   salaryStep?: number
   dailyRate?: number
+  address?: string
+  emergencyContactName?: string
+  emergencyContactRelationship?: string
+  emergencyContactPhone?: string
 }
 
 export interface FormErrors {
@@ -29,6 +33,7 @@ export interface FormErrors {
   employeeId?: string
   password?: string
   emergencyContactPhone?: string
+  salaryStep?: string
 }
 
 export interface BulkEmployee {

@@ -184,7 +184,7 @@ const buildCompensationRow = (data: EmployeeRowData, startIndex: number): string
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${formatValue(data.serviceIncentiveLeave)}</td>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">${formatValue(data.totalEarnings)}</td>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">${formatValue(data.grossPay)}</td>
-      <td style="padding: 4px; text-align: right; font-weight: bold; color: #155724; background-color: #d4edda;">${formatValue(data.netPay)}</td>
+      <td style="padding: 4px; text-align: right; font-weight: bold;">${formatValue(data.netPay)}</td>
       <td style="padding: 4px;"></td>
     </tr>
   `
@@ -373,10 +373,10 @@ const getDeductionTableHead = (): string => `
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">MPL_LITE<br/>413-9</th>
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">GSIS CPL<br/>413-2</th>
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">SSS Kaltas<br/>439-8</th>
-      <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">FA Ded<br/>439-9</th>
+      <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">FA Deductions<br/>439-9</th>
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">HDMF MP2<br/>414-3</th>
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">HDMF PML<br/>414-2</th>
-      <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">Total Ded</th>
+      <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">Total Deductions</th>
     </tr>
   </thead>
 `

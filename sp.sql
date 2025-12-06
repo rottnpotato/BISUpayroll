@@ -76,11 +76,16 @@ DECLARE
     v_user_salary_step INT;
     v_user_position TEXT;
     v_user_daily_rate DECIMAL;
+    v_user_status TEXT;
     v_position_base TEXT;
     v_position_rank INT;
     v_monthly_base_income DECIMAL := 0;
     v_apply_contributions BOOLEAN := false;
+    v_is_permanent BOOLEAN := false;
     v_25th_day DATE;
+    v_user_gsis DECIMAL := 0;
+    v_user_philhealth DECIMAL := 0;
+    v_user_pagibig DECIMAL := 0;
 BEGIN
     SELECT COALESCE(CAST(value AS DECIMAL), 8) INTO v_daily_hours
     FROM "system_settings" WHERE key = 'working_hours_dailyHours' AND "isActive" = true LIMIT 1;
@@ -98,12 +103,16 @@ BEGIN
     FROM "system_settings" WHERE key = 'working_hours_lateDeductionBasis' AND "isActive" = true LIMIT 1;
 
     v_25th_day := (DATE_TRUNC('month', p_pay_period_end) + INTERVAL '24 days')::date;
-    v_apply_contributions := (p_pay_period_start <= v_25th_day AND p_pay_period_end >= v_25th_day);
 
-    SELECT "salaryGrade", COALESCE("salaryStep", 1), position, "dailyRate"
-    INTO v_user_salary_grade, v_user_salary_step, v_user_position, v_user_daily_rate
+    -- Get user info including employment status
+    SELECT "salaryGrade", COALESCE("salaryStep", 1), position, "dailyRate", status::TEXT
+    INTO v_user_salary_grade, v_user_salary_step, v_user_position, v_user_daily_rate, v_user_status
     FROM users
     WHERE id = p_user_id;
+
+    -- Contributions only apply to PERMANENT employees and when pay period includes 25th
+    v_is_permanent := (v_user_status = 'PERMANENT');
+    v_apply_contributions := v_is_permanent AND (p_pay_period_start <= v_25th_day AND p_pay_period_end >= v_25th_day);
 
     IF v_user_salary_grade IS NOT NULL AND v_user_position IS NOT NULL THEN
         v_position_base := TRIM(REGEXP_REPLACE(v_user_position, '\s+[IVX]+$', '', 'i'));
@@ -239,49 +248,111 @@ BEGIN
     v_total_earnings := v_regular_pay + v_overtime_pay + v_holiday_pay + v_allowances + v_bonuses + v_thirteenth_month + v_sil + v_other_earnings;
     v_gross_pay := v_total_earnings;
 
+    -- Calculate contributions only for PERMANENT employees
     IF v_apply_contributions THEN
-        SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_gsis
+        v_monthly_base_income := v_daily_rate * 22;
+        
+        -- Check for user-specified GSIS contribution first (from payroll rules)
+        SELECT COALESCE(SUM(
+            CASE 
+                WHEN pr."isPercentage" THEN v_monthly_base_income * (CAST(pr.amount AS DECIMAL) / 100)
+                ELSE CAST(pr.amount AS DECIMAL)
+            END
+        ), 0) INTO v_user_gsis
         FROM "payroll_rule_assignments" pra
         JOIN "payroll_rules" pr ON pra."payrollRuleId" = pr.id
         WHERE pra."userId" = p_user_id
         AND pr."isActive" = true
         AND pr.type = 'gsis';
-        IF v_gsis = 0 THEN
-            SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_gsis
+        
+        -- If no user-specific rule, check for global rule
+        IF v_user_gsis = 0 THEN
+            SELECT COALESCE(SUM(
+                CASE 
+                    WHEN "isPercentage" THEN v_monthly_base_income * (CAST(amount AS DECIMAL) / 100)
+                    ELSE CAST(amount AS DECIMAL)
+                END
+            ), 0) INTO v_user_gsis
             FROM "payroll_rules"
             WHERE "applyToAll" = true
             AND "isActive" = true
             AND type = 'gsis';
         END IF;
-
-        SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_philhealth
+        
+        -- Use user-specified or calculate GSIS (9% of monthly base income)
+        IF v_user_gsis > 0 THEN
+            v_gsis := v_user_gsis;
+        ELSE
+            v_gsis := calculate_gsis_contribution(v_monthly_base_income);
+        END IF;
+        
+        -- Check for user-specified PhilHealth contribution first
+        SELECT COALESCE(SUM(
+            CASE 
+                WHEN pr."isPercentage" THEN v_monthly_base_income * (CAST(pr.amount AS DECIMAL) / 100)
+                ELSE CAST(pr.amount AS DECIMAL)
+            END
+        ), 0) INTO v_user_philhealth
         FROM "payroll_rule_assignments" pra
         JOIN "payroll_rules" pr ON pra."payrollRuleId" = pr.id
         WHERE pra."userId" = p_user_id
         AND pr."isActive" = true
         AND pr.type = 'philhealth';
-        IF v_philhealth = 0 THEN
-            SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_philhealth
+        
+        IF v_user_philhealth = 0 THEN
+            SELECT COALESCE(SUM(
+                CASE 
+                    WHEN "isPercentage" THEN v_monthly_base_income * (CAST(amount AS DECIMAL) / 100)
+                    ELSE CAST(amount AS DECIMAL)
+                END
+            ), 0) INTO v_user_philhealth
             FROM "payroll_rules"
             WHERE "applyToAll" = true
             AND "isActive" = true
             AND type = 'philhealth';
         END IF;
-
-        SELECT COALESCE(SUM(CAST(pr.amount AS DECIMAL)), 0) INTO v_pagibig
+        
+        -- Use user-specified or calculate PhilHealth (2.5% employee share)
+        IF v_user_philhealth > 0 THEN
+            v_philhealth := v_user_philhealth;
+        ELSE
+            v_philhealth := calculate_philhealth_contribution(v_monthly_base_income);
+        END IF;
+        
+        -- Check for user-specified Pag-IBIG contribution first
+        SELECT COALESCE(SUM(
+            CASE 
+                WHEN pr."isPercentage" THEN v_monthly_base_income * (CAST(pr.amount AS DECIMAL) / 100)
+                ELSE CAST(pr.amount AS DECIMAL)
+            END
+        ), 0) INTO v_user_pagibig
         FROM "payroll_rule_assignments" pra
         JOIN "payroll_rules" pr ON pra."payrollRuleId" = pr.id
         WHERE pra."userId" = p_user_id
         AND pr."isActive" = true
         AND pr.type = 'pagibig';
-        IF v_pagibig = 0 THEN
-            SELECT COALESCE(SUM(CAST(amount AS DECIMAL)), 0) INTO v_pagibig
+        
+        IF v_user_pagibig = 0 THEN
+            SELECT COALESCE(SUM(
+                CASE 
+                    WHEN "isPercentage" THEN v_monthly_base_income * (CAST(amount AS DECIMAL) / 100)
+                    ELSE CAST(amount AS DECIMAL)
+                END
+            ), 0) INTO v_user_pagibig
             FROM "payroll_rules"
             WHERE "applyToAll" = true
             AND "isActive" = true
             AND type = 'pagibig';
         END IF;
+        
+        -- Use user-specified or calculate Pag-IBIG (2% employee share)
+        IF v_user_pagibig > 0 THEN
+            v_pagibig := v_user_pagibig;
+        ELSE
+            v_pagibig := calculate_pagibig_contribution(v_monthly_base_income);
+        END IF;
     ELSE
+        -- Non-permanent employees do not have mandatory contributions
         v_gsis := 0; v_philhealth := 0; v_pagibig := 0;
     END IF;
 

@@ -248,9 +248,9 @@ export function AddEmployeeDialog({
                 <SelectTrigger>
                   <SelectValue placeholder="Select step" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="start">
                   {salarySteps.map((step) => (
-                    <SelectItem key={step.value} value={step.value.toString()}>
+                    <SelectItem key={step.value} value={step.value.toString()} className="text-left">
                       {step.label}
                     </SelectItem>
                   ))}

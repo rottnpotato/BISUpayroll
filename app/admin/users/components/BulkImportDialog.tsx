@@ -11,13 +11,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Users, Upload, UserPlus, FileText, DownloadCloud, AlertTriangle,
-  Plus, Trash2, ChevronRight, X
+  Plus, Trash2, ChevronRight, X, CheckCircle2, XCircle, AlertCircle
 } from "lucide-react"
 
 import { BulkEmployee, FormErrors } from "../types"
 import { departments, positionsByDepartment, employmentStatuses, csvHeaders } from "../constants"
+
+interface ImportResultError {
+  email: string
+  employeeId: string
+  error: string
+}
+
+interface ImportResult {
+  created: number
+  failed: number
+  errors: ImportResultError[]
+  message: string
+  success: boolean
+}
 
 interface BulkImportDialogProps {
   open: boolean
@@ -31,6 +47,8 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [importResult, setImportResult] = useState<ImportResult | null>(null)
+  const [showResultDialog, setShowResultDialog] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
@@ -294,65 +312,147 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
       })
 
       const result = await response.json()
+      
+      // Store the result and show the result dialog
+      setImportResult(result)
+      setShowResultDialog(true)
 
-      if (!response.ok) {
-        // Show detailed error information
-        if (result.errors && result.errors.length > 0) {
-          const errorList = result.errors.slice(0, 3).map((err: any) => 
-            `${err.email || err.employeeId}: ${err.error}`
-          ).join('\n')
-          
-          toast({
-            title: "Import Failed",
-            description: result.message || `${result.failed} employee(s) failed to import:\n${errorList}${result.errors.length > 3 ? '\n...and more' : ''}`,
-            variant: "destructive",
-          })
-        } else {
-          throw new Error(result.error || 'Failed to import employees')
-        }
-        
-        // If some succeeded, refresh and keep dialog open
-        if (result.created > 0) {
-          toast({
-            title: "Partial Success",
-            description: `${result.created} employee(s) imported successfully, ${result.failed} failed. See details above.`,
-          })
-          onSuccess()
-        }
-        return
+      // If any employees were created successfully, refresh the list
+      if (result.created > 0) {
+        onSuccess()
       }
 
-      // Full success
-      toast({
-        title: "Import Successful",
-        description: result.message || `Successfully imported ${result.created} employee(s).`,
-      })
-
-      // Reset and close
-      setBulkEmployees([])
-      setCsvFile(null)
-      onOpenChange(false)
-      onSuccess()
     } catch (error) {
       console.error('Error importing employees:', error)
-      toast({
-        title: "Import Failed",
-        description: error instanceof Error ? error.message : "Failed to import employees.",
-        variant: "destructive",
+      setImportResult({
+        created: 0,
+        failed: bulkEmployees.length,
+        errors: [{ email: 'N/A', employeeId: 'N/A', error: error instanceof Error ? error.message : 'Unknown error occurred' }],
+        message: 'Failed to process bulk import',
+        success: false
       })
+      setShowResultDialog(true)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleCloseResultDialog = () => {
+    setShowResultDialog(false)
+    
+    // If all imports were successful, close the main dialog and reset
+    if (importResult?.success && importResult.failed === 0) {
+      setBulkEmployees([])
+      setCsvFile(null)
+      setImportResult(null)
+      onOpenChange(false)
+    } else if (importResult && importResult.created > 0) {
+      // Partial success - keep failed employees for retry
+      const failedEmails = new Set(importResult.errors.map(e => e.email))
+      const failedEmployeeIds = new Set(importResult.errors.map(e => e.employeeId))
+      setBulkEmployees(prev => prev.filter(emp => 
+        failedEmails.has(emp.email) || failedEmployeeIds.has(emp.employeeId)
+      ))
+      toast({
+        title: "Partial Import",
+        description: `${importResult.created} imported. ${importResult.failed} remaining for retry.`,
+      })
     }
   }
 
   const handleClose = () => {
     setBulkEmployees([])
     setCsvFile(null)
+    setImportResult(null)
     onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      {/* Import Result Dialog */}
+      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {importResult?.success && importResult.failed === 0 ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <span className="text-green-600">Import Successful</span>
+                </>
+              ) : importResult?.created && importResult.created > 0 ? (
+                <>
+                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                  <span className="text-yellow-600">Partial Import</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-600" />
+                  <span className="text-red-600">Import Failed</span>
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {importResult?.message}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <Card className="p-4 bg-green-50 border-green-200">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                  <div>
+                    <p className="text-2xl font-bold text-green-700">{importResult?.created || 0}</p>
+                    <p className="text-sm text-green-600">Successfully Imported</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4 bg-red-50 border-red-200">
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-8 w-8 text-red-600" />
+                  <div>
+                    <p className="text-2xl font-bold text-red-700">{importResult?.failed || 0}</p>
+                    <p className="text-sm text-red-600">Failed</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Error Details */}
+            {importResult?.errors && importResult.errors.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">Error Details:</h4>
+                <ScrollArea className="h-48 border rounded-lg">
+                  <div className="p-2 space-y-2">
+                    {importResult.errors.map((err, index) => (
+                      <Alert key={index} variant="destructive" className="py-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle className="text-sm">
+                          {err.email !== 'N/A' ? err.email : err.employeeId}
+                        </AlertTitle>
+                        <AlertDescription className="text-xs">
+                          {err.error}
+                        </AlertDescription>
+                      </Alert>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={handleCloseResultDialog}>
+              {importResult?.success && importResult.failed === 0 ? 'Done' : 
+               importResult?.created && importResult.created > 0 ? 'Continue Editing' : 'Close'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Main Bulk Import Dialog */}
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
@@ -793,5 +893,6 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   )
 }
