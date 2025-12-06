@@ -28,19 +28,22 @@ export function AddEmployeeDialog({
   isSubmitting,
   onSubmit
 }: AddEmployeeDialogProps) {
+  const [salarySteps, setSalarySteps] = useState<Array<{ value: number; label: string; rate: number }>>([])
+
   // Auto-select salary grade when position changes
   useEffect(() => {
     if (formData.position) {
-      const grade = positionToSalaryGrade[formData.position]
-      if (grade) {
-        setFormData(prev => ({ ...prev, salaryGrade: grade.toString() }))
-        // Fetch the daily rate for this grade
+      const gradeInfo = positionToSalaryGrade[formData.position]
+      if (gradeInfo) {
+        setFormData(prev => ({ ...prev, salaryGrade: gradeInfo.grade.toString(), salaryStep: gradeInfo.defaultStep.toString() }))
+        // Fetch available steps for this grade
         fetch(`/api/admin/salary-grades/options?position=${encodeURIComponent(formData.position)}`)
           .then(res => res.json())
           .then(data => {
-            const option = data.find((opt: any) => opt.value === grade)
-            if (option) {
-              setFormData(prev => ({ ...prev, dailyRate: option.rate.toString() }))
+            setSalarySteps(data)
+            const defaultOption = data.find((opt: any) => opt.step === gradeInfo.defaultStep)
+            if (defaultOption) {
+              setFormData(prev => ({ ...prev, dailyRate: defaultOption.rate.toString() }))
             }
           })
           .catch(error => console.error('Failed to fetch salary grade info:', error))
@@ -215,19 +218,45 @@ export function AddEmployeeDialog({
               )}
             </div>
           </div>
-          <div className="grid grid-cols-1 items-center gap-2">
-            <Label htmlFor="add-salaryGrade" className="text-left font-medium">
-              Salary Grade (Auto-assigned)
-            </Label>
-            <Input 
-              id="add-salaryGrade" 
-              value={formData.salaryGrade ? `SG ${formData.salaryGrade}` : "Select position first"}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">
-              Automatically assigned based on selected position
-            </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-salaryGrade" className="text-left font-medium">
+                Salary Grade
+              </Label>
+              <Input 
+                id="add-salaryGrade" 
+                value={formData.salaryGrade ? `SG ${formData.salaryGrade}` : "Select position first"}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="add-salaryStep" className="text-left font-medium">
+                Step (1-8)
+              </Label>
+              <Select
+                value={formData.salaryStep || ""}
+                onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, salaryStep: value }))
+                  const selectedStep = salarySteps.find(s => s.value.toString() === value)
+                  if (selectedStep) {
+                    setFormData(prev => ({ ...prev, dailyRate: selectedStep.rate.toString() }))
+                  }
+                }}
+                disabled={!formData.salaryGrade}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select step" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salarySteps.map((step) => (
+                    <SelectItem key={step.value} value={step.value.toString()}>
+                      {step.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="grid grid-cols-1 items-center gap-2">
             <Label htmlFor="add-dailyRate" className="text-left font-medium">

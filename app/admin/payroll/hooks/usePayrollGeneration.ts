@@ -164,14 +164,15 @@ export const usePayrollGeneration = () => {
         // For other report types, use the detailed payroll data from backend
         detailedPayroll = await Promise.all(
           records.map(async (record: any) => {
-            let attendanceData = { daysPresent: 0, hoursWorked: 0, lateHours: 0 }
+            let attendanceData = { daysPresent: 0, hoursWorked: 0, lateHours: 0, undertimeHours: 0 }
             
             // If the record already has attendance data (from PayrollResult), use it
             if (record.daysWorked !== undefined) {
               attendanceData = {
                 daysPresent: record.daysWorked || 0,
-                hoursWorked: record.hoursWorked || 0,
-                lateHours: record.lateHours || 0
+                hoursWorked: parseFloat(record.hoursWorked?.toString() || '0'),
+                lateHours: parseFloat(record.lateHours?.toString() || '0'),
+                undertimeHours: parseFloat(record.undertimeHours?.toString() || '0')
               }
             } else {
               // Fallback: fetch attendance data if needed
@@ -180,12 +181,19 @@ export const usePayrollGeneration = () => {
                 
                 if (attendanceResponse.ok) {
                   const attendance = await attendanceResponse.json()
+                  // Calculate late minutes from lateMinutes field
+                  const totalLateMinutes = attendance.records?.reduce((sum: number, r: any) => 
+                    sum + (r.lateMinutes ? parseFloat(r.lateMinutes.toString()) : 0), 0) || 0
+                  // Calculate undertime minutes from undertimeMinutes field
+                  const totalUndertimeMinutes = attendance.records?.reduce((sum: number, r: any) => 
+                    sum + (r.undertimeMinutes ? parseFloat(r.undertimeMinutes.toString()) : 0), 0) || 0
+                  
                   attendanceData = {
                     daysPresent: attendance.records?.filter((r: any) => r.timeIn && r.timeOut).length || 0,
                     hoursWorked: attendance.records?.reduce((sum: number, r: any) => 
                       sum + (r.hoursWorked ? parseFloat(r.hoursWorked.toString()) : 0), 0) || 0,
-                    lateHours: attendance.records?.reduce((sum: number, r: any) => 
-                      sum + (r.isLate ? 1 : 0), 0) || 0
+                    lateHours: totalLateMinutes / 60,
+                    undertimeHours: totalUndertimeMinutes / 60
                   }
                 } else {
                   console.warn(`Failed to fetch attendance for user ${record.userId}`)
@@ -197,24 +205,25 @@ export const usePayrollGeneration = () => {
 
             // Use the detailed breakdown from PayrollResult if available
             const deductionBreakdown = {
-              withholdingTax: record.withholdingTax || 0,
-              gsisContribution: record.gsisContribution || 0,
-              philHealthContribution: record.philHealthContribution || 0,
-              pagibigContribution: record.pagibigContribution || 0,
-              lateDeductions: record.lateDeductions || 0,
-              loanDeductions: record.loanDeductions || 0,
-              otherDeductions: record.otherDeductions || 0
+              withholdingTax: parseFloat(record.withholdingTax?.toString() || '0'),
+              gsisContribution: parseFloat(record.gsisContribution?.toString() || '0'),
+              philHealthContribution: parseFloat(record.philHealthContribution?.toString() || '0'),
+              pagibigContribution: parseFloat(record.pagibigContribution?.toString() || '0'),
+              lateDeductions: parseFloat(record.lateDeductions?.toString() || '0'),
+              undertimeDeductions: parseFloat(record.undertimeDeductions?.toString() || '0'),
+              loanDeductions: parseFloat(record.loanDeductions?.toString() || '0'),
+              otherDeductions: parseFloat(record.otherDeductions?.toString() || '0')
             }
 
             // Use the detailed earnings breakdown from PayrollResult if available
             const earningsBreakdown = {
-              regularPay: record.regularPay || 0,
-              overtimePay: record.overtimePay || 0,
-              holidayPay: record.holidayPay || 0,
-              allowances: record.allowances || 0,
-              bonuses: record.bonuses || 0,
-              thirteenthMonthPay: record.thirteenthMonthPay || 0,
-              serviceIncentiveLeave: record.serviceIncentiveLeave || 0
+              regularPay: parseFloat(record.regularPay?.toString() || '0'),
+              overtimePay: parseFloat(record.overtimePay?.toString() || '0'),
+              holidayPay: parseFloat(record.holidayPay?.toString() || '0'),
+              allowances: parseFloat(record.allowances?.toString() || '0'),
+              bonuses: parseFloat(record.bonuses?.toString() || '0'),
+              thirteenthMonthPay: parseFloat(record.thirteenthMonthPay?.toString() || '0'),
+              serviceIncentiveLeave: parseFloat(record.serviceIncentiveLeave?.toString() || '0')
             }
 
             return {

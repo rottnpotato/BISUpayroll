@@ -158,6 +158,7 @@ export const parseCsvToBulkEmployees = (text: string): BulkEmployee[] => {
       emergencyContactRelationship: values[13] || "",
       emergencyContactPhone: values[14] || "",
       salaryGrade: "",
+      salaryStep: "",
       dailyRate: ""
     }
 
@@ -182,6 +183,7 @@ export const getInitialFormData = (): FormData => ({
   department: "",
   position: "",
   salaryGrade: "",
+  salaryStep: "",
   dailyRate: "",
   phone: "",
   employeeId: "",

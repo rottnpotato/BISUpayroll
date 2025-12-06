@@ -71,12 +71,12 @@ export function PayrollDebugModal({ defaultUserId, defaultStartDate, defaultEndD
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      {/* <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Bug className="h-4 w-4" />
           Debug Calculation
         </Button>
-      </DialogTrigger>
+      </DialogTrigger> */}
       <DialogContent className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

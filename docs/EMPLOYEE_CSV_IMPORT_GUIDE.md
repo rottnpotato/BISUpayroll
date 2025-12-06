@@ -17,7 +17,7 @@ This guide explains how to use the CSV bulk import feature to add multiple emplo
 The CSV file must have the following columns in this exact order:
 
 ```
-firstName,lastName,email,password,department,position,status,phone,employeeId,hireDate,address,emergencyContactName,emergencyContactRelationship,emergencyContactPhone
+firstName,lastName,email,password,employeeType,department,position,rank,step,status,phone,employeeId,hireDate,address,emergencyContactName,emergencyContactRelationship,emergencyContactPhone
 ```
 
 ### Field Descriptions
@@ -28,8 +28,11 @@ firstName,lastName,email,password,department,position,status,phone,employeeId,hi
 | lastName | ✅ Yes | Employee's last name | Dela Cruz |
 | email | ✅ Yes | Unique email address | juan.delacruz@bisu.edu.ph |
 | password | ✅ Yes | Initial password (will be hashed) | password123 |
-| department | ❌ No | Department code | CCIS, CTAS, CCJ |
-| position | ❌ No | Job position | Professor, Instructor, etc. |
+| employeeType | ❌ No | Type of employee | TEACHING_PERSONNEL, NON_TEACHING_PERSONNEL, CASUAL_PLANTILLA |
+| department | ❌ No | Department code | CCIS, CTAS, CCJ, NON-TEACHING |
+| position | ✅ Yes | Base position title (without rank) | Professor, Instructor, Administrative Officer |
+| rank | ❌ No | Roman numeral rank | I, II, III, IV, V, VI |
+| step | ❌ No | Salary step (1-8) | 1, 2, 3 (defaults to 1) |
 | status | ❌ No | Employment status | PERMANENT, TEMPORARY, CONTRACTUAL |
 | phone | ❌ No | Contact number | 09123456789 |
 | employeeId | ✅ Yes | Unique employee ID | BISU-2024-001 |
@@ -42,32 +45,40 @@ firstName,lastName,email,password,department,position,status,phone,employeeId,hi
 ### Important Notes
 
 1. **Header Row**: The first row must contain the column headers exactly as shown above
-2. **Employment Status**: Must be one of: `PERMANENT`, `TEMPORARY`, or `CONTRACTUAL` (defaults to CONTRACTUAL if not provided)
-3. **Date Format**: Use `YYYY-MM-DD` format (e.g., 2024-01-15)
-4. **Unique Fields**: `email` and `employeeId` must be unique across all users
-5. **Email Format**: Must be a valid email address
-6. **Commas in Data**: If your data contains commas, wrap the field in quotes
+2. **Position and Rank**: 
+   - Position is the base title (e.g., "Professor", "Instructor", "Administrative Officer")
+   - Rank is the Roman numeral level (I, II, III, IV, V, VI)
+   - Together they form the complete position (e.g., "Professor II", "Instructor I")
+3. **Salary Step**: 
+   - Each salary grade has 8 steps (1-8)
+   - Step 1 is the entry level for that grade
+   - If not specified, defaults to step 1
+4. **Employment Status**: Must be one of: `PERMANENT`, `TEMPORARY`, or `CONTRACTUAL` (defaults to CONTRACTUAL if not provided)
+5. **Date Format**: Use `YYYY-MM-DD` format (e.g., 2024-01-15)
+6. **Unique Fields**: `email` and `employeeId` must be unique across all users
+7. **Email Format**: Must be a valid email address
+8. **Commas in Data**: If your data contains commas, wrap the field in quotes
+9. **Salary Calculation**: The system automatically calculates daily rate based on position, rank, and step
 
 ### Department Options
 
 - **CTAS** - College of Teacher and Arts & Sciences
 - **CCJ** - College of Criminal Justice
 - **CCIS** - College of Computing and Information Sciences
+- **NON-TEACHING** - Non-Teaching Staff
 
-### Position Options (by Department)
+### Position Options
 
-#### All Departments
-- Professor
-- Associate Professor
-- Assistant Professor
-- Instructor
-- Lecturer
-- Dean
-- Department Head
+#### Teaching Positions
+- **Professor** (Ranks: I-VI)
+- **Associate Professor** (Ranks: I-V)
+- **Assistant Professor** (Ranks: I-IV)
+- **Instructor** (Ranks: I-III)
 
-#### CCIS Only (additional)
-- System Administrator
-- IT Support
+#### Non-Teaching Positions
+- **Administrative Officer** (Ranks: I-V)
+- **Administrative Assistant** (Ranks: I-III)
+- **Administrative Aide** (Ranks: I-VI)
 
 ## Sample CSV File
 
@@ -84,10 +95,11 @@ The easiest way to get started is to:
 ### Example CSV Content
 
 ```csv
-firstName,lastName,email,password,department,position,status,phone,employeeId,hireDate,address,emergencyContactName,emergencyContactRelationship,emergencyContactPhone
-Juan,Dela Cruz,juan.delacruz@bisu.edu.ph,password123,CCIS,Professor,PERMANENT,09123456789,BISU-2024-001,2024-01-15,Tagbilaran City,Maria Dela Cruz,Spouse,09987654321
-Maria,Santos,maria.santos@bisu.edu.ph,password123,CTAS,Associate Professor,PERMANENT,09123456788,BISU-2024-002,2024-02-01,Dauis Bohol,Pedro Santos,Spouse,09987654322
-Pedro,Reyes,pedro.reyes@bisu.edu.ph,password123,CCJ,Instructor,TEMPORARY,09123456787,BISU-2024-003,2024-03-01,Panglao Bohol,Ana Reyes,Sister,09987654323
+firstName,lastName,email,password,employeeType,department,position,rank,step,status,phone,employeeId,hireDate,address,emergencyContactName,emergencyContactRelationship,emergencyContactPhone
+Juan,Dela Cruz,juan.delacruz@bisu.edu.ph,password123,TEACHING_PERSONNEL,CCIS,Professor,II,1,PERMANENT,09123456789,BISU-2024-001,2024-01-15,Tagbilaran City,Maria Dela Cruz,Spouse,09987654321
+Maria,Santos,maria.santos@bisu.edu.ph,password123,TEACHING_PERSONNEL,CTAS,Associate Professor,III,2,PERMANENT,09123456788,BISU-2024-002,2024-02-01,Dauis Bohol,Pedro Santos,Spouse,09987654322
+Pedro,Reyes,pedro.reyes@bisu.edu.ph,password123,TEACHING_PERSONNEL,CCJ,Instructor,I,1,TEMPORARY,09123456787,BISU-2024-003,2024-03-01,Panglao Bohol,Ana Reyes,Sister,09987654323
+Jose,Martinez,jose.martinez@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,NON-TEACHING,Administrative Officer,III,1,PERMANENT,09123456785,BISU-2024-005,2024-04-01,Tagbilaran City,Rosa Martinez,Mother,09987654325
 ```
 
 ## Upload Process

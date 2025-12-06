@@ -25,11 +25,17 @@ export const positionRanks: { [key: string]: number } = {
   "Assistant Professor": 4,
   "Instructor": 3,
   "Administrative Aide": 6,
-  "Administrative Assistant": 2,
+  "Administrative Assistant": 3,
   "Administrative Officer": 5
 }
 
-// Generate positions with ranks
+// Roman numeral conversion
+const toRomanNumeral = (num: number): string => {
+  const romanNumerals = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
+  return romanNumerals[num] || num.toString()
+}
+
+// Generate positions with ranks (using Roman numerals)
 const generatePositionsWithRanks = () => {
   const teaching: string[] = []
   const nonTeaching: string[] = []
@@ -39,7 +45,7 @@ const generatePositionsWithRanks = () => {
     const ranks = positionRanks[position]
     if (ranks) {
       for (let i = 1; i <= ranks; i++) {
-        teaching.push(`${position} ${i}`)
+        teaching.push(`${position} ${toRomanNumeral(i)}`)
       }
     }
   })
@@ -49,7 +55,7 @@ const generatePositionsWithRanks = () => {
     const ranks = positionRanks[position]
     if (ranks) {
       for (let i = 1; i <= ranks; i++) {
-        nonTeaching.push(`${position} ${i}`)
+        nonTeaching.push(`${position} ${toRomanNumeral(i)}`)
       }
     }
   })
@@ -68,45 +74,47 @@ export const positionsByDepartment = {
 } as const
 
 // Position to Salary Grade mapping (each position rank has exactly one salary grade)
-export const positionToSalaryGrade: { [key: string]: number } = {
+// Note: Default step is 1, users can select different steps later
+export const positionToSalaryGrade: { [key: string]: { grade: number, defaultStep: number } } = {
   // Administrative Aides
-  "Administrative Aide 1": 1,
-  "Administrative Aide 2": 2,
-  "Administrative Aide 3": 3,
-  "Administrative Aide 4": 4,
-  "Administrative Aide 5": 5,
-  "Administrative Aide 6": 6,
+  "Administrative Aide I": { grade: 1, defaultStep: 1 },
+  "Administrative Aide II": { grade: 2, defaultStep: 1 },
+  "Administrative Aide III": { grade: 3, defaultStep: 1 },
+  "Administrative Aide IV": { grade: 4, defaultStep: 1 },
+  "Administrative Aide V": { grade: 5, defaultStep: 1 },
+  "Administrative Aide VI": { grade: 6, defaultStep: 1 },
   // Administrative Assistants
-  "Administrative Assistant 1": 7,
-  "Administrative Assistant 2": 8,
+  "Administrative Assistant I": { grade: 7, defaultStep: 1 },
+  "Administrative Assistant II": { grade: 8, defaultStep: 1 },
+  "Administrative Assistant III": { grade: 9, defaultStep: 1 },
   // Administrative Officers
-  "Administrative Officer 1": 10,
-  "Administrative Officer 2": 11,
-  "Administrative Officer 3": 14,
-  "Administrative Officer 4": 15,
-  "Administrative Officer 5": 18,
+  "Administrative Officer I": { grade: 10, defaultStep: 1 },
+  "Administrative Officer II": { grade: 11, defaultStep: 1 },
+  "Administrative Officer III": { grade: 14, defaultStep: 1 },
+  "Administrative Officer IV": { grade: 15, defaultStep: 1 },
+  "Administrative Officer V": { grade: 18, defaultStep: 1 },
   // Instructors
-  "Instructor 1": 12,
-  "Instructor 2": 13,
-  "Instructor 3": 14,
+  "Instructor I": { grade: 12, defaultStep: 1 },
+  "Instructor II": { grade: 13, defaultStep: 1 },
+  "Instructor III": { grade: 14, defaultStep: 1 },
   // Assistant Professors
-  "Assistant Professor 1": 15,
-  "Assistant Professor 2": 16,
-  "Assistant Professor 3": 17,
-  "Assistant Professor 4": 18,
+  "Assistant Professor I": { grade: 15, defaultStep: 1 },
+  "Assistant Professor II": { grade: 16, defaultStep: 1 },
+  "Assistant Professor III": { grade: 17, defaultStep: 1 },
+  "Assistant Professor IV": { grade: 18, defaultStep: 1 },
   // Associate Professors
-  "Associate Professor 1": 19,
-  "Associate Professor 2": 20,
-  "Associate Professor 3": 21,
-  "Associate Professor 4": 22,
-  "Associate Professor 5": 23,
+  "Associate Professor I": { grade: 19, defaultStep: 1 },
+  "Associate Professor II": { grade: 20, defaultStep: 1 },
+  "Associate Professor III": { grade: 21, defaultStep: 1 },
+  "Associate Professor IV": { grade: 22, defaultStep: 1 },
+  "Associate Professor V": { grade: 23, defaultStep: 1 },
   // Professors
-  "Professor 1": 24,
-  "Professor 2": 25,
-  "Professor 3": 26,
-  "Professor 4": 27,
-  "Professor 5": 28,
-  "Professor 6": 29,
+  "Professor I": { grade: 24, defaultStep: 1 },
+  "Professor II": { grade: 25, defaultStep: 1 },
+  "Professor III": { grade: 26, defaultStep: 1 },
+  "Professor IV": { grade: 27, defaultStep: 1 },
+  "Professor V": { grade: 28, defaultStep: 1 },
+  "Professor VI": { grade: 29, defaultStep: 1 },
 }
 
 // Status options
@@ -138,6 +146,20 @@ export const employmentStatusLabels: { [key: string]: string } = {
   "INACTIVE": "Inactive"
 }
 
+// Helper to extract rank from position string (e.g., "Professor II" -> 2)
+export const getRankFromPosition = (position: string): number | null => {
+  const romanNumerals: { [key: string]: number } = {
+    'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8
+  }
+  const match = position.match(/\s([IVX]+)$/)
+  return match ? (romanNumerals[match[1]] || null) : null
+}
+
+// Helper to extract base position (e.g., "Professor II" -> "Professor")
+export const getBasePosition = (position: string): string => {
+  return position.replace(/\s[IVX]+$/, '').trim()
+}
+
 // CSV Template Headers
 export const csvHeaders = [
   "firstName",
@@ -147,7 +169,8 @@ export const csvHeaders = [
   "employeeType",
   "department",
   "position",
-  "salaryGrade",
+  "rank",
+  "step",
   "status",
   "phone",
   "employeeId",

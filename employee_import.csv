@@ -1,9 +1,9 @@
-firstName,lastName,email,password,employeeType,department,position,status,phone,employeeId,hireDate,address,emergencyContactName,emergencyContactRelationship,emergencyContactPhone
-JECELYN,ALE,jecelyn.ale@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,,Janitorial Aide,CONTRACTUAL,,BISU-NTP-001,,,,,
-FERMO JR.,ASUFRA,fermojr.asufra@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,,EDP Staff,CONTRACTUAL,,BISU-NTP-002,,,,,
-MELVIN,BAYSON,melvin.bayson@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,,Campus Engineer,CONTRACTUAL,,BISU-NTP-003,,,,,
-MARIVIC,CHATTO,marivic.chatto@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,,Canteen Staff,CONTRACTUAL,,BISU-NTP-004,,,,,
-EUGINE,GINGO,eugine.gingo@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,,Maintenance Personnel,CONTRACTUAL,,BISU-NTP-005,,,,,
+firstName,lastName,email,password,employeeType,department,position,rank,step,status,phone,employeeId,hireDate,address,emergencyContactName,emergencyContactRelationship,emergencyContactPhone
+JECELYN,ALE,jecelyn.ale@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,NON-TEACHING,Administrative Aide,I,1,CONTRACTUAL,,BISU-NTP-001,,,,,
+FERMO JR.,ASUFRA,fermojr.asufra@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,NON-TEACHING,Administrative Aide,II,1,CONTRACTUAL,,BISU-NTP-002,,,,,
+MELVIN,BAYSON,melvin.bayson@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,NON-TEACHING,Administrative Assistant,I,1,CONTRACTUAL,,BISU-NTP-003,,,,,
+MARIVIC,CHATTO,marivic.chatto@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,NON-TEACHING,Administrative Aide,I,1,CONTRACTUAL,,BISU-NTP-004,,,,,
+EUGINE,GINGO,eugine.gingo@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,NON-TEACHING,Administrative Aide,I,1,CONTRACTUAL,,BISU-NTP-005,,,,,
 ELENITA,LANSANG,elenita.lansang@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,,Janitorial Aide,CONTRACTUAL,,BISU-NTP-006,,,,,
 MARK,LLORENTE,mark.llorente@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,,Clinic NA,CONTRACTUAL,,BISU-NTP-007,,,,,
 LEAH,TABIGUE,leah.tabigue@bisu.edu.ph,password123,NON_TEACHING_PERSONNEL,,Campus Architect,CONTRACTUAL,,BISU-NTP-008,,,,,

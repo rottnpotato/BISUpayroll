@@ -112,6 +112,7 @@ DECLARE
     v_late_deduction_amount DECIMAL := 0;
     v_late_deduction_basis TEXT := 'hourly';
     v_employment_status TEXT := '';
+    v_taxable_regular_pay DECIMAL := 0;
 BEGIN
     -- Get user's employment status
     SELECT COALESCE(status::TEXT, 'CONTRACTUAL') INTO v_employment_status
@@ -244,25 +245,30 @@ BEGIN
         v_pagibig_contribution := 0;
     END IF;
     
+    -- Late deductions (minutes * hourly_rate / 60)
+    v_late_deductions := calculate_late_deductions(v_late_minutes, v_hourly_rate, v_daily_rate, v_late_deduction_amount, v_late_deduction_basis);
+    
+    -- Undertime deductions (minutes * hourly_rate / 60)
+    v_undertime_deductions := v_undertime_minutes * (v_hourly_rate / 60);
+    
+    -- Calculate taxable regular pay (regular pay only, after late/undertime deductions)
+    -- This is used for annualization to avoid over-taxing irregular overtime/bonuses
+    v_taxable_regular_pay := GREATEST(0, v_regular_pay - v_late_deductions - v_undertime_deductions);
+    
     -- Taxable income
     v_taxable_income := v_gross_pay - v_gsis_contribution - v_philhealth_contribution - 
                         v_pagibig_contribution - v_thirteenth_month_pay - v_service_incentive_leave;
     
-    -- Withholding tax
+    -- Withholding tax (based on regular pay after late/undertime, not total gross)
+    -- This ensures tax is calculated on base salary only, not irregular overtime/bonuses
     v_withholding_tax := calculate_withholding_tax(
-        v_daily_rate,
+        v_taxable_regular_pay,
         v_gsis_contribution,
         v_philhealth_contribution,
         v_pagibig_contribution,
         v_thirteenth_month_pay,
         v_service_incentive_leave
     );
-    
-    -- Late deductions (minutes * hourly_rate / 60)
-    v_late_deductions := calculate_late_deductions(v_late_minutes, v_hourly_rate, v_daily_rate, v_late_deduction_amount, v_late_deduction_basis);
-    
-    -- Undertime deductions (minutes * hourly_rate / 60)
-    v_undertime_deductions := v_undertime_minutes * (v_hourly_rate / 60);
     
     -- Apply deduction rules (loans, etc.)
     SELECT COALESCE(SUM(deduction_calc.calculated_amount), 0) INTO v_loan_deductions

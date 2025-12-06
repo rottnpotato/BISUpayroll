@@ -25,40 +25,14 @@ interface BulkImportDialogProps {
   onSuccess: () => void
 }
 
-interface SalaryGradeOption {
-  value: number
-  label: string
-  rate: number
-  rank: number
-}
-
 export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDialogProps) {
   const [bulkEmployees, setBulkEmployees] = useState<BulkEmployee[]>([])
   const [bulkImportTab, setBulkImportTab] = useState<"csv" | "manual">("csv")
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [salaryGradeOptions, setSalaryGradeOptions] = useState<{ [position: string]: SalaryGradeOption[] }>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
-
-  // Fetch salary grades for a position
-  const fetchSalaryGradesForPosition = async (position: string) => {
-    if (salaryGradeOptions[position]) return // Already cached
-
-    try {
-      const response = await fetch(`/api/salary-grades?position=${encodeURIComponent(position)}`)
-      if (response.ok) {
-        const data = await response.json()
-        setSalaryGradeOptions(prev => ({
-          ...prev,
-          [position]: data.grades || []
-        }))
-      }
-    } catch (error) {
-      console.error('Error fetching salary grades:', error)
-    }
-  }
 
   // Download CSV Template
   const downloadCsvTemplate = () => {
@@ -72,7 +46,8 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
       "TEACHING_PERSONNEL",
       "CCIS",
       "Professor",
-      "24",
+      "II",
+      "1",
       "PERMANENT",
       "09123456789",
       "BISU-2024-001",
@@ -149,7 +124,7 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
         const employees: BulkEmployee[] = []
 
         // Expected header order
-        const expectedHeaders = ["firstname", "lastname", "email", "password", "employeetype", "department", "position", "salarygrade", "status", "phone", "employeeid", "hiredate", "address", "emergencycontactname", "emergencycontactrelationship", "emergencycontactphone"]
+        const expectedHeaders = ["firstname", "lastname", "email", "password", "employeetype", "department", "position", "rank", "step", "status", "phone", "employeeid", "hiredate", "address", "emergencycontactname", "emergencycontactrelationship", "emergencycontactphone"]
         
         // Validate headers
         const hasValidHeaders = expectedHeaders.every(expected => 
@@ -180,15 +155,16 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
             employeeType: values[4] || "",
             department: values[5] || "",
             position: values[6] || "",
-            salaryGrade: values[7] || "",
-            status: values[8] || "CONTRACTUAL",
-            phone: values[9] || "",
-            employeeId: values[10] || "",
-            hireDate: values[11] || "",
-            address: values[12] || "",
-            emergencyContactName: values[13] || "",
-            emergencyContactRelationship: values[14] || "",
-            emergencyContactPhone: values[15] || ""
+            rank: values[7] || "",
+            step: values[8] || "1",
+            status: values[9] || "CONTRACTUAL",
+            phone: values[10] || "",
+            employeeId: values[11] || "",
+            hireDate: values[12] || "",
+            address: values[13] || "",
+            emergencyContactName: values[14] || "",
+            emergencyContactRelationship: values[15] || "",
+            emergencyContactPhone: values[16] || ""
           }
 
           employees.push(employee)
@@ -233,12 +209,12 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
       employeeType: "",
       department: "",
       position: "",
+      rank: "",
+      step: "1",
       phone: "",
       employeeId: "",
       hireDate: "",
       status: "",
-      salaryGrade: "",
-      dailyRate: "",
       address: "",
       emergencyContactName: "",
       emergencyContactRelationship: "",
@@ -320,12 +296,36 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to import employees')
+        // Show detailed error information
+        if (result.errors && result.errors.length > 0) {
+          const errorList = result.errors.slice(0, 3).map((err: any) => 
+            `${err.email || err.employeeId}: ${err.error}`
+          ).join('\n')
+          
+          toast({
+            title: "Import Failed",
+            description: result.message || `${result.failed} employee(s) failed to import:\n${errorList}${result.errors.length > 3 ? '\n...and more' : ''}`,
+            variant: "destructive",
+          })
+        } else {
+          throw new Error(result.error || 'Failed to import employees')
+        }
+        
+        // If some succeeded, refresh and keep dialog open
+        if (result.created > 0) {
+          toast({
+            title: "Partial Success",
+            description: `${result.created} employee(s) imported successfully, ${result.failed} failed. See details above.`,
+          })
+          onSuccess()
+        }
+        return
       }
 
+      // Full success
       toast({
         title: "Import Successful",
-        description: `Successfully imported ${result.created} employees.`,
+        description: result.message || `Successfully imported ${result.created} employee(s).`,
       })
 
       // Reset and close
@@ -398,8 +398,10 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                   <div className="text-sm">
                     <p className="font-semibold text-amber-900 mb-2">CSV Format Guidelines:</p>
                     <ul className="space-y-1 text-amber-800 list-disc list-inside">
-                      <li><span className="font-medium">Required fields:</span> firstName, lastName, email, password, employeeId</li>
-                      <li><span className="font-medium">Salary Grade:</span> Enter grade number based on position (e.g., 12-14 for Instructor, 15-18 for Assistant Professor, 19-23 for Associate Professor, 24-29 for Professor). Leave empty to auto-assign lowest grade.</li>
+                      <li><span className="font-medium">Required fields:</span> firstName, lastName, email, password, employeeId, position</li>
+                      <li><span className="font-medium">Position:</span> Base position name (e.g., "Professor", "Instructor", "Administrative Officer")</li>
+                      <li><span className="font-medium">Rank:</span> Roman numeral rank (I, II, III, IV, V, VI). Required for positions with ranks.</li>
+                      <li><span className="font-medium">Step:</span> Salary step number (1-8). Use 1 for default/entry level. Optional - defaults to 1.</li>
                       <li><span className="font-medium">Status field:</span> Use PERMANENT, TEMPORARY, or CONTRACTUAL</li>
                       <li><span className="font-medium">Date format:</span> Use YYYY-MM-DD for hireDate (e.g., 2024-01-15)</li>
                       <li><span className="font-medium">Email:</span> Must be unique and valid format</li>
@@ -646,49 +648,59 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
                               </Select>
                             </div>
                             <div>
-                              <Label className="text-xs">Position</Label>
-                              <Select
+                              <Label className="text-xs">Position *</Label>
+                              <Input
                                 value={emp.position}
-                                onValueChange={(value) => {
-                                  updateBulkEmployee(emp.id, "position", value)
-                                  updateBulkEmployee(emp.id, "salaryGrade", "") // Reset salary grade
-                                  fetchSalaryGradesForPosition(value)
-                                }}
-                                disabled={!emp.department}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder={emp.department ? "Select" : "Select department first"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {emp.department && positionsByDepartment[emp.department as keyof typeof positionsByDepartment]?.map((position) => (
-                                    <SelectItem key={position} value={position}>
-                                      {position}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                onChange={(e) => updateBulkEmployee(emp.id, "position", e.target.value)}
+                                placeholder="e.g., Professor, Instructor"
+                                className={emp.errors?.position ? "border-red-500" : ""}
+                              />
+                              {emp.errors?.position && (
+                                <p className="text-xs text-red-500 mt-1">{emp.errors.position}</p>
+                              )}
+                              <p className="text-xs text-gray-500 mt-1">Base position name (without rank)</p>
                             </div>
                             <div>
-                              <Label className="text-xs">Salary Grade</Label>
+                              <Label className="text-xs">Rank</Label>
                               <Select
-                                value={emp.salaryGrade}
-                                onValueChange={(value) => updateBulkEmployee(emp.id, "salaryGrade", value)}
-                                disabled={!emp.position}
+                                value={emp.rank}
+                                onValueChange={(value) => updateBulkEmployee(emp.id, "rank", value)}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder={emp.position ? "Select grade" : "Select position first"} />
+                                  <SelectValue placeholder="Select rank" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {emp.position && salaryGradeOptions[emp.position]?.map((grade) => (
-                                    <SelectItem key={grade.value} value={grade.value.toString()}>
-                                      {grade.label}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="I">I</SelectItem>
+                                  <SelectItem value="II">II</SelectItem>
+                                  <SelectItem value="III">III</SelectItem>
+                                  <SelectItem value="IV">IV</SelectItem>
+                                  <SelectItem value="V">V</SelectItem>
+                                  <SelectItem value="VI">VI</SelectItem>
                                 </SelectContent>
                               </Select>
-                              {!emp.salaryGrade && emp.position && (
-                                <p className="text-xs text-gray-500 mt-1">Optional - lowest grade will be auto-assigned</p>
-                              )}
+                              <p className="text-xs text-gray-500 mt-1">Optional - for ranked positions</p>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Step</Label>
+                              <Select
+                                value={emp.step}
+                                onValueChange={(value) => updateBulkEmployee(emp.id, "step", value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select step" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">1</SelectItem>
+                                  <SelectItem value="2">2</SelectItem>
+                                  <SelectItem value="3">3</SelectItem>
+                                  <SelectItem value="4">4</SelectItem>
+                                  <SelectItem value="5">5</SelectItem>
+                                  <SelectItem value="6">6</SelectItem>
+                                  <SelectItem value="7">7</SelectItem>
+                                  <SelectItem value="8">8</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-gray-500 mt-1">Salary step (1-8), defaults to 1</p>
                             </div>
                             <div>
                               <Label className="text-xs">Status *</Label>

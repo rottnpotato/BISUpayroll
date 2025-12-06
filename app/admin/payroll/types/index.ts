@@ -341,10 +341,24 @@ export interface PayrollData {
     philHealthContribution?: string | number | null
     pagibigContribution: string | number | null
     lateDeductions?: string | number | null
+    undertimeDeductions?: string | number | null
     loanDeductions?: string | number | null
     otherDeductions?: string | number | null
     citySavingsLoan?: string | number | null
     sssContribution?: string | number | null
+    // Specific deduction types for detailed ledger
+    gsisConsoLoan?: string | number | null
+    gsisOptionalPolicyLoan?: string | number | null
+    gsisGfal?: string | number | null
+    coaDisallowance?: string | number | null
+    gsisEmergencyLoan?: string | number | null
+    gsisMpl?: string | number | null
+    gsisMplLite?: string | number | null
+    gsisCpl?: string | number | null
+    sssKaltas?: string | number | null
+    faDeduction?: string | number | null
+    hdmfMp2?: string | number | null
+    hdmfPmlLoan?: string | number | null
   }
   
   // Tax breakdown for tax reports
@@ -361,6 +375,8 @@ export interface PayrollData {
     daysPresent: number
     hoursWorked: number
     lateHours: number
+    undertimeHours?: number
+    absences?: number
   }
   
   // Applied rules breakdown

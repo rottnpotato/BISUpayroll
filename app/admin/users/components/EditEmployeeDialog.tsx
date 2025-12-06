@@ -28,19 +28,26 @@ export function EditEmployeeDialog({
   isSubmitting,
   onSubmit
 }: EditEmployeeDialogProps) {
-  const [salaryGradeOptions, setSalaryGradeOptions] = useState<Array<{ value: number; label: string; rate: number; rank: number }>>([])
+  const [salarySteps, setSalarySteps] = useState<Array<{ value: number; label: string; rate: number }>>([])
 
   // Auto-select salary grade when position changes
   useEffect(() => {
     if (formData.position) {
-      const grade = positionToSalaryGrade[formData.position]
-      if (grade) {
-        setFormData(prev => ({ ...prev, salaryGrade: grade.toString() }))
-        // Fetch the daily rate for this grade
+      const gradeInfo = positionToSalaryGrade[formData.position]
+      if (gradeInfo) {
+        setFormData(prev => ({ ...prev, salaryGrade: gradeInfo.grade.toString() }))
+        // If no step is set, default to step 1
+        if (!formData.salaryStep) {
+          setFormData(prev => ({ ...prev, salaryStep: gradeInfo.defaultStep.toString() }))
+        }
+        // Fetch available steps for this grade
         fetch(`/api/admin/salary-grades/options?position=${encodeURIComponent(formData.position)}`)
           .then(res => res.json())
           .then(data => {
-            const option = data.find((opt: any) => opt.value === grade)
+            setSalarySteps(data)
+            // Update daily rate based on current step
+            const currentStep = formData.salaryStep || gradeInfo.defaultStep.toString()
+            const option = data.find((opt: any) => opt.step === parseInt(currentStep))
             if (option) {
               setFormData(prev => ({ ...prev, dailyRate: option.rate.toString() }))
             }
@@ -231,19 +238,45 @@ export function EditEmployeeDialog({
               )}
             </div>
           </div>
-          <div className="grid grid-cols-1 items-center gap-2">
-            <Label htmlFor="edit-salaryGrade" className="text-left font-medium">
-              Salary Grade (Auto-assigned)
-            </Label>
-            <Input 
-              id="edit-salaryGrade" 
-              value={formData.salaryGrade ? `SG ${formData.salaryGrade}` : "Select position first"}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">
-              Automatically assigned based on selected position
-            </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-salaryGrade" className="text-left font-medium">
+                Salary Grade
+              </Label>
+              <Input 
+                id="edit-salaryGrade" 
+                value={formData.salaryGrade ? `SG ${formData.salaryGrade}` : "Select position first"}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="edit-salaryStep" className="text-left font-medium">
+                Step (1-8)
+              </Label>
+              <Select
+                value={formData.salaryStep || ""}
+                onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, salaryStep: value }))
+                  const selectedStep = salarySteps.find(s => s.value.toString() === value)
+                  if (selectedStep) {
+                    setFormData(prev => ({ ...prev, dailyRate: selectedStep.rate.toString() }))
+                  }
+                }}
+                disabled={!formData.salaryGrade}
+              >
+                <SelectTrigger className={errors.salaryStep ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select step" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salarySteps.map((step) => (
+                    <SelectItem key={step.value} value={step.value.toString()}>
+                      {step.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="grid grid-cols-1 items-center gap-2">
             <Label htmlFor="edit-dailyRate" className="text-left font-medium">

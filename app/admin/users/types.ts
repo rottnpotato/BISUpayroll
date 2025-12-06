@@ -14,6 +14,7 @@ export interface User {
   salary?: number
   hireDate?: string
   salaryGrade?: number
+  salaryStep?: number
   dailyRate?: number
 }
 
@@ -40,8 +41,11 @@ export interface BulkEmployee {
   employeeType: string
   department: string
   position: string
-  salaryGrade: string
-  dailyRate: string
+  rank: string  // Roman numeral rank (e.g., "I", "II", "III")
+  step: string  // Step within salary grade (1-8)
+  salaryGrade?: string  // Computed from position + rank + step
+  salaryStep?: string   // Alias for step
+  dailyRate?: string
   phone: string
   employeeId: string
   hireDate: string
@@ -73,6 +77,7 @@ export interface FormData {
   department: string
   position: string
   salaryGrade: string
+  salaryStep: string
   dailyRate: string
   phone: string
   employeeId: string

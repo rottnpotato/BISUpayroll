@@ -4,6 +4,7 @@
 
 export interface SalaryGradeInfo {
   grade: number
+  step: number
   dailyRate: number
   position: string
   rank: number
@@ -12,7 +13,14 @@ export interface SalaryGradeInfo {
 }
 
 export function getPositionLabel(position: string, rank: number): string {
-  return `${position} ${rank}`
+  // Convert rank to Roman numeral for display
+  const romanNumerals = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
+  const rankLabel = romanNumerals[rank] || rank.toString()
+  return `${position} ${rankLabel}`
+}
+
+export function getSalaryGradeLabel(grade: number, step: number): string {
+  return `SG ${grade} - ${step}`
 }
 
 export function getHourlyRateFromDaily(dailyRate: number, hoursPerDay: number = 8): number {

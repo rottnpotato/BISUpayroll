@@ -12,9 +12,11 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Trash2, Edit, DollarSign, Info, AlertCircle, Shield, User as UserIcon } from "lucide-react"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
+import { PREDEFINED_DEDUCTION_TYPES, DEDUCTION_CATEGORIES, getDeductionById } from "../constants/deductionTypes"
 
 interface Deduction {
   id: string
@@ -27,9 +29,11 @@ interface Deduction {
   type: string
   createdByRole?: string
   applyToAll?: boolean
+  deductionTypeId?: string
 }
 
 interface DeductionFormData {
+  deductionTypeId: string
   name: string
   amount: string
   isPercentage: boolean
@@ -47,6 +51,7 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingDeduction, setEditingDeduction] = useState<Deduction | null>(null)
   const [formData, setFormData] = useState<DeductionFormData>({
+    deductionTypeId: "",
     name: "",
     amount: "",
     isPercentage: false,
@@ -75,6 +80,7 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
 
   const resetForm = () => {
     setFormData({
+      deductionTypeId: "",
       name: "",
       amount: "",
       isPercentage: false,
@@ -83,13 +89,26 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
     setEditingDeduction(null)
   }
 
+  const handleDeductionTypeChange = (typeId: string) => {
+    const deductionType = getDeductionById(typeId)
+    if (deductionType) {
+      setFormData({ 
+        ...formData, 
+        deductionTypeId: typeId,
+        name: typeId === 'custom' ? '' : deductionType.name
+      })
+    }
+  }
+
   const handleOpenAddDialog = () => {
     resetForm()
     setIsDialogOpen(true)
   }
 
   const handleOpenEditDialog = (deduction: Deduction) => {
+    const matchingType = PREDEFINED_DEDUCTION_TYPES.find(t => t.name === deduction.name)
     setFormData({
+      deductionTypeId: matchingType?.id || 'custom',
       name: deduction.name,
       amount: deduction.amount.toString(),
       isPercentage: deduction.isPercentage,
@@ -101,8 +120,12 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
 
   const handleSubmit = async () => {
     try {
-      // Validation
-      if (!formData.name.trim()) {
+      if (!formData.deductionTypeId) {
+        toast.error('Please select a deduction type')
+        return
+      }
+
+      if (formData.deductionTypeId === 'custom' && !formData.name.trim()) {
         toast.error('Please enter a deduction name')
         return
       }
@@ -118,6 +141,9 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
         return
       }
 
+      const deductionType = getDeductionById(formData.deductionTypeId)
+      const finalName = formData.deductionTypeId === 'custom' ? formData.name.trim() : deductionType?.name || formData.name.trim()
+
       const url = editingDeduction 
         ? `/api/employee/deductions/${editingDeduction.id}`
         : '/api/employee/deductions'
@@ -130,10 +156,12 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          name: formData.name.trim(),
+          name: finalName,
           amount: formData.amount,
           isPercentage: formData.isPercentage,
-          description: formData.description.trim() || undefined
+          description: formData.description.trim() || undefined,
+          deductionTypeId: formData.deductionTypeId,
+          deductionCode: deductionType?.code || undefined
         })
       })
 
@@ -144,7 +172,6 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
         setIsDialogOpen(false)
         resetForm()
         await fetchDeductions()
-        // Notify parent to refresh payroll data
         onDeductionChange?.()
       } else {
         toast.error(data.error || 'Failed to save deduction')
@@ -170,7 +197,6 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
       if (data.success) {
         toast.success(data.message)
         await fetchDeductions()
-        // Notify parent to refresh payroll data
         onDeductionChange?.()
       } else {
         toast.error(data.error || 'Failed to delete deduction')
@@ -266,6 +292,10 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
     </motion.div>
   )
 
+  const governmentDeductions = PREDEFINED_DEDUCTION_TYPES.filter(d => d.category === 'government')
+  const loanDeductions = PREDEFINED_DEDUCTION_TYPES.filter(d => d.category === 'loans')
+  const otherDeductions = PREDEFINED_DEDUCTION_TYPES.filter(d => d.category === 'other')
+
   useEffect(() => {
     fetchDeductions()
   }, [])
@@ -318,7 +348,6 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
                 <TabsTrigger value="personal">My Deductions ({deductions.length})</TabsTrigger>
               </TabsList>
 
-              {/* All Deductions Tab */}
               <TabsContent value="all" className="space-y-4">
                 {systemDeductions.length === 0 && deductions.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -371,7 +400,6 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
                 )}
               </TabsContent>
 
-              {/* System Rules Tab */}
               <TabsContent value="system" className="space-y-3">
                 {systemDeductions.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -388,7 +416,6 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
                 )}
               </TabsContent>
 
-              {/* Personal Deductions Tab */}
               <TabsContent value="personal" className="space-y-3">
                 {deductions.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -418,7 +445,6 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
         </CardContent>
       </Card>
 
-      {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         setIsDialogOpen(open)
         if (!open) resetForm()
@@ -431,22 +457,64 @@ export function ManualDeductionsCard({ onDeductionChange }: ManualDeductionsCard
             <DialogDescription>
               {editingDeduction 
                 ? 'Update the details of your deduction below.' 
-                : 'Add a new deduction that will be applied to your payroll.'}
+                : 'Select a deduction type and enter the amount.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Deduction Name <span className="text-red-500">*</span>
+              <Label htmlFor="deductionType">
+                Deduction Type <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Personal Loan, Savings, Union Dues"
-                maxLength={100}
-              />
+              <Select 
+                value={formData.deductionTypeId} 
+                onValueChange={handleDeductionTypeChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a deduction type" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <SelectGroup>
+                    <SelectLabel>{DEDUCTION_CATEGORIES.government}</SelectLabel>
+                    {governmentDeductions.map(d => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name} {d.code && <span className="text-muted-foreground">({d.code})</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>{DEDUCTION_CATEGORIES.loans}</SelectLabel>
+                    {loanDeductions.map(d => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name} {d.code && <span className="text-muted-foreground">({d.code})</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>{DEDUCTION_CATEGORIES.other}</SelectLabel>
+                    {otherDeductions.map(d => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
+
+            {formData.deductionTypeId === 'custom' && (
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  Custom Deduction Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Personal Loan, Savings, Union Dues"
+                  maxLength={100}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="amount">

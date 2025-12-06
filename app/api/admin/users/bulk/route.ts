@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/database"
 import bcrypt from "bcryptjs"
 import { AuditLogger } from "@/lib/audit-logger"
-import { getSalaryGradesByPosition, getDailyRateByGrade } from "@/lib/salary-grades-server"
+import { getDailyRateByGradeAndStep } from "@/lib/salary-grades-server"
+
+// Helper to convert Roman numeral to number
+function romanToNumber(roman: string): number | null {
+  const romanNumerals: { [key: string]: number } = {
+    'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8
+  }
+  return romanNumerals[roman.toUpperCase()] || null
+}
 
 interface BulkEmployee {
   firstName: string
@@ -13,6 +21,8 @@ interface BulkEmployee {
   employeeType: string
   department: string
   position: string
+  rank: string  // Roman numeral rank (e.g., "I", "II", "III")
+  step: string  // Step within salary grade (1-8)
   phone: string
   employeeId: string
   hireDate: string
@@ -21,7 +31,7 @@ interface BulkEmployee {
   emergencyContactName: string
   emergencyContactRelationship: string
   emergencyContactPhone: string
-  salaryGrade?: string
+  salaryGrade?: string  // Legacy support
   dailyRate?: string
 }
 
@@ -108,21 +118,88 @@ export async function POST(request: NextRequest) {
           ? employee.employeeType.toUpperCase()
           : null
 
-        // Handle salary grade and daily rate
+        // Handle salary grade and daily rate lookup using position, rank, and step
         let salaryGrade: number | undefined
+        let salaryStep: number | undefined
         let dailyRate: number | undefined
 
-        if (employee.salaryGrade) {
-          // Salary grade provided - use it
-          salaryGrade = parseInt(employee.salaryGrade)
-          dailyRate = await getDailyRateByGrade(salaryGrade)
+        if (employee.position && employee.rank && employee.step) {
+          // Convert rank from Roman numeral to number
+          const rankNumber = romanToNumber(employee.rank)
+          const stepNumber = parseInt(employee.step) || 1
+
+          if (rankNumber) {
+            // Look up the salary grade from the database using position, rank, and step
+            const salaryGradeRecord = await prisma.salaryGrade.findFirst({
+              where: {
+                position: employee.position,
+                rank: rankNumber,
+                step: stepNumber,
+                isActive: true
+              }
+            })
+
+            if (salaryGradeRecord) {
+              salaryGrade = salaryGradeRecord.grade
+              salaryStep = salaryGradeRecord.step
+              dailyRate = Number(salaryGradeRecord.dailyRate)
+            } else {
+              // Salary grade not found - record error
+              result.failed++
+              result.errors.push({
+                email: employee.email,
+                employeeId: employee.employeeId,
+                error: `Salary grade not found for position: ${employee.position}, rank: ${employee.rank}, step: ${employee.step}`
+              })
+              continue
+            }
+          }
+        } else if (employee.position && employee.rank) {
+          // Position and rank provided but no step - default to step 1
+          const rankNumber = romanToNumber(employee.rank)
+          const stepNumber = 1
+
+          if (rankNumber) {
+            const salaryGradeRecord = await prisma.salaryGrade.findFirst({
+              where: {
+                position: employee.position,
+                rank: rankNumber,
+                step: stepNumber,
+                isActive: true
+              }
+            })
+
+            if (salaryGradeRecord) {
+              salaryGrade = salaryGradeRecord.grade
+              salaryStep = salaryGradeRecord.step
+              dailyRate = Number(salaryGradeRecord.dailyRate)
+            } else {
+              result.failed++
+              result.errors.push({
+                email: employee.email,
+                employeeId: employee.employeeId,
+                error: `Salary grade not found for position: ${employee.position}, rank: ${employee.rank}`
+              })
+              continue
+            }
+          }
         } else if (employee.position) {
-          // No salary grade but position provided - get lowest grade for position
-          const gradesForPosition = await getSalaryGradesByPosition(employee.position)
-          if (gradesForPosition.length > 0) {
-            // Get the first (lowest rank) salary grade for this position
-            salaryGrade = gradesForPosition[0].grade
-            dailyRate = gradesForPosition[0].dailyRate
+          // Only position provided - get the lowest rank and step 1
+          const salaryGradeRecord = await prisma.salaryGrade.findFirst({
+            where: {
+              position: employee.position,
+              isActive: true
+            },
+            orderBy: [
+              { rank: 'asc' },
+              { step: 'asc' }
+            ]
+          })
+
+          if (salaryGradeRecord) {
+            salaryGrade = salaryGradeRecord.grade
+            salaryStep = salaryGradeRecord.step
+            dailyRate = Number(salaryGradeRecord.dailyRate)
           }
         }
 
@@ -140,6 +217,7 @@ export async function POST(request: NextRequest) {
             department: employee.department || undefined,
             position: employee.position || undefined,
             salaryGrade: salaryGrade,
+            salaryStep: salaryStep,
             dailyRate: dailyRate,
             hireDate: employee.hireDate ? new Date(employee.hireDate) : undefined,
             phone: employee.phone || undefined,
@@ -171,10 +249,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Return the result
+    // Return the result with detailed feedback
+    const message = result.created > 0
+      ? `Successfully imported ${result.created} employee${result.created !== 1 ? 's' : ''}.${result.failed > 0 ? ` ${result.failed} failed.` : ''}`
+      : `Import failed. ${result.failed} employee${result.failed !== 1 ? 's' : ''} could not be imported.`
+
     return NextResponse.json({
       ...result,
-      message: `Successfully created ${result.created} employees. ${result.failed} failed.`
+      message,
+      success: result.created > 0
     }, { status: result.created > 0 ? 201 : 400 })
 
   } catch (error) {

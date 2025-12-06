@@ -196,6 +196,7 @@ export default function AdminUsersPage() {
       department: user.department || "",
       position: user.position || "",
       salaryGrade: user.salaryGrade?.toString() || "",
+      salaryStep: user.salaryStep?.toString() || "",
       dailyRate: user.dailyRate?.toString() || "",
       phone: user.phone || "",
       employeeId: user.employeeId || "",
