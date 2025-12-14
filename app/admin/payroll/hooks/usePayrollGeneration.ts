@@ -36,11 +36,11 @@ export const usePayrollGeneration = () => {
       const end = new Date(templateDateRange.to)
       end.setHours(23, 59, 59, 999)
 
-      const employeeType = selectedDepartment === "all" ? undefined 
-        : selectedDepartment === "TEACHING" ? "TEACHING_PERSONNEL" 
-        : selectedDepartment === "NON-TEACHING" ? "NON_TEACHING_PERSONNEL" 
-        : selectedDepartment === "CASUAL_PLANTILLA" ? "CASUAL_PLANTILLA"
-        : undefined
+      const employeeType = selectedDepartment === "all" ? undefined
+        : selectedDepartment === "TEACHING" ? "TEACHING_PERSONNEL"
+          : selectedDepartment === "NON-TEACHING" ? "NON_TEACHING_PERSONNEL"
+            : selectedDepartment === "CASUAL_PLANTILLA" ? "CASUAL_PLANTILLA"
+              : undefined
 
       console.log("Generating report with params:", {
         template: template.type,
@@ -81,7 +81,7 @@ export const usePayrollGeneration = () => {
             })
             return
           }
-          
+
           const deptUrl = new URL('/api/admin/reports', window.location.origin)
           deptUrl.searchParams.set('type', 'department-payroll')
           deptUrl.searchParams.set('startDate', start.toISOString())
@@ -89,7 +89,7 @@ export const usePayrollGeneration = () => {
           if (employeeType) {
             deptUrl.searchParams.set('employeeType', employeeType)
           }
-          
+
           response = await fetch(deptUrl.toString())
           break
 
@@ -101,7 +101,7 @@ export const usePayrollGeneration = () => {
           if (employeeType) {
             taxUrl.searchParams.set('employeeType', employeeType)
           }
-          
+
           response = await fetch(taxUrl.toString())
           break
 
@@ -117,23 +117,23 @@ export const usePayrollGeneration = () => {
 
       const result = await response.json()
       console.log("Report generation result:", result)
-      
+
       // Handle different response formats
       let records = result.records || []
       let generatedCount = 0
-      
+
       if (template.type === "monthly" || template.type === "custom") {
         generatedCount = result.generated || 0
       } else {
         generatedCount = records.length
       }
-      
+
       if (!records || records.length === 0) {
-        const errorMessage = result.message || 
+        const errorMessage = result.message ||
           `No data found for the selected criteria. Generated: ${generatedCount} records. Please check if employees have role 'EMPLOYEE', are active, and have salary configured.`
-        
+
         toast({
-          title: "No Data", 
+          title: "No Data",
           description: errorMessage,
           variant: "destructive"
         })
@@ -165,7 +165,7 @@ export const usePayrollGeneration = () => {
         detailedPayroll = await Promise.all(
           records.map(async (record: any) => {
             let attendanceData = { daysPresent: 0, hoursWorked: 0, lateHours: 0, undertimeHours: 0 }
-            
+
             // If the record already has attendance data (from PayrollResult), use it
             if (record.daysWorked !== undefined) {
               attendanceData = {
@@ -178,19 +178,19 @@ export const usePayrollGeneration = () => {
               // Fallback: fetch attendance data if needed
               try {
                 const attendanceResponse = await fetch(`/api/admin/attendance?userId=${record.userId}&startDate=${start.toISOString()}&endDate=${end.toISOString()}`)
-                
+
                 if (attendanceResponse.ok) {
                   const attendance = await attendanceResponse.json()
                   // Calculate late minutes from lateMinutes field
-                  const totalLateMinutes = attendance.records?.reduce((sum: number, r: any) => 
+                  const totalLateMinutes = attendance.records?.reduce((sum: number, r: any) =>
                     sum + (r.lateMinutes ? parseFloat(r.lateMinutes.toString()) : 0), 0) || 0
                   // Calculate undertime minutes from undertimeMinutes field
-                  const totalUndertimeMinutes = attendance.records?.reduce((sum: number, r: any) => 
+                  const totalUndertimeMinutes = attendance.records?.reduce((sum: number, r: any) =>
                     sum + (r.undertimeMinutes ? parseFloat(r.undertimeMinutes.toString()) : 0), 0) || 0
-                  
+
                   attendanceData = {
                     daysPresent: attendance.records?.filter((r: any) => r.timeIn && r.timeOut).length || 0,
-                    hoursWorked: attendance.records?.reduce((sum: number, r: any) => 
+                    hoursWorked: attendance.records?.reduce((sum: number, r: any) =>
                       sum + (r.hoursWorked ? parseFloat(r.hoursWorked.toString()) : 0), 0) || 0,
                     lateHours: totalLateMinutes / 60,
                     undertimeHours: totalUndertimeMinutes / 60
@@ -203,6 +203,43 @@ export const usePayrollGeneration = () => {
               }
             }
 
+            // Helper function to find rule amount by name pattern
+            const findRuleAmount = (rules: any[], patterns: string[]) => {
+              const rule = rules.find(r =>
+                r.ruleType === 'deduction' &&
+                patterns.some(p => r.ruleName?.toLowerCase().includes(p.toLowerCase()))
+              )
+              return rule ? Number(rule.amount) : 0
+            }
+
+            // Parse applied rules if available
+            const appliedRules = record.appliedRules
+              ? (typeof record.appliedRules === 'string' ? JSON.parse(record.appliedRules) : record.appliedRules)
+              : []
+
+            // All patterns that map to specific ledger columns
+            const allSpecificPatterns = [
+              'city sav', '439-5',
+              'gsis conso', '413-4',
+              'gsis opt', '413-3',
+              'gsis gfal', '413-7',
+              'coa', '439-6',
+              'gsis emrg', 'emergency', '413-8',
+              'gsis mpl', '413-6',
+              'mpl_lite', 'mpl lite', '413-9',
+              'gsis cpl', '413-2',
+              'sss kaltas', '439-8',
+              'fa deduction', '439-9',
+              'hdmf mp2', '414-3',
+              'hdmf pml', '414-2'
+            ]
+
+            // Calculate "Other Ded (Custom)" - sum of deduction rules that don't match any specific column
+            const customOtherDeductions = appliedRules
+              .filter((r: any) => r.ruleType === 'deduction')
+              .filter((r: any) => !allSpecificPatterns.some(p => r.ruleName?.toLowerCase().includes(p.toLowerCase())))
+              .reduce((sum: number, r: any) => sum + Number(r.amount || 0), 0)
+
             // Use the detailed breakdown from PayrollResult if available
             const deductionBreakdown = {
               withholdingTax: parseFloat(record.withholdingTax?.toString() || '0'),
@@ -212,7 +249,21 @@ export const usePayrollGeneration = () => {
               lateDeductions: parseFloat(record.lateDeductions?.toString() || '0'),
               undertimeDeductions: parseFloat(record.undertimeDeductions?.toString() || '0'),
               loanDeductions: parseFloat(record.loanDeductions?.toString() || '0'),
-              otherDeductions: parseFloat(record.otherDeductions?.toString() || '0')
+              otherDeductions: customOtherDeductions,  // Custom deductions not matching any specific column
+              // Specific deduction types for ledger columns - extracted from applied rules
+              citySavingsLoan: findRuleAmount(appliedRules, ['city sav', '439-5']),
+              gsisConsoLoan: findRuleAmount(appliedRules, ['gsis conso', '413-4']),
+              gsisOptionalPolicyLoan: findRuleAmount(appliedRules, ['gsis opt', '413-3']),
+              gsisGfal: findRuleAmount(appliedRules, ['gsis gfal', '413-7']),
+              coaDisallowance: findRuleAmount(appliedRules, ['coa', '439-6']),
+              gsisEmergencyLoan: findRuleAmount(appliedRules, ['gsis emrg', 'emergency', '413-8']),
+              gsisMpl: findRuleAmount(appliedRules, ['gsis mpl', '413-6']),
+              gsisMplLite: findRuleAmount(appliedRules, ['mpl_lite', 'mpl lite', '413-9']),
+              gsisCpl: findRuleAmount(appliedRules, ['gsis cpl', '413-2']),
+              sssKaltas: findRuleAmount(appliedRules, ['sss kaltas', '439-8']),
+              faDeduction: findRuleAmount(appliedRules, ['fa deduction', '439-9']),
+              hdmfMp2: findRuleAmount(appliedRules, ['hdmf mp2', '414-3']),
+              hdmfPmlLoan: findRuleAmount(appliedRules, ['hdmf pml', '414-2'])
             }
 
             // Use the detailed earnings breakdown from PayrollResult if available
@@ -230,7 +281,8 @@ export const usePayrollGeneration = () => {
               ...record,
               attendanceData,
               deductionBreakdown,
-              earningsBreakdown
+              earningsBreakdown,
+              appliedRulesBreakdown: appliedRules
             }
           })
         )
@@ -285,7 +337,7 @@ export const usePayrollGeneration = () => {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
-      
+
       const data = await response.json()
       console.log("User test results:", data)
       toast({

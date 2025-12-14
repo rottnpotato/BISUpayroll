@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     if (users.length === 0) {
       return NextResponse.json(
-        { 
+        {
           error: "No eligible users found for payroll generation",
           debug: {
             whereClause,
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         }
 
         const calc = calculation[0]
-        
+
         // Ensure required fields have valid values
         const dailyRate = calc.daily_rate || 0
         const hourlyRate = calc.hourly_rate || (dailyRate / 8) || 0
@@ -123,7 +123,51 @@ export async function POST(request: NextRequest) {
         const grossPay = calc.gross_pay || 0
         const totalDeductions = calc.total_deductions || 0
         const netPay = calc.net_pay || 0
-        
+
+        // Fetch detailed payroll rules for this user to populate appliedRules
+        const userRuleAssignments = await prisma.payrollRuleAssignment.findMany({
+          where: { userId: user.id },
+          include: {
+            payrollRule: true
+          }
+        })
+
+        // Also fetch global rules (applyToAll = true)
+        const globalRules = await prisma.payrollRule.findMany({
+          where: {
+            isActive: true,
+            applyToAll: true
+          }
+        })
+
+        // Combine user-specific and global rules
+        const userSpecificRules = userRuleAssignments
+          .filter(assignment => assignment.payrollRule && assignment.payrollRule.isActive)
+          .map(assignment => ({
+            ruleId: assignment.payrollRule.id,
+            ruleName: assignment.payrollRule.name,
+            ruleType: assignment.payrollRule.type,
+            amount: Number(assignment.payrollRule.amount),
+            isPercentage: assignment.payrollRule.isPercentage,
+            category: assignment.payrollRule.type
+          }))
+
+        const globalRulesData = globalRules.map(rule => ({
+          ruleId: rule.id,
+          ruleName: rule.name,
+          ruleType: rule.type,
+          amount: Number(rule.amount),
+          isPercentage: rule.isPercentage,
+          category: rule.type
+        }))
+
+        // Merge both sets, avoiding duplicates (user-specific takes precedence)
+        const userRuleIds = new Set(userSpecificRules.map(r => r.ruleId))
+        const appliedRulesData = [
+          ...userSpecificRules,
+          ...globalRulesData.filter(r => !userRuleIds.has(r.ruleId))
+        ]
+
         // Upsert PayrollResult record
         const payrollResult = await prisma.payrollResult.upsert({
           where: {
@@ -171,7 +215,7 @@ export async function POST(request: NextRequest) {
             totalDeductions: totalDeductions,
             netPay: netPay,
             status: PayrollResultStatus.GENERATED,
-            appliedRules: '[]'
+            appliedRules: JSON.stringify(appliedRulesData)
           },
           update: {
             user: {
@@ -206,6 +250,7 @@ export async function POST(request: NextRequest) {
             otherDeductions: calc.other_deductions || 0,
             totalDeductions: totalDeductions,
             netPay: netPay,
+            appliedRules: JSON.stringify(appliedRulesData),
             updatedAt: new Date()
           },
           include: {
@@ -280,17 +325,17 @@ export async function POST(request: NextRequest) {
     if (payrollResults.length > 0) {
       try {
         // Build category label
-        const categoryLabel = employeeType 
-          ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'NON-TEACHING' 
-            : employeeType === 'TEACHING_PERSONNEL' ? 'TEACHING' 
-            : employeeType === 'CASUAL_PLANTILLA' ? 'CASUAL PLANTILLA' 
-            : employeeType) 
+        const categoryLabel = employeeType
+          ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'NON-TEACHING'
+            : employeeType === 'TEACHING_PERSONNEL' ? 'TEACHING'
+              : employeeType === 'CASUAL_PLANTILLA' ? 'CASUAL PLANTILLA'
+                : employeeType)
           : null
-        
-        const statusLabel = (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) 
-          ? employmentStatus 
+
+        const statusLabel = (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus))
+          ? employmentStatus
           : null
-        
+
         // Combine category and status for display
         let combinedLabel = 'ALL'
         if (categoryLabel && statusLabel) {
@@ -350,18 +395,18 @@ export async function POST(request: NextRequest) {
         // Create temporary file
         const tempDir = path.join(process.cwd(), 'temp')
         await fs.promises.mkdir(tempDir, { recursive: true })
-        
-  const timestamp = Date.now()
-  const statusSlug = (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? (employmentStatus as string).toLowerCase() : 'all'
-  const deptSlug = employeeType 
-    ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'non-teaching' 
-      : employeeType === 'TEACHING_PERSONNEL' ? 'teaching' 
-      : employeeType === 'CASUAL_PLANTILLA' ? 'casual-plantilla' 
-      : employeeType.toLowerCase()) 
-    : 'all'
-  const tempFileName = `payroll_${deptSlug}_${statusSlug}_${timestamp}.json`
+
+        const timestamp = Date.now()
+        const statusSlug = (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? (employmentStatus as string).toLowerCase() : 'all'
+        const deptSlug = employeeType
+          ? (employeeType === 'NON_TEACHING_PERSONNEL' ? 'non-teaching'
+            : employeeType === 'TEACHING_PERSONNEL' ? 'teaching'
+              : employeeType === 'CASUAL_PLANTILLA' ? 'casual-plantilla'
+                : employeeType.toLowerCase())
+          : 'all'
+        const tempFileName = `payroll_${deptSlug}_${statusSlug}_${timestamp}.json`
         const tempFilePath = path.join(tempDir, tempFileName)
-        
+
         await fs.promises.writeFile(tempFilePath, JSON.stringify(payrollSummary, null, 2))
 
         // Encrypt and store the file
@@ -402,28 +447,28 @@ export async function POST(request: NextRequest) {
           const deptLabel = combinedLabel !== 'ALL' ? combinedLabel : null
           payrollFileRecord = await prisma.payrollFile.create({
             data: {
-            fileName: encryptionResult.metadata.originalFileName,
-            filePath: encryptionResult.encryptedFilePath,
-            fileSize: encryptionResult.metadata.fileSize,
-            fileType: 'json',
-            reportType: 'monthly',
-            payPeriodStart: startDate,
-            payPeriodEnd: endDate,
+              fileName: encryptionResult.metadata.originalFileName,
+              filePath: encryptionResult.encryptedFilePath,
+              fileSize: encryptionResult.metadata.fileSize,
+              fileType: 'json',
+              reportType: 'monthly',
+              payPeriodStart: startDate,
+              payPeriodEnd: endDate,
               generatedBy: currentUserId,
-            department: deptLabel,
-            employeeCount: payrollResults.length,
-            totalGrossPay: payrollSummary.totals.totalGrossPay,
-            totalNetPay: payrollSummary.totals.totalNetPay,
-            totalDeductions: payrollSummary.totals.totalDeductions,
-            status: 'GENERATED',
-            metadata: JSON.stringify({
-              encryptedAt: encryptionResult.metadata.encryptedAt,
-              checksum: encryptionResult.metadata.checksum,
-              originalFileName: encryptionResult.metadata.originalFileName,
-              employmentStatus: (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? employmentStatus : 'all',
-              employeeType: employeeType || null
-            }),
-            checksum: encryptionResult.metadata.checksum
+              department: deptLabel,
+              employeeCount: payrollResults.length,
+              totalGrossPay: payrollSummary.totals.totalGrossPay,
+              totalNetPay: payrollSummary.totals.totalNetPay,
+              totalDeductions: payrollSummary.totals.totalDeductions,
+              status: 'GENERATED',
+              metadata: JSON.stringify({
+                encryptedAt: encryptionResult.metadata.encryptedAt,
+                checksum: encryptionResult.metadata.checksum,
+                originalFileName: encryptionResult.metadata.originalFileName,
+                employmentStatus: (employmentStatus && validEmploymentStatuses.includes(employmentStatus as EmploymentStatus)) ? employmentStatus : 'all',
+                employeeType: employeeType || null
+              }),
+              checksum: encryptionResult.metadata.checksum
             }
           })
         }

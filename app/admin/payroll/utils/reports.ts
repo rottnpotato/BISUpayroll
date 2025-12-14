@@ -1,7 +1,7 @@
 import { PayrollData, ReportTemplate } from '../types'
 import { format } from "date-fns"
 import { DateRange } from "react-day-picker"
- 
+
 const ENTRIES_PER_PAGE = 15
 
 const getReportTitle = (selectedTemplate: ReportTemplate | null, payrollData: PayrollData[], employmentStatus?: string) => {
@@ -13,7 +13,7 @@ const getReportTitle = (selectedTemplate: ReportTemplate | null, payrollData: Pa
     case 'custom':
       return 'CUSTOM PERIOD PAYROLL REPORT'
     default:
-      const statusLabel = employmentStatus && employmentStatus !== 'all' 
+      const statusLabel = employmentStatus && employmentStatus !== 'all'
         ? employmentStatus.toUpperCase()
         : 'ALL STATUS'
       return `PAYROLL - ${statusLabel} EMPLOYEES - OF BISU BALILIHAN CAMPUS`
@@ -77,48 +77,58 @@ interface EmployeeRowData {
 }
 
 const extractEmployeeData = (employee: PayrollData, index: number): EmployeeRowData => {
-    const regularPay = parseFloat(employee.earningsBreakdown?.regularPay?.toString() || employee.dailyRate?.toString() || '0')
-    const overtimePay = parseFloat(employee.earningsBreakdown?.overtimePay?.toString() || employee.overtime?.toString() || '0')
-    const holidayPay = parseFloat(employee.earningsBreakdown?.holidayPay?.toString() || '0')
-    const allowances = parseFloat(employee.earningsBreakdown?.allowances?.toString() || '0')
-    const bonuses = parseFloat(employee.earningsBreakdown?.bonuses?.toString() || employee.bonuses?.toString() || '0')
-    const thirteenthMonthPay = parseFloat(employee.earningsBreakdown?.thirteenthMonthPay?.toString() || '0')
-    const serviceIncentiveLeave = parseFloat(employee.earningsBreakdown?.serviceIncentiveLeave?.toString() || '0')
-    const grossPay = parseFloat(employee.grossPay?.toString() || '0')
-    const netPay = parseFloat(employee.netPay?.toString() || '0')
-    
+  const regularPay = parseFloat(employee.earningsBreakdown?.regularPay?.toString() || employee.dailyRate?.toString() || '0')
+  const overtimePay = parseFloat(employee.earningsBreakdown?.overtimePay?.toString() || employee.overtime?.toString() || '0')
+  const holidayPay = parseFloat(employee.earningsBreakdown?.holidayPay?.toString() || '0')
+  const allowances = parseFloat(employee.earningsBreakdown?.allowances?.toString() || '0')
+  const bonuses = parseFloat(employee.earningsBreakdown?.bonuses?.toString() || employee.bonuses?.toString() || '0')
+  const thirteenthMonthPay = parseFloat(employee.earningsBreakdown?.thirteenthMonthPay?.toString() || '0')
+  const serviceIncentiveLeave = parseFloat(employee.earningsBreakdown?.serviceIncentiveLeave?.toString() || '0')
+  const grossPay = parseFloat(employee.grossPay?.toString() || '0')
+  const netPay = parseFloat(employee.netPay?.toString() || '0')
+
   const dailyRate = employee.dailyRate ? parseFloat(employee.dailyRate.toString()) : 0
   const hourlyRate = employee.hourlyRate ? parseFloat(employee.hourlyRate.toString()) : 0
   const daysWorked = parseFloat(employee.attendanceData?.daysPresent?.toString() || '0')
   const hoursWorked = parseFloat(employee.attendanceData?.hoursWorked?.toString() || '0')
   const lateHours = parseFloat(employee.attendanceData?.lateHours?.toString() || '0')
-  
+
   const totalEarnings = regularPay + overtimePay + holidayPay + allowances + bonuses + thirteenthMonthPay + serviceIncentiveLeave
 
-    const gsisContribution = parseFloat(employee.deductionBreakdown?.gsisContribution?.toString() || '0')
-    const philHealthContribution = parseFloat(employee.deductionBreakdown?.philHealthContribution?.toString() || '0')
-    const pagibigContribution = parseFloat(employee.deductionBreakdown?.pagibigContribution?.toString() || '0')
-    const withholdingTax = parseFloat(employee.deductionBreakdown?.withholdingTax?.toString() || '0')
-    const lateDeductions = parseFloat(employee.deductionBreakdown?.lateDeductions?.toString() || '0')
-    const loanDeductions = parseFloat(employee.deductionBreakdown?.loanDeductions?.toString() || '0')
-    
-    // Calculate custom deductions: employee-defined otherDeductions + admin-defined deduction rules (stored in loanDeductions by SP)
-    const employeeOtherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
-    const rulesBreakdownDeductions = (employee.appliedRulesBreakdown || [])
-      .filter(rule => rule.ruleType?.toLowerCase() === 'deduction')
-      .reduce((sum, rule) => sum + (parseFloat(rule.amount?.toString() || '0')), 0)
-    // loanDeductions already contains admin-defined deduction rules from the stored procedure
-    const otherDeductions = employeeOtherDeductions + loanDeductions + rulesBreakdownDeductions
+  const gsisContribution = parseFloat(employee.deductionBreakdown?.gsisContribution?.toString() || '0')
+  const philHealthContribution = parseFloat(employee.deductionBreakdown?.philHealthContribution?.toString() || '0')
+  const pagibigContribution = parseFloat(employee.deductionBreakdown?.pagibigContribution?.toString() || '0')
+  const withholdingTax = parseFloat(employee.deductionBreakdown?.withholdingTax?.toString() || '0')
+  const lateDeductions = parseFloat(employee.deductionBreakdown?.lateDeductions?.toString() || '0')
+  const loanDeductions = parseFloat(employee.deductionBreakdown?.loanDeductions?.toString() || '0')
+
+  // Calculate custom deductions: use the pre-calculated otherDeductions from deductionBreakdown
+  // (This value is computed in usePayrollGeneration.ts as sum of deduction rules not matching specific columns)
+  const otherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
   const undertimeDeductions = parseFloat((employee as any).deductionBreakdown?.undertimeDeductions?.toString() || '0')
   const citySavingsLoan = parseFloat(employee.deductionBreakdown?.citySavingsLoan?.toString() || '0')
-  
-  const totalDeductions = gsisContribution + philHealthContribution + pagibigContribution + 
-                         withholdingTax + lateDeductions + loanDeductions + otherDeductions + undertimeDeductions
+
+  // Extract specific deduction types from deductionBreakdown (populated from appliedRules)
+  const gsisConsoLoan = parseFloat(employee.deductionBreakdown?.gsisConsoLoan?.toString() || '0')
+  const gsisOptionalPolicyLoan = parseFloat(employee.deductionBreakdown?.gsisOptionalPolicyLoan?.toString() || '0')
+  const gsisGfal = parseFloat(employee.deductionBreakdown?.gsisGfal?.toString() || '0')
+  const coaDisallowance = parseFloat(employee.deductionBreakdown?.coaDisallowance?.toString() || '0')
+  const gsisEmergencyLoan = parseFloat(employee.deductionBreakdown?.gsisEmergencyLoan?.toString() || '0')
+  const gsisMpl = parseFloat(employee.deductionBreakdown?.gsisMpl?.toString() || '0')
+  const gsisMplLite = parseFloat(employee.deductionBreakdown?.gsisMplLite?.toString() || '0')
+  const gsisCpl = parseFloat(employee.deductionBreakdown?.gsisCpl?.toString() || '0')
+  const sssKaltas = parseFloat(employee.deductionBreakdown?.sssKaltas?.toString() || '0')
+  const faDeduction = parseFloat(employee.deductionBreakdown?.faDeduction?.toString() || '0')
+  const hdmfMp2 = parseFloat(employee.deductionBreakdown?.hdmfMp2?.toString() || '0')
+  const hdmfPmlLoan = parseFloat(employee.deductionBreakdown?.hdmfPmlLoan?.toString() || '0')
+
+  const totalDeductions = gsisContribution + philHealthContribution + pagibigContribution +
+    withholdingTax + lateDeductions + loanDeductions + otherDeductions + undertimeDeductions
 
   // Calculate absences (working days - days worked, excluding weekends)
   const absences = 22 - daysWorked > 0 ? 22 - daysWorked : 0
   const undertimeHours = parseFloat((employee as any).attendanceData?.undertimeHours?.toString() || '0')
-  
+
   // Calculate salary and PERA deductions from absences
   const absenceSalaryDeduction = absences * dailyRate
   const peraAllowanceDaily = allowances / 22
@@ -156,18 +166,18 @@ const extractEmployeeData = (employee: PayrollData, index: number): EmployeeRowD
     otherDeductions,
     totalDeductions,
     citySavingsLoan,
-    gsisConsoLoan: 0,
-    gsisOptionalPolicyLoan: 0,
-    gsisGfal: 0,
-    coaDisallowance: 0,
-    gsisEmergencyLoan: 0,
-    gsisMpl: 0,
-    gsisMplLite: 0,
-    gsisCpl: 0,
-    sssKaltas: 0,
-    faDeduction: 0,
-    hdmfMp2: 0,
-    hdmfPmlLoan: 0
+    gsisConsoLoan,
+    gsisOptionalPolicyLoan,
+    gsisGfal,
+    coaDisallowance,
+    gsisEmergencyLoan,
+    gsisMpl,
+    gsisMplLite,
+    gsisCpl,
+    sssKaltas,
+    faDeduction,
+    hdmfMp2,
+    hdmfPmlLoan
   }
 }
 
@@ -517,15 +527,15 @@ const buildDepartmentRows = (sortedData: PayrollData[]) => {
 }
 
 export const generateSplitLedgerHTML = (data: PayrollData[], dateRange: DateRange, employmentStatus?: string): string => {
-  const sortedData = [...data].sort((a, b) => 
+  const sortedData = [...data].sort((a, b) =>
     `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`)
   )
 
   const employeeData = sortedData.map((emp, idx) => extractEmployeeData(emp, idx))
-  
+
   const compensationPages: EmployeeRowData[][] = []
   const deductionPages: EmployeeRowData[][] = []
-  
+
   for (let i = 0; i < employeeData.length; i += ENTRIES_PER_PAGE) {
     compensationPages.push(employeeData.slice(i, i + ENTRIES_PER_PAGE))
     deductionPages.push(employeeData.slice(i, i + ENTRIES_PER_PAGE))
@@ -535,7 +545,7 @@ export const generateSplitLedgerHTML = (data: PayrollData[], dateRange: DateRang
   const totalDedPages = deductionPages.length
   const totalPages = totalCompPages + totalDedPages
 
-  const statusLabel = employmentStatus && employmentStatus !== 'all' 
+  const statusLabel = employmentStatus && employmentStatus !== 'all'
     ? employmentStatus.toUpperCase()
     : 'ALL'
   const title = `PAYROLL LEDGER - ${statusLabel} EMPLOYEES - BISU BALILIHAN CAMPUS`
@@ -543,7 +553,7 @@ export const generateSplitLedgerHTML = (data: PayrollData[], dateRange: DateRang
   const grandTotals = calculatePageTotals(employeeData)
 
   let pagesHtml = ''
-  
+
   // Compensation pages
   compensationPages.forEach((pageData, pageIdx) => {
     const pageTotals = calculatePageTotals(pageData)
@@ -619,13 +629,13 @@ export const generateSplitLedgerHTML = (data: PayrollData[], dateRange: DateRang
 export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange, selectedTemplate: ReportTemplate | null, employmentStatus?: string) => {
   const isTax = selectedTemplate?.type === 'tax'
   const isDepartment = selectedTemplate?.type === 'department'
-  
+
   // Use split ledger for all reports except tax and department
   if (!isTax && !isDepartment) {
     return generateSplitLedgerHTML(data, dateRange, employmentStatus)
   }
 
-  const sortedData = data.sort((a, b) => 
+  const sortedData = data.sort((a, b) =>
     `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`)
   )
 
@@ -651,7 +661,7 @@ export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange, sel
       </thead>
     `
     : isDepartment
-    ? `
+      ? `
       <thead>
         <tr>
           <th>Serial No.</th>
@@ -668,7 +678,7 @@ export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange, sel
         </tr>
       </thead>
     `
-    : `
+      : `
       <thead>
         <tr>
           <th rowspan="2">Serial No.</th>
@@ -701,8 +711,8 @@ export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange, sel
     ? (isTax
       ? `<tr><td colspan="12" style="padding: 16px; text-align: center; color: #6b7280;">No tax withholding data available. Please generate report first.</td></tr>`
       : isDepartment
-      ? `<tr><td colspan="11" style="padding: 16px; text-align: center; color: #6b7280;">No department payroll data available. Please generate report first.</td></tr>`
-      : `<tr><td colspan="18" style="padding: 16px; text-align: center; color: #6b7280;">No employee data available. Please generate payroll first.</td></tr>`)
+        ? `<tr><td colspan="11" style="padding: 16px; text-align: center; color: #6b7280;">No department payroll data available. Please generate report first.</td></tr>`
+        : `<tr><td colspan="18" style="padding: 16px; text-align: center; color: #6b7280;">No employee data available. Please generate payroll first.</td></tr>`)
     : (isTax ? buildTaxRows(sortedData) : isDepartment ? buildDepartmentRows(sortedData) : buildStandardRows(sortedData))
 
   return `
@@ -791,17 +801,17 @@ export const generatePrintHTML = (data: PayrollData[], dateRange: DateRange, sel
 
 export const filterReports = (reports: any[], searchTerm: string, selectedReportType: string) => {
   return reports.filter(report => {
-    const matchesSearch = 
-      report.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch =
+      report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       report.id.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesType = 
-      selectedReportType === "All Types" || 
+
+    const matchesType =
+      selectedReportType === "All Types" ||
       report.type.toLowerCase() === selectedReportType.toLowerCase()
-    
+
     return matchesSearch && matchesType
   })
-} 
+}
 
 export const parseSavedLedgerJsonToPayrollData = (
   content: string

@@ -35,7 +35,7 @@ export const PayrollPreviewDialog = ({
       case "custom":
         return "CUSTOM PERIOD PAYROLL REPORT"
       default:
-        const statusLabel = employmentStatus && employmentStatus !== 'all' 
+        const statusLabel = employmentStatus && employmentStatus !== 'all'
           ? employmentStatus.toUpperCase()
           : 'ALL STATUS'
         return `PAYROLL LEDGER - ${statusLabel} EMPLOYEES - BISU BALILIHAN CAMPUS`
@@ -52,7 +52,7 @@ export const PayrollPreviewDialog = ({
     return value.toFixed(2)
   }
 
-  const sortedData = payrollData?.sort((a, b) => 
+  const sortedData = payrollData?.sort((a, b) =>
     `${a.user.lastName}, ${a.user.firstName}`.localeCompare(`${b.user.lastName}, ${b.user.firstName}`)
   ) || []
 
@@ -165,19 +165,19 @@ export const PayrollPreviewDialog = ({
               <th className="border border-black p-1 text-center">FA Ded</th>
               <th className="border border-black p-1 text-center">HDMF MP2</th>
               <th className="border border-black p-1 text-center">HDMF PML</th>
-              <th className="border border-black p-1 text-center">Other Ded<br/>(Custom)</th>
+              <th className="border border-black p-1 text-center">Other Ded<br />(Custom)</th>
               <th className="border border-black p-1 text-center font-bold">Total Ded</th>
               <th className="border border-black p-1 text-center">Signature</th>
             </tr>
           </thead>
           <tbody>
-          {sortedData.length > 0 ? sortedData.map((employee, index) => {
+            {sortedData.length > 0 ? sortedData.map((employee, index) => {
               const dailyRate = employee.dailyRate ? parseFloat(employee.dailyRate.toString()) : 0
               const allowances = parseFloat(employee.earningsBreakdown?.allowances?.toString() || '0')
               const daysWorked = parseFloat(employee.attendanceData?.daysPresent?.toString() || '0')
               const lateHours = parseFloat(employee.attendanceData?.lateHours?.toString() || '0')
               const undertimeHours = parseFloat(employee.attendanceData?.undertimeHours?.toString() || '0')
-              
+
               const absences = 22 - daysWorked > 0 ? 22 - daysWorked : 0
               const absenceSalaryDeduction = absences * dailyRate
               const peraDaily = allowances / 22
@@ -189,15 +189,24 @@ export const PayrollPreviewDialog = ({
               const philHealthContribution = parseFloat(employee.deductionBreakdown?.philHealthContribution?.toString() || '0')
               const pagibigContribution = parseFloat(employee.deductionBreakdown?.pagibigContribution?.toString() || '0')
               const citySavingsLoan = parseFloat(employee.deductionBreakdown?.citySavingsLoan?.toString() || '0')
-              
-              // Calculate custom deductions: employee-defined otherDeductions + admin-defined deduction rules (stored in loanDeductions by SP)
-              const employeeOtherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
-              const adminDefinedDeductions = parseFloat(employee.deductionBreakdown?.loanDeductions?.toString() || '0')
-              const rulesBreakdownDeductions = (employee.appliedRulesBreakdown || [])
-                .filter(rule => rule.ruleType?.toLowerCase() === 'deduction')
-                .reduce((sum, rule) => sum + (parseFloat(rule.amount?.toString() || '0')), 0)
-              const otherDeductions = employeeOtherDeductions + adminDefinedDeductions + rulesBreakdownDeductions
-              
+
+              // Extract specific deduction types from deductionBreakdown (populated from appliedRules)
+              const gsisConsoLoan = parseFloat(employee.deductionBreakdown?.gsisConsoLoan?.toString() || '0')
+              const gsisOptionalPolicyLoan = parseFloat(employee.deductionBreakdown?.gsisOptionalPolicyLoan?.toString() || '0')
+              const gsisGfal = parseFloat(employee.deductionBreakdown?.gsisGfal?.toString() || '0')
+              const coaDisallowance = parseFloat(employee.deductionBreakdown?.coaDisallowance?.toString() || '0')
+              const gsisEmergencyLoan = parseFloat(employee.deductionBreakdown?.gsisEmergencyLoan?.toString() || '0')
+              const gsisMpl = parseFloat(employee.deductionBreakdown?.gsisMpl?.toString() || '0')
+              const gsisMplLite = parseFloat(employee.deductionBreakdown?.gsisMplLite?.toString() || '0')
+              const gsisCpl = parseFloat(employee.deductionBreakdown?.gsisCpl?.toString() || '0')
+              const sssKaltas = parseFloat(employee.deductionBreakdown?.sssKaltas?.toString() || '0')
+              const faDeduction = parseFloat(employee.deductionBreakdown?.faDeduction?.toString() || '0')
+              const hdmfMp2 = parseFloat(employee.deductionBreakdown?.hdmfMp2?.toString() || '0')
+              const hdmfPmlLoan = parseFloat(employee.deductionBreakdown?.hdmfPmlLoan?.toString() || '0')
+
+              // Get custom other deductions (already calculated in usePayrollGeneration)
+              const otherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
+
               const totalDeductions = parseFloat(employee.deductions?.toString() || '0')
 
               return (
@@ -215,18 +224,18 @@ export const PayrollPreviewDialog = ({
                   <td className="border border-black p-1 text-right">{formatValue(pagibigContribution)}</td>
                   <td className="border border-black p-1 text-right">{formatValue(philHealthContribution)}</td>
                   <td className="border border-black p-1 text-right">{formatValue(citySavingsLoan)}</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
-                  <td className="border border-black p-1 text-center">-</td>
+                  <td className="border border-black p-1 text-right">{formatValue(gsisConsoLoan)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(gsisOptionalPolicyLoan)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(gsisGfal)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(coaDisallowance)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(gsisEmergencyLoan)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(gsisMpl)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(gsisMplLite)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(gsisCpl)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(sssKaltas)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(faDeduction)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(hdmfMp2)}</td>
+                  <td className="border border-black p-1 text-right">{formatValue(hdmfPmlLoan)}</td>
                   <td className="border border-black p-1 text-right">{otherDeductions > 0 ? formatValue(otherDeductions) : '-'}</td>
                   <td className="border border-black p-1 text-right font-bold">{formatValue(totalDeductions)}</td>
                   <td className="border border-black p-1"></td>
@@ -364,7 +373,7 @@ export const PayrollPreviewDialog = ({
           <div className="text-center mb-6">
             <h1 className="text-xl font-bold mb-2">{getReportTitle()}</h1>
             <h2 className="text-base">
-              For the Period: {templateDateRange?.from && templateDateRange?.to && 
+              For the Period: {templateDateRange?.from && templateDateRange?.to &&
                 `${format(templateDateRange.from, 'MMMM dd, yyyy')} - ${format(templateDateRange.to, 'MMMM dd, yyyy')}`
               }
             </h2>
@@ -386,7 +395,7 @@ export const PayrollPreviewDialog = ({
           {!isTax && (
             <div className="mb-4 text-xs">
               <p>
-                We acknowledge the receipt of cash shown opposite to our name as full compensation for services rendered for the period covered {templateDateRange?.from && templateDateRange?.to && 
+                We acknowledge the receipt of cash shown opposite to our name as full compensation for services rendered for the period covered {templateDateRange?.from && templateDateRange?.to &&
                   `${format(templateDateRange.from, 'MMMM dd, yyyy')} - ${format(templateDateRange.to, 'MMMM dd, yyyy')}`}.
               </p>
             </div>
