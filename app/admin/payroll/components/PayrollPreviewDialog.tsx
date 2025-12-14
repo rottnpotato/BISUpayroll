@@ -165,6 +165,7 @@ export const PayrollPreviewDialog = ({
               <th className="border border-black p-1 text-center">FA Ded</th>
               <th className="border border-black p-1 text-center">HDMF MP2</th>
               <th className="border border-black p-1 text-center">HDMF PML</th>
+              <th className="border border-black p-1 text-center">Other Ded<br/>(Custom)</th>
               <th className="border border-black p-1 text-center font-bold">Total Ded</th>
               <th className="border border-black p-1 text-center">Signature</th>
             </tr>
@@ -188,6 +189,15 @@ export const PayrollPreviewDialog = ({
               const philHealthContribution = parseFloat(employee.deductionBreakdown?.philHealthContribution?.toString() || '0')
               const pagibigContribution = parseFloat(employee.deductionBreakdown?.pagibigContribution?.toString() || '0')
               const citySavingsLoan = parseFloat(employee.deductionBreakdown?.citySavingsLoan?.toString() || '0')
+              
+              // Calculate custom deductions: employee-defined otherDeductions + admin-defined deduction rules (stored in loanDeductions by SP)
+              const employeeOtherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
+              const adminDefinedDeductions = parseFloat(employee.deductionBreakdown?.loanDeductions?.toString() || '0')
+              const rulesBreakdownDeductions = (employee.appliedRulesBreakdown || [])
+                .filter(rule => rule.ruleType?.toLowerCase() === 'deduction')
+                .reduce((sum, rule) => sum + (parseFloat(rule.amount?.toString() || '0')), 0)
+              const otherDeductions = employeeOtherDeductions + adminDefinedDeductions + rulesBreakdownDeductions
+              
               const totalDeductions = parseFloat(employee.deductions?.toString() || '0')
 
               return (
@@ -217,12 +227,13 @@ export const PayrollPreviewDialog = ({
                   <td className="border border-black p-1 text-center">-</td>
                   <td className="border border-black p-1 text-center">-</td>
                   <td className="border border-black p-1 text-center">-</td>
+                  <td className="border border-black p-1 text-right">{otherDeductions > 0 ? formatValue(otherDeductions) : '-'}</td>
                   <td className="border border-black p-1 text-right font-bold">{formatValue(totalDeductions)}</td>
                   <td className="border border-black p-1"></td>
                 </tr>
               )
             }) : (
-              <tr><td colSpan={27} className="border border-black p-4 text-center text-gray-500">No data available</td></tr>
+              <tr><td colSpan={28} className="border border-black p-4 text-center text-gray-500">No data available</td></tr>
             )}
           </tbody>
         </table>

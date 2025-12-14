@@ -23,9 +23,9 @@ export const usePrintPayroll = () => {
       // Calculate file metadata
       const departments = [...new Set(payrollData.map(p => p.user.department).filter(d => d))]
       const employeeCount = payrollData.length
-      const totalGrossPay = payrollData.reduce((sum, p) => sum + p.grossPay, 0)
-      const totalNetPay = payrollData.reduce((sum, p) => sum + p.netPay, 0)
-      const totalDeductions = payrollData.reduce((sum, p) => sum + (p.deductions || p.totalDeductions || 0), 0)
+      const totalGrossPay = payrollData.reduce((sum, p) => sum + (Number(p.grossPay) || 0), 0)
+      const totalNetPay = payrollData.reduce((sum, p) => sum + (Number(p.netPay) || 0), 0)
+      const totalDeductions = payrollData.reduce((sum, p) => sum + (Number(p.deductions) || Number(p.totalDeductions) || 0), 0)
 
       // Create file record
       const fileData = {

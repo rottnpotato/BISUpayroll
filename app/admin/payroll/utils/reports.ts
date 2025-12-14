@@ -101,7 +101,14 @@ const extractEmployeeData = (employee: PayrollData, index: number): EmployeeRowD
     const withholdingTax = parseFloat(employee.deductionBreakdown?.withholdingTax?.toString() || '0')
     const lateDeductions = parseFloat(employee.deductionBreakdown?.lateDeductions?.toString() || '0')
     const loanDeductions = parseFloat(employee.deductionBreakdown?.loanDeductions?.toString() || '0')
-    const otherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
+    
+    // Calculate custom deductions: employee-defined otherDeductions + admin-defined deduction rules (stored in loanDeductions by SP)
+    const employeeOtherDeductions = parseFloat(employee.deductionBreakdown?.otherDeductions?.toString() || '0')
+    const rulesBreakdownDeductions = (employee.appliedRulesBreakdown || [])
+      .filter(rule => rule.ruleType?.toLowerCase() === 'deduction')
+      .reduce((sum, rule) => sum + (parseFloat(rule.amount?.toString() || '0')), 0)
+    // loanDeductions already contains admin-defined deduction rules from the stored procedure
+    const otherDeductions = employeeOtherDeductions + loanDeductions + rulesBreakdownDeductions
   const undertimeDeductions = parseFloat((employee as any).deductionBreakdown?.undertimeDeductions?.toString() || '0')
   const citySavingsLoan = parseFloat(employee.deductionBreakdown?.citySavingsLoan?.toString() || '0')
   
@@ -218,6 +225,7 @@ const buildDeductionRow = (data: EmployeeRowData, startIndex: number): string =>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${formatValue(data.faDeduction)}</td>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${formatValue(data.hdmfMp2)}</td>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${formatValue(data.hdmfPmlLoan)}</td>
+      <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${data.otherDeductions > 0 ? formatValue(data.otherDeductions) : '-'}</td>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">${formatValue(data.totalDeductions)}</td>
       <td style="padding: 4px;"></td>
     </tr>
@@ -306,7 +314,7 @@ const buildDeductionSubtotalRow = (totals: PageTotals, label: string): string =>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${formatValue(totals.gsisContribution)}</td>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${formatValue(totals.pagibigContribution)}</td>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${formatValue(totals.philHealthContribution)}</td>
-      <td colspan="13" style="border-right: 1px solid #000; padding: 4px;"></td>
+      <td colspan="14" style="border-right: 1px solid #000; padding: 4px;"></td>
       <td style="border-right: 1px solid #000; padding: 4px; text-align: right;">${formatValue(totals.totalDeductions)}</td>
       <td style="padding: 4px;"></td>
     </tr>
@@ -351,7 +359,7 @@ const getDeductionTableHead = (): string => `
       <th rowspan="2" style="border: 1px solid #000; padding: 4px; font-size: 8px; text-align: center;">Employee No.</th>
       <th colspan="2" style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 8px;">Absences/Undertime</th>
       <th colspan="2" style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 8px;">Absences (Days)</th>
-      <th colspan="19" style="border: 1px solid #000; padding: 4px; text-align: center; background-color:rgb(255, 255, 255); font-size: 8px;">DEDUCTIONS</th>
+      <th colspan="20" style="border: 1px solid #000; padding: 4px; text-align: center; background-color:rgb(255, 255, 255); font-size: 8px;">DEDUCTIONS</th>
       <th rowspan="2" style="border: 1px solid #000; padding: 4px; font-size: 8px; text-align: center;">Signature</th>
     </tr>
     <tr style="background-color: #f8d7da;">
@@ -376,6 +384,7 @@ const getDeductionTableHead = (): string => `
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">FA Deductions<br/>439-9</th>
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">HDMF MP2<br/>414-3</th>
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">HDMF PML<br/>414-2</th>
+      <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">Other Ded<br/>(Custom)</th>
       <th style="border: 1px solid #000; padding: 2px; font-size: 7px; text-align: center;">Total Deductions</th>
     </tr>
   </thead>
