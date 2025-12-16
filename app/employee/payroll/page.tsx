@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  DollarSign, 
-  Calendar, 
-  FileText, 
+import {
+  DollarSign,
+  Calendar,
+  FileText,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -142,9 +142,9 @@ export default function PayslipDetailsPage() {
     try {
       setIsLoading(true)
       const response = await fetch('/api/employee/payroll')
-      
+
       if (!response.ok) throw new Error('Failed to fetch payroll data')
-      
+
       const result = await response.json()
       if (result.success) {
         setPayrollData(result.data)
@@ -174,16 +174,42 @@ export default function PayslipDetailsPage() {
     })
   }
 
+  // Helper to get current cutoff period (quincena)
+  const getCurrentCutoffPeriod = () => {
+    const now = new Date()
+    const day = now.getDate()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+
+    if (day <= 15) {
+      // First cutoff: 1st - 15th
+      return {
+        start: new Date(year, month, 1),
+        end: new Date(year, month, 15, 23, 59, 59, 999),
+        label: '1st - 15th'
+      }
+    } else {
+      // Second cutoff: 16th - end of month
+      const lastDay = new Date(year, month + 1, 0).getDate()
+      return {
+        start: new Date(year, month, 16),
+        end: new Date(year, month, lastDay, 23, 59, 59, 999),
+        label: `16th - ${lastDay}${lastDay === 31 ? 'st' : lastDay === 30 ? 'th' : 'th'}`
+      }
+    }
+  }
+
+  const currentCutoff = getCurrentCutoffPeriod()
+
   const handleGenerateCurrentPayslip = async () => {
     try {
       setIsGeneratingCurrentPayslip(true)
-      toast.message('Generating current month payslip…')
-      
-      // Get current month date range
-      const now = new Date()
-      const payPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      const payPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-      
+      toast.message(`Generating payslip for ${currentCutoff.label}…`)
+
+      // Get current cutoff period (quincena)
+      const payPeriodStart = currentCutoff.start
+      const payPeriodEnd = currentCutoff.end
+
       // Use the new on-demand generation API
       const res = await fetch('/api/employee/payslip/generate', {
         method: 'POST',
@@ -194,15 +220,15 @@ export default function PayslipDetailsPage() {
           format: 'pdf'
         })
       })
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.message || 'Failed to generate payslip')
       }
-      
+
       const blob = await res.blob()
       const isPdf = blob.type === 'application/pdf'
-      
+
       if (isPdf) {
         // Open PDF in new window for printing
         const objectUrl = URL.createObjectURL(blob)
@@ -218,7 +244,7 @@ export default function PayslipDetailsPage() {
           // Fallback to download if popup blocked
           const a = document.createElement('a')
           a.href = objectUrl
-          a.download = `Payslip_Current_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.pdf`
+          a.download = `Payslip_${currentCutoff.label.replace(/\s+/g, '')}_${payPeriodStart.getFullYear()}-${String(payPeriodStart.getMonth() + 1).padStart(2, '0')}.pdf`
           document.body.appendChild(a)
           a.click()
           a.remove()
@@ -230,7 +256,7 @@ export default function PayslipDetailsPage() {
         const objectUrl = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = objectUrl
-        a.download = `Payslip_Current_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.docx`
+        a.download = `Payslip_${currentCutoff.label.replace(/\s+/g, '')}_${payPeriodStart.getFullYear()}-${String(payPeriodStart.getMonth() + 1).padStart(2, '0')}.docx`
         document.body.appendChild(a)
         a.click()
         a.remove()
@@ -253,8 +279,8 @@ export default function PayslipDetailsPage() {
     return (
       <div className="space-y-6">
         <div>
-        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
-        <p className="text-muted-foreground">View your payroll details, applied rules, and history</p>
+          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
+          <p className="text-muted-foreground">View your payroll details, applied rules, and history</p>
         </div>
         <div className="grid gap-4">
           {[...Array(3)].map((_, i) => (
@@ -274,8 +300,8 @@ export default function PayslipDetailsPage() {
     return (
       <div className="space-y-6">
         <div>
-        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
-        <p className="text-muted-foreground">View your payroll details, applied rules, and history</p>
+          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
+          <p className="text-muted-foreground">View your payroll details, applied rules, and history</p>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -291,7 +317,7 @@ export default function PayslipDetailsPage() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -527,10 +553,12 @@ export default function PayslipDetailsPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-4">
                 <div className="text-center">
-                  <h3 className="text-lg font-semibold text-bisu-purple-deep mb-2">Download Current Payslip</h3>
+                  <h3 className="text-lg font-semibold text-bisu-purple-deep mb-2">Download Current Cutoff Payslip</h3>
                   <p className="text-sm text-muted-foreground">
-                    Generate and download your current month's payslip based on real-time attendance data.
-                    No need to wait for payroll processing!
+                    Generate payslip for the current cutoff period: <strong>{currentCutoff.label}</strong>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Based on your real-time attendance data. No need to wait for payroll processing!
                   </p>
                 </div>
                 <Button
@@ -547,12 +575,12 @@ export default function PayslipDetailsPage() {
                   ) : (
                     <>
                       <FileText className="h-4 w-4 mr-2" />
-                      Generate Current Payslip
+                      Generate Payslip ({currentCutoff.label})
                     </>
                   )}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center max-w-md">
-                  💡 <strong>Tip:</strong> You can also generate payslips for any past period using the "Past Payslips" tab
+                  💡 <strong>Tip:</strong> Payroll follows semi-monthly cutoffs (1-15 and 16-end of month). Use the "Past Payslips" tab to generate payslips for other periods.
                 </p>
               </div>
             </CardContent>
@@ -560,7 +588,7 @@ export default function PayslipDetailsPage() {
         </TabsContent>
 
         <TabsContent value="rules">
-          <PayrollRulesBreakdown 
+          <PayrollRulesBreakdown
             appliedRules={payrollData.appliedRules}
             deductionBreakdown={payrollData.deductionBreakdown}
             calculations={payrollData.calculations}

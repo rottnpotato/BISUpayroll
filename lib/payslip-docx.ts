@@ -54,15 +54,15 @@ function amountInWords(amount: number): string {
 }
 
 export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName: string; buffer: Buffer }> {
-  const templatePath = path.join(process.cwd(), 'public', 'sap.docx')
+  const templatePath = path.join(process.cwd(), 'public', 'SAP.docx')
   if (!fs.existsSync(templatePath)) {
-    throw new Error('Template sap.docx not found in public folder')
+    throw new Error('Template SAP.docx not found in public folder')
   }
 
   const templateBinary = fs.readFileSync(templatePath, 'binary')
   const zip = new PizZip(templateBinary)
-  const doc = new Docxtemplater(zip, { 
-    paragraphLoop: true, 
+  const doc = new Docxtemplater(zip, {
+    paragraphLoop: true,
     linebreaks: true
   })
 
@@ -70,13 +70,13 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
 
   // Extract individual deduction amounts from breakdown
   const deductionBreakdown = data.deductionBreakdown || {}
-  
+
   // Parse applied rules to get specific deduction amounts
   const appliedRules = data.appliedRules || []
-  
+
   // Check if schedule is monthly to determine if net amounts should be shown
   const isMonthlySchedule = data.scheduleType?.toLowerCase().includes('monthly') ?? true // default to true if not specified
-  
+
   // Calculate net pay for each half (simple division by 2) - only for NON-monthly schedules
   const netPayFirstHalf = data.calculations.netPay / 2
   const netPaySecondHalf = data.calculations.netPay / 2
@@ -84,13 +84,13 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
   // Get allowances and others from applied rules
   const allowanceRules = appliedRules.filter(r => r.type === 'allowance')
   const allowanceTotal = allowanceRules.reduce((sum, r) => sum + (r.calculatedAmount ?? r.amount), 0)
-  
+
   const otherEarningsRules = appliedRules.filter(r => ['bonus', 'additional'].includes(r.type))
   const othersTotal = otherEarningsRules.reduce((sum, r) => sum + (r.calculatedAmount ?? r.amount), 0)
 
   // Build deductions list dynamically
   const deductionsList: Array<{ name: string; amount: string }> = []
-  
+
   // Add standard government deductions (check if breakdown exists and has values)
   if (deductionBreakdown?.withholdingTax && deductionBreakdown.withholdingTax > 0) {
     deductionsList.push({
@@ -98,28 +98,28 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
       amount: numberFmt(deductionBreakdown.withholdingTax, currency)
     })
   }
-  
+
   if (deductionBreakdown?.gsisContribution && deductionBreakdown.gsisContribution > 0) {
     deductionsList.push({
       name: 'GSIS Premium',
       amount: numberFmt(deductionBreakdown.gsisContribution, currency)
     })
   }
-  
+
   if (deductionBreakdown?.pagibigContribution && deductionBreakdown.pagibigContribution > 0) {
     deductionsList.push({
       name: 'Pag-IBIG Premium',
       amount: numberFmt(deductionBreakdown.pagibigContribution, currency)
     })
   }
-  
+
   if (deductionBreakdown?.philHealthContribution && deductionBreakdown.philHealthContribution > 0) {
     deductionsList.push({
       name: 'PhilHealth',
       amount: numberFmt(deductionBreakdown.philHealthContribution, currency)
     })
   }
-  
+
   if (deductionBreakdown?.sssContribution && deductionBreakdown.sssContribution > 0) {
     deductionsList.push({
       name: 'SSS Premium',
@@ -145,7 +145,7 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
     })
   }
 
-  if(data.calculations.otherDeductions > 0) {
+  if (data.calculations.otherDeductions > 0) {
     deductionsList.push({
       name: 'Other Deductions',
       amount: numberFmt(data.calculations.otherDeductions, currency)
@@ -156,7 +156,7 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
   const customDeductions = appliedRules.filter(r => r.type === 'deduction')
   customDeductions.forEach(deduction => {
     // Check if this deduction was already added from breakdown to avoid duplicates
-    const alreadyAdded = deductionsList.some(d => 
+    const alreadyAdded = deductionsList.some(d =>
       d.name.toLowerCase().includes(deduction.name.toLowerCase())
     )
     if (!alreadyAdded) {
@@ -167,32 +167,48 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
     }
   })
 
+  // Determine cutoff period label for semi-monthly display
+  const startDay = data.payPeriodStart.getDate()
+  const endDay = data.payPeriodEnd.getDate()
+  const periodMonthYear = format(data.payPeriodStart, 'MMMM yyyy')
+  const periodLabel = `${periodMonthYear} (${startDay}-${endDay})`
+
   const ctx = {
     company_name: 'BISU Payroll System',
     payslip_title: 'PAY SLIP',
-    period_start: format(data.payPeriodStart, 'MMMM yyyy'),
-    period_end: format(data.payPeriodEnd, 'MMMM yyyy'),
+    period_start: periodLabel, // "December 1-15, 2024" or "December 16-31, 2024"
+    period_end: format(data.payPeriodEnd, 'MMMM d, yyyy'),
+    period_label: periodLabel, // Additional variable for template flexibility
     generated_at: format(data.generatedAt || new Date(), 'yyyy-MM-dd HH:mm'),
-    
+
     // Employee Information
     employee_name: data.employee.name,
     employee_id: data.employee.employeeId || '',
     employee_department: data.employee.department || '',
     employee_position: data.employee.position || '',
     employee_hire_date: data.employee.hireDate ? format(data.employee.hireDate, 'yyyy-MM-dd') : '',
-    
+
     // Earnings
     monthly_salary: numberFmt(data.calculations.monthlySalary, currency),
     allowance: numberFmt(allowanceTotal, currency),
     others: numberFmt(othersTotal, currency),
     gross_pay: numberFmt(data.calculations.grossPay, currency),
-    
+
     // Deductions - Array for template loop (for table rows)
     deductions: deductionsList,
-    // Deductions as formatted string with actual line breaks for single cell
-    deductions_formatted: deductionsList.map(d => `${d.name + (d.name.length > 4 ? '' : '        ')}: ${d.amount}`).join('\n'),
+    // Deductions as formatted string with proper alignment
+    // Find the longest deduction name for padding
+    deductions_formatted: (() => {
+      const maxNameLen = Math.max(...deductionsList.map(d => d.name.length), 20)
+      const maxAmountLen = Math.max(...deductionsList.map(d => d.amount.length), 10)
+      return deductionsList.map(d => {
+        const paddedName = d.name.padEnd(maxNameLen, ' ')
+        const paddedAmount = d.amount.padStart(maxAmountLen, ' ')
+        return `${paddedName}  ${paddedAmount}`
+      }).join('\n')
+    })(),
     total_deductions: numberFmt(data.calculations.totalDeductions, currency),
-    
+
     // Net Pay
     net_pay: numberFmt(data.calculations.netPay, currency),
     net_pay_words: amountInWords(data.calculations.netPay).toUpperCase(),
@@ -202,7 +218,7 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
     show_half_payments: !isMonthlySchedule, // Show split payments only for non-monthly schedules
     is_monthly: isMonthlySchedule, // Alternative: show if monthly
     is_bimonthly: !isMonthlySchedule, // Alternative: show if NOT monthly
-    
+
     reference_id: data.payrollRecordId
   }
 
@@ -210,13 +226,13 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
   console.log('Payslip context data:', data)
   try {
     // New API: pass context directly into render (setData deprecated)
-    ;(doc as any).render(ctx)
+    ; (doc as any).render(ctx)
   } catch (e: any) {
     console.error('Docx render error', e)
     throw e
   }
 
   const buf = doc.getZip().generate({ type: 'nodebuffer' })
-  const fileName = `Payslip_${format(data.payPeriodStart, 'yyyyMM')}_${data.employee.employeeId || 'EMP'}.docx`
+  const fileName = `Payslip_${format(data.payPeriodStart, 'yyyyMM')}_${startDay}-${endDay}_${data.employee.employeeId || 'EMP'}.docx`
   return { fileName, buffer: buf }
 }
