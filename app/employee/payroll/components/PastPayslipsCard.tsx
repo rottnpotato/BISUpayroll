@@ -7,11 +7,10 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { 
-  FileText, 
-  Download, 
-  Eye, 
+import {
+  FileText,
+  Download,
+  Eye,
   Calendar,
   CheckCircle,
   Clock,
@@ -48,9 +47,41 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
   const [showPdf, setShowPdf] = useState(false)
   const [selectedPayslip, setSelectedPayslip] = useState<PayrollRecord | null>(null)
   const [showCustomPeriodDialog, setShowCustomPeriodDialog] = useState(false)
-  const [customPeriodStart, setCustomPeriodStart] = useState('')
-  const [customPeriodEnd, setCustomPeriodEnd] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedCutoff, setSelectedCutoff] = useState<'first' | 'second'>('first')
   const [isGeneratingCustom, setIsGeneratingCustom] = useState(false)
+
+  // Generate available years (current year and 2 years back)
+  const availableYears = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i)
+
+  // Helper to get the last day of a month
+  const getLastDayOfMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate()
+  }
+
+  // Get cutoff period dates based on selection
+  const getCutoffPeriodDates = () => {
+    const lastDay = getLastDayOfMonth(selectedYear, selectedMonth)
+    if (selectedCutoff === 'first') {
+      return {
+        start: new Date(selectedYear, selectedMonth, 1),
+        end: new Date(selectedYear, selectedMonth, 15, 23, 59, 59, 999),
+        label: `1-15`
+      }
+    } else {
+      return {
+        start: new Date(selectedYear, selectedMonth, 16),
+        end: new Date(selectedYear, selectedMonth, lastDay, 23, 59, 59, 999),
+        label: `16-${lastDay}`
+      }
+    }
+  }
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -78,7 +109,7 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
       setIsGenerating(record.id)
       setSelectedPayslip(record)
       toast.message('Loading payslip…')
-      
+
       // Use on-demand generation API for all records
       const res = await fetch('/api/employee/payslip/generate', {
         method: 'POST',
@@ -89,17 +120,17 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
           format: 'pdf'
         })
       })
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         toast.error(errorData.message || 'Failed to load payslip')
         setIsGenerating(null)
         return
       }
-      
+
       const blob = await res.blob()
       const isPdf = blob.type === 'application/pdf'
-      
+
       if (isPdf) {
         const objectUrl = URL.createObjectURL(blob)
         setPdfUrl(prev => {
@@ -132,7 +163,7 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
     try {
       setIsGenerating(record.id)
       toast.message('Preparing download…')
-      
+
       // Use on-demand generation API for all records
       const res = await fetch('/api/employee/payslip/generate', {
         method: 'POST',
@@ -143,21 +174,21 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
           format: 'pdf'
         })
       })
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         toast.error(errorData.message || 'Failed to download payslip')
         setIsGenerating(null)
         return
       }
-      
+
       const blob = await res.blob()
       const isPdf = blob.type === 'application/pdf'
       const ext = isPdf ? 'pdf' : 'docx'
       const periodStart = formatDate(record.payPeriodStart).replace(/,?\s+/g, '-')
       const periodEnd = formatDate(record.payPeriodEnd).replace(/,?\s+/g, '-')
       const fileName = `Payslip_${periodStart}_to_${periodEnd}.${ext}`
-      
+
       const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = objectUrl
@@ -177,7 +208,7 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
 
   const handlePrintPayslip = () => {
     const iframe = document.getElementById('payslip-pdf-frame') as HTMLIFrameElement | null
-    try { 
+    try {
       iframe?.contentWindow?.focus()
       iframe?.contentWindow?.print()
     } catch {
@@ -187,11 +218,11 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
 
   const handleDownloadFromPreview = () => {
     if (!pdfUrl || !selectedPayslip) return
-    
+
     const periodStart = formatDate(selectedPayslip.payPeriodStart).replace(/,?\s+/g, '-')
     const periodEnd = formatDate(selectedPayslip.payPeriodEnd).replace(/,?\s+/g, '-')
     const fileName = `Payslip_${periodStart}_to_${periodEnd}.pdf`
-    
+
     const a = document.createElement('a')
     a.href = pdfUrl
     a.download = fileName
@@ -202,28 +233,21 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
   }
 
   const handleGenerateCustomPeriod = async () => {
-    if (!customPeriodStart || !customPeriodEnd) {
-      toast.error('Please select both start and end dates')
-      return
-    }
+    const period = getCutoffPeriodDates()
+    const startDate = period.start
+    const endDate = period.end
 
-    const startDate = new Date(customPeriodStart)
-    const endDate = new Date(customPeriodEnd)
-
-    if (startDate > endDate) {
-      toast.error('Start date must be before end date')
-      return
-    }
-
+    // Validate that the selected period is not in the future
     if (endDate > new Date()) {
-      toast.error('End date cannot be in the future')
+      toast.error('Cannot generate payslip for a future period')
       return
     }
 
     try {
       setIsGeneratingCustom(true)
-      toast.message('Generating payslip…')
-      
+      const periodLabel = `${monthNames[selectedMonth]} ${period.label}, ${selectedYear}`
+      toast.message(`Generating payslip for ${periodLabel}…`)
+
       const res = await fetch(`/api/employee/payslip/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -239,17 +263,17 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
         toast.error(errorData.message || 'Failed to generate payslip')
         return
       }
-      
+
       const blob = await res.blob()
       const isPdf = blob.type === 'application/pdf'
-      
+
       if (isPdf) {
         const objectUrl = URL.createObjectURL(blob)
-        // Set a temporary payslip record for the custom period
+        // Set a temporary payslip record for the selected period
         setSelectedPayslip({
           id: 'custom',
-          payPeriodStart: customPeriodStart,
-          payPeriodEnd: customPeriodEnd,
+          payPeriodStart: startDate.toISOString(),
+          payPeriodEnd: endDate.toISOString(),
           dailyRate: 0,
           overtime: 0,
           deductions: 0,
@@ -270,8 +294,8 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
         setShowPdf(true)
         toast.success('Payslip generated successfully')
       } else {
-        const periodStart = formatDate(customPeriodStart).replace(/,?\s+/g, '-')
-        const periodEnd = formatDate(customPeriodEnd).replace(/,?\s+/g, '-')
+        const periodStart = formatDate(startDate.toISOString()).replace(/,?\s+/g, '-')
+        const periodEnd = formatDate(endDate.toISOString()).replace(/,?\s+/g, '-')
         const fileName = `Payslip_${periodStart}_to_${periodEnd}.docx`
         const objectUrl = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -284,9 +308,6 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
         setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
         setShowCustomPeriodDialog(false)
       }
-
-      setCustomPeriodStart('')
-      setCustomPeriodEnd('')
     } catch (err) {
       console.error(err)
       toast.error('Error generating payslip')
@@ -349,7 +370,7 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
                 {payrollHistory.map((record, index) => {
                   const status = getPayrollStatus(record)
                   const StatusIcon = status?.icon
-                  
+
                   return (
                     <motion.tr
                       key={record.id}
@@ -428,17 +449,17 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
         </CardContent>
       </Card>
 
-      <Dialog 
-        open={showPdf} 
-        onOpenChange={(o) => { 
-          if (!o) { 
+      <Dialog
+        open={showPdf}
+        onOpenChange={(o) => {
+          if (!o) {
             setShowPdf(false)
             setSelectedPayslip(null)
-            if (pdfUrl) { 
+            if (pdfUrl) {
               URL.revokeObjectURL(pdfUrl)
               setPdfUrl(null)
-            } 
-          } 
+            }
+          }
         }}
       >
         <DialogContent className="max-w-5xl w-full h-[90vh] p-4 flex flex-col">
@@ -499,40 +520,64 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Custom Period Dialog */}
+      {/* Period Selection Dialog */}
       <Dialog open={showCustomPeriodDialog} onOpenChange={setShowCustomPeriodDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="text-bisu-purple-deep">Generate Payslip for Custom Period</DialogTitle>
+            <DialogTitle className="text-bisu-purple-deep">Generate Payslip for Pay Period</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Select a date range to generate a payslip based on your attendance data for that period.
+              Select a pay period to generate a payslip based on your attendance data.
             </p>
-            <div className="space-y-2">
-              <Label htmlFor="periodStart">Period Start Date</Label>
-              <Input
-                id="periodStart"
-                type="date"
-                value={customPeriodStart}
-                onChange={(e) => setCustomPeriodStart(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="periodMonth">Month</Label>
+                <select
+                  id="periodMonth"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  {monthNames.map((name, index) => (
+                    <option key={index} value={index}>{name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="periodYear">Year</Label>
+                <select
+                  id="periodYear"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  {availableYears.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="periodEnd">Period End Date</Label>
-              <Input
-                id="periodEnd"
-                type="date"
-                value={customPeriodEnd}
-                onChange={(e) => setCustomPeriodEnd(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                min={customPeriodStart}
-              />
+              <Label htmlFor="periodCutoff">Cutoff Period</Label>
+              <select
+                id="periodCutoff"
+                value={selectedCutoff}
+                onChange={(e) => setSelectedCutoff(e.target.value as 'first' | 'second')}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="first">1st - 15th (First Cutoff)</option>
+                <option value="second">16th - {getLastDayOfMonth(selectedYear, selectedMonth)} (Second Cutoff)</option>
+              </select>
+            </div>
+            <div className="rounded-lg bg-bisu-purple-extralight border border-bisu-purple-light p-3">
+              <p className="text-xs text-bisu-purple-deep">
+                <strong>Selected Period:</strong> {monthNames[selectedMonth]} {getCutoffPeriodDates().label}, {selectedYear}
+              </p>
             </div>
             <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
               <p className="text-xs text-blue-800">
-                <strong>Note:</strong> This will generate a payslip based on your actual attendance data for the selected period, 
+                <strong>Note:</strong> This will generate a payslip based on your actual attendance data for the selected period,
                 regardless of whether payroll has been officially processed.
               </p>
             </div>
@@ -540,11 +585,7 @@ export function PastPayslipsCard({ payrollHistory }: PastPayslipsCardProps) {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                setShowCustomPeriodDialog(false)
-                setCustomPeriodStart('')
-                setCustomPeriodEnd('')
-              }}
+              onClick={() => setShowCustomPeriodDialog(false)}
               disabled={isGeneratingCustom}
             >
               Cancel
