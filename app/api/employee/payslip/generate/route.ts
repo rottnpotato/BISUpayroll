@@ -11,6 +11,44 @@ const libreConvertAsync = promisify(libre.convert)
 // Helper to format numeric safely
 const num = (v: any) => Number(v || 0)
 
+type EmploymentStatus = 'PERMANENT' | 'TEMPORARY' | 'CONTRACTUAL' | 'INACTIVE'
+
+// Payslip generation allowed days based on employment status
+const ALLOWED_DAYS: Record<EmploymentStatus, number[]> = {
+  PERMANENT: [15, 30],
+  TEMPORARY: [5, 20],
+  CONTRACTUAL: [5, 10, 20],
+  INACTIVE: [15, 30],
+}
+
+function canGeneratePayslip(status: EmploymentStatus): boolean {
+  const today = new Date()
+  const dayOfMonth = today.getDate()
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  const allowedDays = ALLOWED_DAYS[status] || ALLOWED_DAYS.CONTRACTUAL
+  
+  return allowedDays.some(day => {
+    if (day === 30 && lastDayOfMonth < 30) {
+      return dayOfMonth === lastDayOfMonth
+    }
+    return dayOfMonth === day
+  })
+}
+
+function formatAllowedDays(status: EmploymentStatus): string {
+  const days = ALLOWED_DAYS[status] || ALLOWED_DAYS.CONTRACTUAL
+  const getOrdinalSuffix = (day: number): string => {
+    if (day > 3 && day < 21) return 'th'
+    switch (day % 10) {
+      case 1: return 'st'
+      case 2: return 'nd'
+      case 3: return 'rd'
+      default: return 'th'
+    }
+  }
+  return days.map(d => `${d}${getOrdinalSuffix(d)}`).join(' and ')
+}
+
 /**
  * POST /api/employee/payslip/generate
  * Generates a payslip on-demand based on real-time attendance data
@@ -63,6 +101,7 @@ export async function POST(request: NextRequest) {
         department: true,
         position: true,
         hireDate: true,
+        status: true,
       }
     })
 
@@ -71,6 +110,16 @@ export async function POST(request: NextRequest) {
         success: false, 
         message: 'Employee data not found' 
       }, { status: 404 })
+    }
+
+    // Validate payslip generation date based on employment status
+    const employmentStatus = employeeData.status as EmploymentStatus
+    if (!canGeneratePayslip(employmentStatus)) {
+      const allowedDays = formatAllowedDays(employmentStatus)
+      return NextResponse.json({ 
+        success: false, 
+        message: `Payslip generation is only available on the ${allowedDays} of each month for ${employmentStatus.toLowerCase()} employees.`
+      }, { status: 403 })
     }
 
     // Get attendance data for the period from punches

@@ -24,6 +24,12 @@ import {
 import { toast } from "sonner"
 import { useAuth } from "@/hooks/use-auth"
 import { PayrollRulesBreakdown, ManualDeductionsCard, PastPayslipsCard } from "./components"
+import { 
+  canGeneratePayslip, 
+  getCurrentCutoffPeriod, 
+  getNextPayslipDate, 
+  formatAllowedDays 
+} from "./utils"
 
 interface PayrollRecord {
   id: string
@@ -75,6 +81,8 @@ interface DeductionBreakdown {
   }
 }
 
+type EmploymentStatus = 'PERMANENT' | 'TEMPORARY' | 'CONTRACTUAL' | 'INACTIVE'
+
 interface EmployeeInfo {
   id: string
   name: string
@@ -82,6 +90,7 @@ interface EmployeeInfo {
   department: string
   position: string
   hireDate: string
+  employmentStatus: EmploymentStatus
 }
 
 interface CurrentMonthData {
@@ -136,7 +145,15 @@ export default function PayslipDetailsPage() {
   const [payrollData, setPayrollData] = useState<DetailedPayrollData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isGeneratingCurrentPayslip, setIsGeneratingCurrentPayslip] = useState(false)
+  const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const { user } = useAuth()
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const fetchPayrollData = async () => {
     try {
@@ -174,32 +191,11 @@ export default function PayslipDetailsPage() {
     })
   }
 
-  // Helper to get current cutoff period (quincena)
-  const getCurrentCutoffPeriod = () => {
-    const now = new Date()
-    const day = now.getDate()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-
-    if (day <= 15) {
-      // First cutoff: 1st - 15th
-      return {
-        start: new Date(year, month, 1),
-        end: new Date(year, month, 15, 23, 59, 59, 999),
-        label: '1st - 15th'
-      }
-    } else {
-      // Second cutoff: 16th - end of month
-      const lastDay = new Date(year, month + 1, 0).getDate()
-      return {
-        start: new Date(year, month, 16),
-        end: new Date(year, month, lastDay, 23, 59, 59, 999),
-        label: `16th - ${lastDay}${lastDay === 31 ? 'st' : lastDay === 30 ? 'th' : 'th'}`
-      }
-    }
-  }
-
-  const currentCutoff = getCurrentCutoffPeriod()
+  const employmentStatus = payrollData?.employee.employmentStatus || 'CONTRACTUAL'
+  const currentCutoff = getCurrentCutoffPeriod(employmentStatus)
+  const canGenerate = canGeneratePayslip(employmentStatus)
+  const nextPayslipDate = getNextPayslipDate(employmentStatus)
+  const allowedDaysText = formatAllowedDays(employmentStatus)
 
   const handleGenerateCurrentPayslip = async () => {
     try {
@@ -323,9 +319,23 @@ export default function PayslipDetailsPage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
-        <p className="text-muted-foreground">View your current payroll calculations and generate payslips for any period</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-bisu-purple-deep">Payslip Details</h1>
+          <p className="text-muted-foreground">View your current payroll calculations and generate payslips for any period</p>
+        </div>
+        <div className="flex items-center gap-2 bg-gradient-to-r from-bisu-purple-deep to-bisu-purple-medium text-white px-3 py-2 rounded-lg shadow-sm">
+          <Clock className="h-4 w-4" />
+          <div className="text-right text-sm">
+            <span className="font-medium">
+              {currentDateTime.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+            <span className="mx-1">•</span>
+            <span className="font-mono font-semibold">
+              {currentDateTime.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Employee Information Card */}
@@ -557,30 +567,56 @@ export default function PayslipDetailsPage() {
                   <p className="text-sm text-muted-foreground">
                     Generate payslip for the current cutoff period: <strong>{currentCutoff.label}</strong>
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Based on your real-time attendance data. No need to wait for payroll processing!
-                  </p>
+                  <Badge variant="outline" className="mt-2 text-bisu-purple-deep border-bisu-purple-light">
+                    {employmentStatus === 'PERMANENT' ? 'Permanent Employee' : 'Contractual Employee'} - Payout on {allowedDaysText}
+                  </Badge>
                 </div>
-                <Button
-                  onClick={handleGenerateCurrentPayslip}
-                  disabled={isGeneratingCurrentPayslip}
-                  className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
-                  size="lg"
-                >
-                  {isGeneratingCurrentPayslip ? (
-                    <>
-                      <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin mr-2" />
-                      Generating Payslip...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Generate Payslip ({currentCutoff.label})
-                    </>
-                  )}
-                </Button>
+                
+                {canGenerate ? (
+                  <Button
+                    onClick={handleGenerateCurrentPayslip}
+                    disabled={isGeneratingCurrentPayslip}
+                    className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
+                    size="lg"
+                  >
+                    {isGeneratingCurrentPayslip ? (
+                      <>
+                        <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin mr-2" />
+                        Generating Payslip...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate Payslip ({currentCutoff.label})
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Button
+                      disabled
+                      className="bg-gray-300 text-gray-500 cursor-not-allowed"
+                      size="lg"
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      Not Available Today
+                    </Button>
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 max-w-md">
+                      <p className="text-sm text-amber-800 text-center">
+                        <AlertCircle className="h-4 w-4 inline mr-1" />
+                        Payslip generation is available on the <strong>{allowedDaysText}</strong> of each month.
+                        <br />
+                        <span className="text-xs">Next available: {nextPayslipDate.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
                 <p className="text-xs text-muted-foreground text-center max-w-md">
-                  💡 <strong>Tip:</strong> Payroll follows semi-monthly cutoffs (1-15 and 16-end of month). Use the "Past Payslips" tab to generate payslips for other periods.
+                  💡 <strong>Tip:</strong> {employmentStatus === 'PERMANENT' 
+                    ? 'Permanent employees can generate payslips on the 15th and 30th of each month.' 
+                    : 'Contractual employees can generate payslips on the 5th and 20th of each month.'}
+                  <br />Use the "Past Payslips" tab to view and download previous payslips.
                 </p>
               </div>
             </CardContent>
@@ -600,7 +636,10 @@ export default function PayslipDetailsPage() {
         </TabsContent>
 
         <TabsContent value="payslips" className="space-y-6">
-          <PastPayslipsCard payrollHistory={payrollData.payrollHistory} />
+          <PastPayslipsCard 
+            payrollHistory={payrollData.payrollHistory} 
+            employmentStatus={payrollData.employee.employmentStatus}
+          />
         </TabsContent>
       </Tabs>
     </motion.div>

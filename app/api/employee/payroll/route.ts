@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         department: true,
         position: true,
         hireDate: true,
+        status: true,
       }
     })
 
@@ -194,7 +195,8 @@ export async function GET(request: NextRequest) {
         department: employeeData.department,
         position: employeeData.position,
         hireDate: employeeData.hireDate,
-        salary: monthlySalary
+        salary: monthlySalary,
+        employmentStatus: employeeData.status,
       },
       currentMonth: {
         year,
