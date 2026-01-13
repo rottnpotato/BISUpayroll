@@ -24,7 +24,8 @@ import {
   canGeneratePayslip, 
   getCutoffPeriodsForMonth, 
   formatAllowedDays,
-  getNextPayslipDate
+  getNextPayslipDate,
+  isPastCutoffPeriod
 } from "../utils"
 
 type EmploymentStatus = 'PERMANENT' | 'TEMPORARY' | 'CONTRACTUAL' | 'INACTIVE'
@@ -80,13 +81,41 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
   const getCutoffPeriodDates = () => {
     const period = cutoffPeriods.find(p => p.value === selectedCutoff)
     if (period) {
+      const startMonth = period.start.getMonth()
+      const endMonth = period.end.getMonth()
+      const startYear = period.start.getFullYear()
+      const endYear = period.end.getFullYear()
+      
+      // Check if the period spans two months
+      const isCrossMonth = startMonth !== endMonth || startYear !== endYear
+      
+      let displayLabel: string
+      if (isCrossMonth) {
+        // Format: "September - October (21-5)"
+        displayLabel = `${monthNames[startMonth]} - ${monthNames[endMonth]} (${period.label.split(' (')[0]})`
+      } else {
+        // Format: "October (6-20)"
+        displayLabel = `${monthNames[endMonth]} (${period.label.split(' (')[0]})`
+      }
+      
       return {
         start: period.start,
         end: period.end,
-        label: period.label.split(' (')[0]
+        label: period.label.split(' (')[0],
+        displayLabel,
+        isCrossMonth,
+        startYear,
+        endYear
       }
     }
-    return cutoffPeriods[0]
+    return {
+      ...cutoffPeriods[0],
+      label: cutoffPeriods[0].label.split(' (')[0],
+      displayLabel: `${monthNames[cutoffPeriods[0].end.getMonth()]} (${cutoffPeriods[0].label.split(' (')[0]})`,
+      isCrossMonth: false,
+      startYear: cutoffPeriods[0].start.getFullYear(),
+      endYear: cutoffPeriods[0].end.getFullYear()
+    }
   }
 
   const monthNames = [
@@ -244,19 +273,22 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
   }
 
   const handleGenerateCustomPeriod = async () => {
-    // Check if today is an allowed payslip generation day
-    if (!canGenerateToday) {
-      toast.error(`Payslip generation is only available on the ${allowedDaysText} of each month`)
-      return
-    }
-
     const period = getCutoffPeriodDates()
     const startDate = period.start
     const endDate = period.end
 
+    // Check if the selected period is in the past (already ended)
+    const periodIsInPast = isPastCutoffPeriod(endDate)
+
     // Validate that the selected period is not in the future
     if (endDate > new Date()) {
       toast.error('Cannot generate payslip for a future period')
+      return
+    }
+
+    // Only enforce payout day restriction for current periods (not past)
+    if (!periodIsInPast && !canGenerateToday) {
+      toast.error(`Payslip generation for current periods is only available on the ${allowedDaysText} of each month`)
       return
     }
 
@@ -590,18 +622,23 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
             </div>
             <div className="rounded-lg bg-bisu-purple-extralight border border-bisu-purple-light p-3">
               <p className="text-xs text-bisu-purple-deep">
-                <strong>Selected Period:</strong> {monthNames[selectedMonth]} {getCutoffPeriodDates().label}, {selectedYear}
+                <strong>Selected Period:</strong> {getCutoffPeriodDates().displayLabel}{getCutoffPeriodDates().isCrossMonth && getCutoffPeriodDates().startYear !== getCutoffPeriodDates().endYear ? `, ${getCutoffPeriodDates().startYear}-${getCutoffPeriodDates().endYear}` : `, ${selectedYear}`}
               </p>
               <p className="text-xs text-bisu-purple-medium mt-1">
                 <strong>Employment Type:</strong> {employmentStatus === 'PERMANENT' ? 'Permanent' : 'Contractual'} (Payout on {allowedDaysText})
               </p>
+              {isPastCutoffPeriod(getCutoffPeriodDates().end) && (
+                <p className="text-xs text-green-700 mt-1 font-medium">
+                  ✓ This is a past period - you can generate anytime
+                </p>
+              )}
             </div>
-            {!canGenerateToday && (
+            {!canGenerateToday && !isPastCutoffPeriod(getCutoffPeriodDates().end) && (
               <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
                 <p className="text-xs text-amber-800 flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" />
                   <span>
-                    <strong>Not Available Today:</strong> Payslip generation is only available on the {allowedDaysText}.
+                    <strong>Current Period Restriction:</strong> Payslip generation for current periods is only available on the {allowedDaysText}.
                     <br />Next available: {nextPayslipDate.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
                   </span>
                 </p>
@@ -624,8 +661,8 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
             </Button>
             <Button
               onClick={handleGenerateCustomPeriod}
-              disabled={isGeneratingCustom || !canGenerateToday}
-              className={canGenerateToday 
+              disabled={isGeneratingCustom || (getCutoffPeriodDates().end > new Date()) || (!isPastCutoffPeriod(getCutoffPeriodDates().end) && !canGenerateToday)}
+              className={(isPastCutoffPeriod(getCutoffPeriodDates().end) || canGenerateToday) && getCutoffPeriodDates().end <= new Date()
                 ? "bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white" 
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"}
             >
@@ -634,7 +671,12 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
                   <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin mr-2" />
                   Generating...
                 </>
-              ) : !canGenerateToday ? (
+              ) : getCutoffPeriodDates().end > new Date() ? (
+                <>
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Future Period
+                </>
+              ) : !isPastCutoffPeriod(getCutoffPeriodDates().end) && !canGenerateToday ? (
                 <>
                   <Clock className="h-4 w-4 mr-2" />
                   Not Available Today

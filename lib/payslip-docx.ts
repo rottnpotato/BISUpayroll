@@ -170,8 +170,25 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
   // Determine cutoff period label for semi-monthly display
   const startDay = data.payPeriodStart.getDate()
   const endDay = data.payPeriodEnd.getDate()
-  const periodMonthYear = format(data.payPeriodStart, 'MMMM yyyy')
-  const periodLabel = `${periodMonthYear} (${startDay}-${endDay})`
+  const startMonth = data.payPeriodStart.getMonth()
+  const endMonth = data.payPeriodEnd.getMonth()
+  const startYear = data.payPeriodStart.getFullYear()
+  const endYear = data.payPeriodEnd.getFullYear()
+  
+  // Check if the period spans two months
+  const isCrossMonth = startMonth !== endMonth || startYear !== endYear
+  
+  let periodLabel: string
+  if (isCrossMonth) {
+    // Cross-month period: "December 2025 - January 2026 (21-5)"
+    const startMonthYear = format(data.payPeriodStart, 'MMMM yyyy')
+    const endMonthYear = format(data.payPeriodEnd, 'MMMM yyyy')
+    periodLabel = `${startMonthYear} - ${endMonthYear} (${startDay}-${endDay})`
+  } else {
+    // Same month: "January 2026 (6-20)"
+    const monthYear = format(data.payPeriodEnd, 'MMMM yyyy')
+    periodLabel = `${monthYear} (${startDay}-${endDay})`
+  }
 
   const ctx = {
     company_name: 'BISU Payroll System',

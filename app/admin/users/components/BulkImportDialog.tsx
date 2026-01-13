@@ -271,7 +271,10 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
 
   // Submit bulk employees
   const handleBulkImport = async () => {
+    console.log('handleBulkImport called, employees:', bulkEmployees.length)
+    
     if (bulkEmployees.length === 0) {
+      console.log('No employees to import')
       toast({
         title: "No Employees",
         description: "Please add employees to import.",
@@ -281,26 +284,37 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
     }
 
     // Validate all employees
+    console.log('Validating employees...')
     const validatedEmployees = bulkEmployees.map(emp => ({
       ...emp,
       errors: validateBulkEmployee(emp)
     }))
 
-    const hasErrors = validatedEmployees.some(emp => 
+    const employeesWithErrors = validatedEmployees.filter(emp => 
       emp.errors && Object.keys(emp.errors).length > 0
     )
+    
+    console.log('Employees with errors:', employeesWithErrors.length)
+    if (employeesWithErrors.length > 0) {
+      console.log('Validation errors found:', employeesWithErrors.map(e => ({ 
+        name: `${e.firstName} ${e.lastName}`, 
+        errors: e.errors 
+      })))
+    }
 
-    if (hasErrors) {
+    if (employeesWithErrors.length > 0) {
       setBulkEmployees(validatedEmployees)
       toast({
         title: "Validation Errors",
-        description: "Please fix all errors before importing.",
+        description: `${employeesWithErrors.length} employee(s) have validation errors. Please check the highlighted rows.`,
         variant: "destructive",
+        duration: 5000,
       })
       return
     }
 
     try {
+      console.log('Starting import...')
       setIsSubmitting(true)
 
       const response = await fetch('/api/admin/users/bulk', {
@@ -311,7 +325,9 @@ export function BulkImportDialog({ open, onOpenChange, onSuccess }: BulkImportDi
         body: JSON.stringify({ employees: bulkEmployees }),
       })
 
+      console.log('Response status:', response.status)
       const result = await response.json()
+      console.log('Import result:', result)
       
       // Store the result and show the result dialog
       setImportResult(result)

@@ -16,14 +16,14 @@ const PAYSLIP_GENERATION_CONFIG: Record<string, PayslipGenerationConfig> = {
   CONTRACTUAL: {
     allowedDays: [5,10, 20],
     cutoffPeriods: [
-      { label: '1st - 5th', dayRange: [1, 5] },
+      { label: '21st - 5th', dayRange: [21, 5] },
       { label: '6th - 20th', dayRange: [6, 20] },
     ],
   },
   TEMPORARY: {
     allowedDays: [5, 20],
     cutoffPeriods: [
-      { label: '1st - 5th', dayRange: [1, 5] },
+      { label: '21st - 5th', dayRange: [21, 5] },
       { label: '6th - 20th', dayRange: [6, 20] },
     ],
   },
@@ -112,11 +112,15 @@ export function getCurrentCutoffPeriod(status: EmploymentStatus, date: Date = ne
     }
   } else {
     // CONTRACTUAL / TEMPORARY
+    // Cutoffs: 21st of prev month - 5th (payout on 5th), 6th - 20th (payout on 20th)
     if (day <= 5) {
+      // Currently in the 21st (prev month) - 5th period
+      const prevMonth = month === 0 ? 11 : month - 1
+      const prevYear = month === 0 ? year - 1 : year
       return {
-        start: new Date(year, month, 1),
+        start: new Date(prevYear, prevMonth, 21),
         end: new Date(year, month, 5, 23, 59, 59, 999),
-        label: '1st - 5th',
+        label: '21st - 5th',
         payoutDay: 5,
       }
     } else if (day <= 20) {
@@ -127,13 +131,13 @@ export function getCurrentCutoffPeriod(status: EmploymentStatus, date: Date = ne
         payoutDay: 20,
       }
     } else {
-      // After 20th, next cutoff is 1st-5th of next month
+      // After 20th, we're in the 21st - 5th period for next month
       const nextMonth = month === 11 ? 0 : month + 1
       const nextYear = month === 11 ? year + 1 : year
       return {
-        start: new Date(nextYear, nextMonth, 1),
+        start: new Date(year, month, 21),
         end: new Date(nextYear, nextMonth, 5, 23, 59, 59, 999),
-        label: '1st - 5th',
+        label: '21st - 5th',
         payoutDay: 5,
       }
     }
@@ -162,11 +166,16 @@ export function getCutoffPeriodsForMonth(status: EmploymentStatus, year: number,
     ]
   } else {
     // CONTRACTUAL / TEMPORARY
+    // First cutoff: 21st of previous month to 5th of current month
+    // Second cutoff: 6th to 20th of current month
+    const prevMonth = month === 0 ? 11 : month - 1
+    const prevYear = month === 0 ? year - 1 : year
+    
     return [
       {
         value: 'first',
-        label: '1st - 5th (Payout: 5th)',
-        start: new Date(year, month, 1),
+        label: '21st - 5th (Payout: 5th)',
+        start: new Date(prevYear, prevMonth, 21),
         end: new Date(year, month, 5, 23, 59, 59, 999),
         payoutDay: 5,
       },
@@ -181,3 +190,11 @@ export function getCutoffPeriodsForMonth(status: EmploymentStatus, year: number,
   }
 }
 
+/**
+ * Check if the requested pay period has already ended (is a past cutoff period).
+ * Employees can generate payslips for past periods at any time.
+ */
+export function isPastCutoffPeriod(periodEnd: Date): boolean {
+  const now = new Date()
+  return periodEnd < now
+}

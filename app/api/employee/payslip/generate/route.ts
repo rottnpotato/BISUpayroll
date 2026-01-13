@@ -50,6 +50,15 @@ function formatAllowedDays(status: EmploymentStatus): string {
 }
 
 /**
+ * Check if the requested pay period has already ended (is a past cutoff period).
+ * Employees can generate payslips for past periods at any time.
+ */
+function isPastCutoffPeriod(periodEnd: Date): boolean {
+  const now = new Date()
+  return periodEnd < now
+}
+
+/**
  * POST /api/employee/payslip/generate
  * Generates a payslip on-demand based on real-time attendance data
  * Does NOT require a PayrollRecord to exist
@@ -113,8 +122,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate payslip generation date based on employment status
+    // Past periods (already ended) can be generated anytime
+    // Current/future periods are restricted to payout days only
     const employmentStatus = employeeData.status as EmploymentStatus
-    if (!canGeneratePayslip(employmentStatus)) {
+    const periodIsInPast = isPastCutoffPeriod(payPeriodEnd)
+    
+    if (!periodIsInPast && !canGeneratePayslip(employmentStatus)) {
       const allowedDays = formatAllowedDays(employmentStatus)
       return NextResponse.json({ 
         success: false, 
