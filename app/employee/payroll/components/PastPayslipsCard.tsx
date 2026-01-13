@@ -367,15 +367,219 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
 
   if (!payrollHistory || payrollHistory.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <FileText className="h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Past Payslips</h3>
-          <p className="text-gray-500 text-center">
-            Your payslip history will appear here once payroll is generated and processed.
-          </p>
-        </CardContent>
-      </Card>
+      <>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Past Payslips</h3>
+            <p className="text-gray-500 text-center mb-4">
+              Your payslip history will appear here once payroll is generated and processed.
+            </p>
+            <Button
+              onClick={() => setShowCustomPeriodDialog(true)}
+              className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Generate Payslip for a Period
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Period Selection Dialog - also rendered when no history */}
+        <Dialog open={showCustomPeriodDialog} onOpenChange={setShowCustomPeriodDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-bisu-purple-deep">Generate Payslip for Pay Period</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Select a pay period to generate a payslip based on your attendance data.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="periodMonth">Month</Label>
+                  <select
+                    id="periodMonth"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    {monthNames.map((name, index) => (
+                      <option key={index} value={index}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="periodYear">Year</Label>
+                  <select
+                    id="periodYear"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    {availableYears.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="periodCutoff">Cutoff Period</Label>
+                <select
+                  id="periodCutoff"
+                  value={selectedCutoff}
+                  onChange={(e) => setSelectedCutoff(e.target.value as 'first' | 'second')}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  {cutoffPeriods.map((period) => (
+                    <option key={period.value} value={period.value}>{period.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="rounded-lg bg-bisu-purple-extralight border border-bisu-purple-light p-3">
+                <p className="text-xs text-bisu-purple-deep">
+                  <strong>Selected Period:</strong> {getCutoffPeriodDates().displayLabel}{getCutoffPeriodDates().isCrossMonth && getCutoffPeriodDates().startYear !== getCutoffPeriodDates().endYear ? `, ${getCutoffPeriodDates().startYear}-${getCutoffPeriodDates().endYear}` : `, ${selectedYear}`}
+                </p>
+                <p className="text-xs text-bisu-purple-medium mt-1">
+                  <strong>Employment Type:</strong> {employmentStatus === 'PERMANENT' ? 'Permanent' : 'Contractual'} (Payout on {allowedDaysText})
+                </p>
+                {isPastCutoffPeriod(getCutoffPeriodDates().end) && (
+                  <p className="text-xs text-green-700 mt-1 font-medium">
+                    ✓ This is a past period - you can generate anytime
+                  </p>
+                )}
+              </div>
+              {!canGenerateToday && !isPastCutoffPeriod(getCutoffPeriodDates().end) && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                  <p className="text-xs text-amber-800 flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>
+                      <strong>Current Period Restriction:</strong> Payslip generation for current periods is only available on the {allowedDaysText}.
+                      <br />Next available: {nextPayslipDate.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </p>
+                </div>
+              )}
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <p className="text-xs text-blue-800">
+                  <strong>Note:</strong> This will generate a payslip based on your actual attendance data for the selected period,
+                  regardless of whether payroll has been officially processed.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowCustomPeriodDialog(false)}
+                disabled={isGeneratingCustom}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleGenerateCustomPeriod}
+                disabled={isGeneratingCustom || (getCutoffPeriodDates().end > new Date()) || (!isPastCutoffPeriod(getCutoffPeriodDates().end) && !canGenerateToday)}
+                className={(isPastCutoffPeriod(getCutoffPeriodDates().end) || canGenerateToday) && getCutoffPeriodDates().end <= new Date()
+                  ? "bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white" 
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"}
+              >
+                {isGeneratingCustom ? (
+                  <>
+                    <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin mr-2" />
+                    Generating...
+                  </>
+                ) : getCutoffPeriodDates().end > new Date() ? (
+                  <>
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Future Period
+                  </>
+                ) : !isPastCutoffPeriod(getCutoffPeriodDates().end) && !canGenerateToday ? (
+                  <>
+                    <Clock className="h-4 w-4 mr-2" />
+                    Not Available Today
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Generate Payslip
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* PDF Preview Dialog - also rendered when no history */}
+        <Dialog
+          open={showPdf}
+          onOpenChange={(o) => {
+            if (!o) {
+              setShowPdf(false)
+              setSelectedPayslip(null)
+              if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl)
+                setPdfUrl(null)
+              }
+            }
+          }}
+        >
+          <DialogContent className="max-w-5xl w-full h-[90vh] p-4 flex flex-col">
+            <DialogHeader className="flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="flex items-center gap-2 text-bisu-purple-deep">
+                  <FileText className="h-5 w-5" />
+                  Payslip Preview
+                  {selectedPayslip && (
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      ({formatDate(selectedPayslip.payPeriodStart)} - {formatDate(selectedPayslip.payPeriodEnd)})
+                    </span>
+                  )}
+                </DialogTitle>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDownloadFromPreview}
+                    className="text-bisu-purple-deep border-bisu-purple-deep hover:bg-bisu-purple-extralight"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handlePrintPayslip}
+                    className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
+                  >
+                    <Printer className="h-4 w-4 mr-1" />
+                    Print
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 border rounded-lg bg-gray-100 overflow-hidden shadow-inner">
+              {pdfUrl ? (
+                <iframe
+                  id="payslip-pdf-frame"
+                  src={pdfUrl}
+                  className="w-full h-full"
+                  title="Payslip PDF Preview"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-8 w-8 rounded-full border-2 border-t-transparent border-bisu-purple-deep animate-spin" />
+                    <span>Loading payslip…</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="mt-3 text-xs text-muted-foreground text-center">
+              Use the buttons above to download or print your payslip.
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     )
   }
 
