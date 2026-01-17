@@ -98,8 +98,11 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
   const isMonthlySchedule = data.scheduleType?.toLowerCase().includes('monthly') ?? true // default to true if not specified
 
   // Calculate net pay for each half - use actual half-period data if available, otherwise divide by 2
-  const netPayFirstHalf = data.firstHalfCalculations?.netPay ?? data.calculations.netPay / 2
-  const netPaySecondHalf = data.secondHalfCalculations?.netPay ?? data.calculations.netPay / 2
+  // const netPayFirstHalf = data.firstHalfCalculations?.netPay ?? data.calculations.netPay / 2
+  // const netPaySecondHalf = data.secondHalfCalculations?.netPay ?? data.calculations.netPay / 2
+
+    const netPayFirstHalf = data.calculations.netPay / 2
+    const netPaySecondHalf = data.calculations.netPay / 2
 
   // Get allowances and others from applied rules
   const allowanceRules = appliedRules.filter(r => r.type === 'allowance')
