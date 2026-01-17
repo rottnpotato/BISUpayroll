@@ -59,6 +59,137 @@ function isPastCutoffPeriod(periodEnd: Date): boolean {
 }
 
 /**
+ * Get the cutoff periods for a given month based on employment status
+ * PERMANENT: 1st-15th (1st half), 16th-end (2nd half)
+ * CONTRACTUAL/TEMPORARY: 21st-5th (1st half), 6th-20th (2nd half)
+ */
+function getHalfPeriodDates(payPeriodStart: Date, payPeriodEnd: Date, status: EmploymentStatus): {
+  firstHalf: { start: Date; end: Date };
+  secondHalf: { start: Date; end: Date };
+} {
+  const year = payPeriodEnd.getFullYear()
+  const month = payPeriodEnd.getMonth()
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate()
+
+  if (status === 'PERMANENT' || status === 'INACTIVE') {
+    // PERMANENT: 1st-15th and 16th-end of month
+    return {
+      firstHalf: {
+        start: new Date(year, month, 1),
+        end: new Date(year, month, 15, 23, 59, 59, 999)
+      },
+      secondHalf: {
+        start: new Date(year, month, 16),
+        end: new Date(year, month, lastDayOfMonth, 23, 59, 59, 999)
+      }
+    }
+  } else {
+    // CONTRACTUAL/TEMPORARY: 21st-5th and 6th-20th
+    const prevMonth = month === 0 ? 11 : month - 1
+    const prevYear = month === 0 ? year - 1 : year
+    
+    return {
+      firstHalf: {
+        start: new Date(prevYear, prevMonth, 21),
+        end: new Date(year, month, 5, 23, 59, 59, 999)
+      },
+      secondHalf: {
+        start: new Date(year, month, 6),
+        end: new Date(year, month, 20, 23, 59, 59, 999)
+      }
+    }
+  }
+}
+
+/**
+ * Calculate half-period deductions based on employment status
+ * For PERMANENT employees:
+ *   - 1st Half: Late, Undertime, Pag-IBIG only
+ *   - 2nd Half: Late, Undertime, GSIS, PhilHealth, Tax, Loans, Other
+ * For CONTRACTUAL/TEMPORARY: Deductions are optional/manually added
+ */
+interface HalfPeriodDeductions {
+  firstHalf: {
+    lateDeductions: number
+    undertimeDeductions: number
+    pagibigContribution: number
+    totalDeductions: number
+  }
+  secondHalf: {
+    lateDeductions: number
+    undertimeDeductions: number
+    gsisContribution: number
+    philHealthContribution: number
+    withholdingTax: number
+    loanDeductions: number
+    otherDeductions: number
+    totalDeductions: number
+  }
+}
+
+function calculateHalfPeriodDeductions(
+  status: EmploymentStatus,
+  lateDeductions: number,
+  undertimeDeductions: number,
+  gsisContribution: number,
+  philHealthContribution: number,
+  pagibigContribution: number,
+  withholdingTax: number,
+  loanDeductions: number,
+  otherDeductions: number
+): HalfPeriodDeductions {
+  // Split time-based deductions proportionally (assume 50/50 for simplicity)
+  const halfLate = lateDeductions / 2
+  const halfUndertime = undertimeDeductions / 2
+  
+  if (status === 'PERMANENT' || status === 'INACTIVE') {
+    // PERMANENT: Pag-IBIG in 1st half, rest in 2nd half
+    return {
+      firstHalf: {
+        lateDeductions: halfLate,
+        undertimeDeductions: halfUndertime,
+        pagibigContribution: pagibigContribution,
+        totalDeductions: halfLate + halfUndertime + pagibigContribution
+      },
+      secondHalf: {
+        lateDeductions: halfLate,
+        undertimeDeductions: halfUndertime,
+        gsisContribution: gsisContribution,
+        philHealthContribution: philHealthContribution,
+        withholdingTax: withholdingTax,
+        loanDeductions: loanDeductions,
+        otherDeductions: otherDeductions,
+        totalDeductions: halfLate + halfUndertime + gsisContribution + philHealthContribution + withholdingTax + loanDeductions + otherDeductions
+      }
+    }
+  } else {
+    // CONTRACTUAL/TEMPORARY: No automatic government deductions
+    // Split other deductions evenly between halves
+    const halfLoans = loanDeductions / 2
+    const halfOther = otherDeductions / 2
+    
+    return {
+      firstHalf: {
+        lateDeductions: halfLate,
+        undertimeDeductions: halfUndertime,
+        pagibigContribution: 0,
+        totalDeductions: halfLate + halfUndertime + halfLoans + halfOther
+      },
+      secondHalf: {
+        lateDeductions: halfLate,
+        undertimeDeductions: halfUndertime,
+        gsisContribution: 0,
+        philHealthContribution: 0,
+        withholdingTax: 0,
+        loanDeductions: halfLoans,
+        otherDeductions: halfOther,
+        totalDeductions: halfLate + halfUndertime + halfLoans + halfOther
+      }
+    }
+  }
+}
+
+/**
  * POST /api/employee/payslip/generate
  * Generates a payslip on-demand based on real-time attendance data
  * Does NOT require a PayrollRecord to exist
@@ -284,6 +415,43 @@ export async function POST(request: NextRequest) {
       withholdingTax: withholdingTax
     }
 
+    // Calculate half-period deductions based on employment status
+    const halfPeriodDeductions = calculateHalfPeriodDeductions(
+      employmentStatus,
+      lateDeductions,
+      undertimeDeductions,
+      gsisContribution,
+      philHealthContribution,
+      pagibigContribution,
+      withholdingTax,
+      loanDeductions,
+      otherDeductions
+    )
+
+    // Calculate half-period net pay
+    // Gross pay is split evenly, then deductions are applied per half
+    const halfGrossPay = grossPay / 2
+    const firstHalfCalculations = {
+      grossPay: halfGrossPay,
+      deductions: halfPeriodDeductions.firstHalf.totalDeductions,
+      netPay: halfGrossPay - halfPeriodDeductions.firstHalf.totalDeductions,
+      lateDeductions: halfPeriodDeductions.firstHalf.lateDeductions,
+      undertimeDeductions: halfPeriodDeductions.firstHalf.undertimeDeductions,
+      pagibigContribution: halfPeriodDeductions.firstHalf.pagibigContribution
+    }
+    const secondHalfCalculations = {
+      grossPay: halfGrossPay,
+      deductions: halfPeriodDeductions.secondHalf.totalDeductions,
+      netPay: halfGrossPay - halfPeriodDeductions.secondHalf.totalDeductions,
+      lateDeductions: halfPeriodDeductions.secondHalf.lateDeductions,
+      undertimeDeductions: halfPeriodDeductions.secondHalf.undertimeDeductions,
+      gsisContribution: halfPeriodDeductions.secondHalf.gsisContribution,
+      philHealthContribution: halfPeriodDeductions.secondHalf.philHealthContribution,
+      withholdingTax: halfPeriodDeductions.secondHalf.withholdingTax,
+      loanDeductions: halfPeriodDeductions.secondHalf.loanDeductions,
+      otherDeductions: halfPeriodDeductions.secondHalf.otherDeductions
+    }
+
     // Prepare payslip data
     const payslipData = {
       payrollRecordId: null, // No record ID since we're generating on-demand
@@ -291,6 +459,7 @@ export async function POST(request: NextRequest) {
       payPeriodEnd: payPeriodEnd,
       generatedAt: new Date(),
       scheduleType: activeSchedule?.name || 'monthly', // Include schedule type
+      employmentStatus: employmentStatus, // Include employment status for deduction logic
       employee: {
         name: `${employeeData.firstName} ${employeeData.lastName}`,
         employeeId: employeeData.employeeId,
@@ -312,6 +481,9 @@ export async function POST(request: NextRequest) {
         otherDeductions: otherDeductions,
         totalDeductions: totalDeductions
       },
+      // Half-period calculations for bi-monthly payslips
+      firstHalfCalculations: firstHalfCalculations,
+      secondHalfCalculations: secondHalfCalculations,
       deductionBreakdown: deductionBreakdown,
       appliedRules: appliedRules,
       attendanceStats: {
@@ -323,6 +495,7 @@ export async function POST(request: NextRequest) {
         absentCount
       }
     }
+
 
     // Generate DOCX
     const { fileName, buffer } = await generatePayslipDocx(payslipData)

@@ -4,6 +4,22 @@ import PizZip from 'pizzip'
 import Docxtemplater from 'docxtemplater'
 import { format } from 'date-fns'
 
+// Half-period calculation structure for bi-monthly payslips
+export interface HalfPeriodCalculation {
+  grossPay: number
+  deductions: number
+  netPay: number
+  // Optional breakdown for display
+  lateDeductions?: number
+  undertimeDeductions?: number
+  pagibigContribution?: number // Only in 1st half for PERMANENT
+  gsisContribution?: number    // Only in 2nd half for PERMANENT
+  philHealthContribution?: number // Only in 2nd half for PERMANENT
+  withholdingTax?: number      // Only in 2nd half for PERMANENT
+  loanDeductions?: number
+  otherDeductions?: number
+}
+
 // Shape of data expected by the generator
 export interface PayslipData {
   payrollRecordId: string | null
@@ -11,6 +27,7 @@ export interface PayslipData {
   payPeriodEnd: Date
   generatedAt?: Date
   scheduleType?: string // 'monthly' | 'bi-monthly' | 'weekly' | etc
+  employmentStatus?: string // 'PERMANENT' | 'CONTRACTUAL' | 'TEMPORARY'
   employee: {
     name: string
     employeeId?: string | null
@@ -32,6 +49,9 @@ export interface PayslipData {
     otherDeductions: number
     totalDeductions: number
   }
+  // Half-period calculations for bi-monthly schedules
+  firstHalfCalculations?: HalfPeriodCalculation
+  secondHalfCalculations?: HalfPeriodCalculation
   deductionBreakdown?: any
   appliedRules?: Array<{ name: string; type: string; amount: number; calculatedAmount?: number; isPercentage?: boolean }>
   currency?: string
@@ -77,9 +97,9 @@ export async function generatePayslipDocx(data: PayslipData): Promise<{ fileName
   // Check if schedule is monthly to determine if net amounts should be shown
   const isMonthlySchedule = data.scheduleType?.toLowerCase().includes('monthly') ?? true // default to true if not specified
 
-  // Calculate net pay for each half (simple division by 2) - only for NON-monthly schedules
-  const netPayFirstHalf = data.calculations.netPay / 2
-  const netPaySecondHalf = data.calculations.netPay / 2
+  // Calculate net pay for each half - use actual half-period data if available, otherwise divide by 2
+  const netPayFirstHalf = data.firstHalfCalculations?.netPay ?? data.calculations.netPay / 2
+  const netPaySecondHalf = data.secondHalfCalculations?.netPay ?? data.calculations.netPay / 2
 
   // Get allowances and others from applied rules
   const allowanceRules = appliedRules.filter(r => r.type === 'allowance')
