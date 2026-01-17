@@ -20,13 +20,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
-import { 
-  canGeneratePayslip, 
-  getCutoffPeriodsForMonth, 
-  formatAllowedDays,
-  getNextPayslipDate,
-  isPastCutoffPeriod
-} from "../utils"
+import { Input } from "@/components/ui/input"
 
 type EmploymentStatus = 'PERMANENT' | 'TEMPORARY' | 'CONTRACTUAL' | 'INACTIVE'
 
@@ -58,70 +52,30 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
   const [showPdf, setShowPdf] = useState(false)
   const [selectedPayslip, setSelectedPayslip] = useState<PayrollRecord | null>(null)
   const [showCustomPeriodDialog, setShowCustomPeriodDialog] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [selectedCutoff, setSelectedCutoff] = useState<'first' | 'second'>('first')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [isGeneratingCustom, setIsGeneratingCustom] = useState(false)
 
-  // Generate available years (current year and 2 years back)
-  const availableYears = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i)
-
-  // Helper to get the last day of a month
-  const getLastDayOfMonth = (year: number, month: number) => {
-    return new Date(year, month + 1, 0).getDate()
+  // Get today's date in YYYY-MM-DD format for date input max value
+  const today = new Date().toISOString().split('T')[0]
+  
+  // Initialize dates to current month when dialog opens
+  const initializeDates = () => {
+    const now = new Date()
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    setStartDate(firstDay.toISOString().split('T')[0])
+    setEndDate(lastDay.toISOString().split('T')[0])
   }
 
-  // Get cutoff periods based on employment status
-  const cutoffPeriods = getCutoffPeriodsForMonth(employmentStatus, selectedYear, selectedMonth)
-  const allowedDaysText = formatAllowedDays(employmentStatus)
-  const canGenerateToday = canGeneratePayslip(employmentStatus)
-  const nextPayslipDate = getNextPayslipDate(employmentStatus)
-
-  // Get cutoff period dates based on selection
-  const getCutoffPeriodDates = () => {
-    const period = cutoffPeriods.find(p => p.value === selectedCutoff)
-    if (period) {
-      const startMonth = period.start.getMonth()
-      const endMonth = period.end.getMonth()
-      const startYear = period.start.getFullYear()
-      const endYear = period.end.getFullYear()
-      
-      // Check if the period spans two months
-      const isCrossMonth = startMonth !== endMonth || startYear !== endYear
-      
-      let displayLabel: string
-      if (isCrossMonth) {
-        // Format: "September - October (21-5)"
-        displayLabel = `${monthNames[startMonth]} - ${monthNames[endMonth]} (${period.label.split(' (')[0]})`
-      } else {
-        // Format: "October (6-20)"
-        displayLabel = `${monthNames[endMonth]} (${period.label.split(' (')[0]})`
-      }
-      
-      return {
-        start: period.start,
-        end: period.end,
-        label: period.label.split(' (')[0],
-        displayLabel,
-        isCrossMonth,
-        startYear,
-        endYear
-      }
-    }
-    return {
-      ...cutoffPeriods[0],
-      label: cutoffPeriods[0].label.split(' (')[0],
-      displayLabel: `${monthNames[cutoffPeriods[0].end.getMonth()]} (${cutoffPeriods[0].label.split(' (')[0]})`,
-      isCrossMonth: false,
-      startYear: cutoffPeriods[0].start.getFullYear(),
-      endYear: cutoffPeriods[0].end.getFullYear()
-    }
+  // Validate date range
+  const isValidDateRange = () => {
+    if (!startDate || !endDate) return false
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const now = new Date()
+    return start <= end && end <= now
   }
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -273,36 +227,37 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
   }
 
   const handleGenerateCustomPeriod = async () => {
-    const period = getCutoffPeriodDates()
-    const startDate = period.start
-    const endDate = period.end
-
-    // Check if the selected period is in the past (already ended)
-    const periodIsInPast = isPastCutoffPeriod(endDate)
-
-    // Validate that the selected period is not in the future
-    if (endDate > new Date()) {
-      toast.error('Cannot generate payslip for a future period')
+    if (!startDate || !endDate) {
+      toast.error('Please select both start and end dates')
       return
     }
 
-    // Only enforce payout day restriction for current periods (not past)
-    if (!periodIsInPast && !canGenerateToday) {
-      toast.error(`Payslip generation for current periods is only available on the ${allowedDaysText} of each month`)
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const now = new Date()
+
+    // Validate date range
+    if (start > end) {
+      toast.error('Start date cannot be after end date')
+      return
+    }
+
+    if (end > now) {
+      toast.error('Cannot generate payslip for a future period')
       return
     }
 
     try {
       setIsGeneratingCustom(true)
-      const periodLabel = `${monthNames[selectedMonth]} ${period.label}, ${selectedYear}`
+      const periodLabel = `${formatDate(start.toISOString())} to ${formatDate(end.toISOString())}`
       toast.message(`Generating payslip for ${periodLabel}…`)
 
       const res = await fetch(`/api/employee/payslip/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          payPeriodStart: startDate.toISOString(),
-          payPeriodEnd: endDate.toISOString(),
+          payPeriodStart: start.toISOString(),
+          payPeriodEnd: end.toISOString(),
           format: 'pdf'
         })
       })
@@ -321,8 +276,8 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
         // Set a temporary payslip record for the selected period
         setSelectedPayslip({
           id: 'custom',
-          payPeriodStart: startDate.toISOString(),
-          payPeriodEnd: endDate.toISOString(),
+          payPeriodStart: start.toISOString(),
+          payPeriodEnd: end.toISOString(),
           dailyRate: 0,
           overtime: 0,
           deductions: 0,
@@ -343,8 +298,8 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
         setShowPdf(true)
         toast.success('Payslip generated successfully')
       } else {
-        const periodStart = formatDate(startDate.toISOString()).replace(/,?\s+/g, '-')
-        const periodEnd = formatDate(endDate.toISOString()).replace(/,?\s+/g, '-')
+        const periodStart = formatDate(start.toISOString()).replace(/,?\s+/g, '-')
+        const periodEnd = formatDate(end.toISOString()).replace(/,?\s+/g, '-')
         const fileName = `Payslip_${periodStart}_to_${periodEnd}.docx`
         const objectUrl = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -376,7 +331,7 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
               Your payslip history will appear here once payroll is generated and processed.
             </p>
             <Button
-              onClick={() => setShowCustomPeriodDialog(true)}
+              onClick={() => { initializeDates(); setShowCustomPeriodDialog(true) }}
               className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -393,70 +348,36 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
             </DialogHeader>
             <div className="space-y-4 py-4">
               <p className="text-sm text-muted-foreground">
-                Select a pay period to generate a payslip based on your attendance data.
+                Select a date range to generate a payslip based on your attendance data.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="periodMonth">Month</Label>
-                  <select
-                    id="periodMonth"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  >
-                    {monthNames.map((name, index) => (
-                      <option key={index} value={index}>{name}</option>
-                    ))}
-                  </select>
+                  <Label htmlFor="startDate">Start Date</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    max={today}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="periodYear">Year</Label>
-                  <select
-                    id="periodYear"
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  >
-                    {availableYears.map((year) => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
+                  <Label htmlFor="endDate">End Date</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    max={today}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="periodCutoff">Cutoff Period</Label>
-                <select
-                  id="periodCutoff"
-                  value={selectedCutoff}
-                  onChange={(e) => setSelectedCutoff(e.target.value as 'first' | 'second')}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  {cutoffPeriods.map((period) => (
-                    <option key={period.value} value={period.value}>{period.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="rounded-lg bg-bisu-purple-extralight border border-bisu-purple-light p-3">
-                <p className="text-xs text-bisu-purple-deep">
-                  <strong>Selected Period:</strong> {getCutoffPeriodDates().displayLabel}{getCutoffPeriodDates().isCrossMonth && getCutoffPeriodDates().startYear !== getCutoffPeriodDates().endYear ? `, ${getCutoffPeriodDates().startYear}-${getCutoffPeriodDates().endYear}` : `, ${selectedYear}`}
-                </p>
-                <p className="text-xs text-bisu-purple-medium mt-1">
-                  <strong>Employment Type:</strong> {employmentStatus === 'PERMANENT' ? 'Permanent' : 'Contractual'} (Payout on {allowedDaysText})
-                </p>
-                {isPastCutoffPeriod(getCutoffPeriodDates().end) && (
-                  <p className="text-xs text-green-700 mt-1 font-medium">
-                    ✓ This is a past period - you can generate anytime
-                  </p>
-                )}
-              </div>
-              {!canGenerateToday && !isPastCutoffPeriod(getCutoffPeriodDates().end) && (
-                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-                  <p className="text-xs text-amber-800 flex items-center gap-1">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>
-                      <strong>Current Period Restriction:</strong> Payslip generation for current periods is only available on the {allowedDaysText}.
-                      <br />Next available: {nextPayslipDate.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </span>
+              {startDate && endDate && (
+                <div className="rounded-lg bg-bisu-purple-extralight border border-bisu-purple-light p-3">
+                  <p className="text-xs text-bisu-purple-deep">
+                    <strong>Selected Period:</strong> {formatDate(startDate)} to {formatDate(endDate)}
                   </p>
                 </div>
               )}
@@ -477,8 +398,8 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
               </Button>
               <Button
                 onClick={handleGenerateCustomPeriod}
-                disabled={isGeneratingCustom || (getCutoffPeriodDates().end > new Date()) || (!isPastCutoffPeriod(getCutoffPeriodDates().end) && !canGenerateToday)}
-                className={(isPastCutoffPeriod(getCutoffPeriodDates().end) || canGenerateToday) && getCutoffPeriodDates().end <= new Date()
+                disabled={isGeneratingCustom || !isValidDateRange()}
+                className={isValidDateRange()
                   ? "bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white" 
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"}
               >
@@ -486,16 +407,6 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
                   <>
                     <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin mr-2" />
                     Generating...
-                  </>
-                ) : getCutoffPeriodDates().end > new Date() ? (
-                  <>
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    Future Period
-                  </>
-                ) : !isPastCutoffPeriod(getCutoffPeriodDates().end) && !canGenerateToday ? (
-                  <>
-                    <Clock className="h-4 w-4 mr-2" />
-                    Not Available Today
                   </>
                 ) : (
                   <>
@@ -597,7 +508,7 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
             </div>
             <Button
               size="sm"
-              onClick={() => setShowCustomPeriodDialog(true)}
+              onClick={() => { initializeDates(); setShowCustomPeriodDialog(true) }}
               className="bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -781,70 +692,36 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Select a pay period to generate a payslip based on your attendance data.
+              Select a date range to generate a payslip based on your attendance data.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="periodMonth">Month</Label>
-                <select
-                  id="periodMonth"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  {monthNames.map((name, index) => (
-                    <option key={index} value={index}>{name}</option>
-                  ))}
-                </select>
+                <Label htmlFor="startDate2">Start Date</Label>
+                <Input
+                  id="startDate2"
+                  type="date"
+                  value={startDate}
+                  max={today}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="periodYear">Year</Label>
-                <select
-                  id="periodYear"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  {availableYears.map((year) => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
+                <Label htmlFor="endDate2">End Date</Label>
+                <Input
+                  id="endDate2"
+                  type="date"
+                  value={endDate}
+                  max={today}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full"
+                />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="periodCutoff">Cutoff Period</Label>
-              <select
-                id="periodCutoff"
-                value={selectedCutoff}
-                onChange={(e) => setSelectedCutoff(e.target.value as 'first' | 'second')}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                {cutoffPeriods.map((period) => (
-                  <option key={period.value} value={period.value}>{period.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="rounded-lg bg-bisu-purple-extralight border border-bisu-purple-light p-3">
-              <p className="text-xs text-bisu-purple-deep">
-                <strong>Selected Period:</strong> {getCutoffPeriodDates().displayLabel}{getCutoffPeriodDates().isCrossMonth && getCutoffPeriodDates().startYear !== getCutoffPeriodDates().endYear ? `, ${getCutoffPeriodDates().startYear}-${getCutoffPeriodDates().endYear}` : `, ${selectedYear}`}
-              </p>
-              <p className="text-xs text-bisu-purple-medium mt-1">
-                <strong>Employment Type:</strong> {employmentStatus === 'PERMANENT' ? 'Permanent' : 'Contractual'} (Payout on {allowedDaysText})
-              </p>
-              {isPastCutoffPeriod(getCutoffPeriodDates().end) && (
-                <p className="text-xs text-green-700 mt-1 font-medium">
-                  ✓ This is a past period - you can generate anytime
-                </p>
-              )}
-            </div>
-            {!canGenerateToday && !isPastCutoffPeriod(getCutoffPeriodDates().end) && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-                <p className="text-xs text-amber-800 flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>
-                    <strong>Current Period Restriction:</strong> Payslip generation for current periods is only available on the {allowedDaysText}.
-                    <br />Next available: {nextPayslipDate.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
-                  </span>
+            {startDate && endDate && (
+              <div className="rounded-lg bg-bisu-purple-extralight border border-bisu-purple-light p-3">
+                <p className="text-xs text-bisu-purple-deep">
+                  <strong>Selected Period:</strong> {formatDate(startDate)} to {formatDate(endDate)}
                 </p>
               </div>
             )}
@@ -865,8 +742,8 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
             </Button>
             <Button
               onClick={handleGenerateCustomPeriod}
-              disabled={isGeneratingCustom || (getCutoffPeriodDates().end > new Date()) || (!isPastCutoffPeriod(getCutoffPeriodDates().end) && !canGenerateToday)}
-              className={(isPastCutoffPeriod(getCutoffPeriodDates().end) || canGenerateToday) && getCutoffPeriodDates().end <= new Date()
+              disabled={isGeneratingCustom || !isValidDateRange()}
+              className={isValidDateRange()
                 ? "bg-bisu-purple-deep hover:bg-bisu-purple-medium text-white" 
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"}
             >
@@ -874,16 +751,6 @@ export function PastPayslipsCard({ payrollHistory, employmentStatus }: PastPaysl
                 <>
                   <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-white animate-spin mr-2" />
                   Generating...
-                </>
-              ) : getCutoffPeriodDates().end > new Date() ? (
-                <>
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Future Period
-                </>
-              ) : !isPastCutoffPeriod(getCutoffPeriodDates().end) && !canGenerateToday ? (
-                <>
-                  <Clock className="h-4 w-4 mr-2" />
-                  Not Available Today
                 </>
               ) : (
                 <>
