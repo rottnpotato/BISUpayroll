@@ -6,7 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { X } from "lucide-react"
 import { FormData, FormErrors } from "../types"
-import { departments, roles, employeeTypes, employeeTypeLabels, employmentStatuses, employmentStatusLabels, positionsByDepartment, positionToSalaryGrade } from "../constants"
+import {
+  departments,
+  roles,
+  employeeTypes,
+  employeeTypeLabels,
+  employmentStatuses,
+  employmentStatusLabels,
+  positionToSalaryGrade,
+  getPositionsForDepartment,
+  isNonTeachingDepartment,
+  CUSTOM_DEPARTMENT_VALUE,
+} from "../constants"
 import { useEffect, useState } from "react"
 
 interface EditEmployeeDialogProps {
@@ -30,13 +41,53 @@ export function EditEmployeeDialog({
 }: EditEmployeeDialogProps) {
   const [salarySteps, setSalarySteps] = useState<Array<{ value: number; label: string; rate: number; step: number }>>([])
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  // Treat existing values that aren't in our predefined list as "custom" so the admin
+  // can keep using legacy / typed-in office names without losing the data.
+  const isPredefinedDepartment = (value: string | null | undefined) =>
+    !!value && (departments as readonly string[]).includes(value)
+  const [isCustomDepartment, setIsCustomDepartment] = useState(false)
 
-  // Reset initial load flag when dialog opens with new data
   useEffect(() => {
     if (open) {
       setIsInitialLoad(true)
+      setIsCustomDepartment(!!formData.department && !isPredefinedDepartment(formData.department))
     }
   }, [open])
+
+  const handleDepartmentChange = (value: string) => {
+    if (value === CUSTOM_DEPARTMENT_VALUE) {
+      setIsCustomDepartment(true)
+      setIsInitialLoad(false)
+      setFormData(prev => ({
+        ...prev,
+        department: "",
+        position: "",
+        salaryGrade: "",
+        salaryStep: "",
+        dailyRate: "",
+        employeeType: "NON_TEACHING_PERSONNEL",
+      }))
+      return
+    }
+
+    setIsCustomDepartment(false)
+    if (value !== formData.department) {
+      setIsInitialLoad(false)
+      setFormData(prev => ({
+        ...prev,
+        department: value,
+        position: "",
+        salaryGrade: "",
+        salaryStep: "",
+        dailyRate: "",
+        employeeType: isNonTeachingDepartment(value)
+          ? "NON_TEACHING_PERSONNEL"
+          : prev.employeeType,
+      }))
+    }
+  }
+
+  const availablePositions = getPositionsForDepartment(formData.department)
 
   // Fetch salary steps when position changes or on initial load
   useEffect(() => {
@@ -217,15 +268,9 @@ export function EditEmployeeDialog({
               <Label htmlFor="edit-department" className="text-left font-medium">
                 Department <span className="text-red-500">*</span>
               </Label>
-              <Select 
-                value={formData.department} 
-                onValueChange={(value) => {
-                  // Only clear position if department is actually changing
-                  if (value !== formData.department) {
-                    setFormData(prev => ({ ...prev, department: value, position: "", salaryGrade: "", salaryStep: "", dailyRate: "" }))
-                    setIsInitialLoad(false)
-                  }
-                }}
+              <Select
+                value={isCustomDepartment ? CUSTOM_DEPARTMENT_VALUE : formData.department}
+                onValueChange={handleDepartmentChange}
               >
                 <SelectTrigger className={errors.department ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select department" />
@@ -236,8 +281,26 @@ export function EditEmployeeDialog({
                       {dept}
                     </SelectItem>
                   ))}
+                  <SelectItem value={CUSTOM_DEPARTMENT_VALUE}>
+                    Other (custom office)…
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              {isCustomDepartment && (
+                <Input
+                  id="edit-department-custom"
+                  placeholder="e.g. PROCUREMENT, OSAS, RESEARCH"
+                  value={formData.department}
+                  onChange={(e) =>
+                    setFormData(prev => ({
+                      ...prev,
+                      department: e.target.value.toUpperCase(),
+                      employeeType: "NON_TEACHING_PERSONNEL",
+                    }))
+                  }
+                  className="mt-1"
+                />
+              )}
               {errors.department && (
                 <p className="text-red-500 text-xs">{errors.department}</p>
               )}
@@ -257,7 +320,7 @@ export function EditEmployeeDialog({
                   <SelectValue placeholder="Select position" />
                 </SelectTrigger>
                 <SelectContent>
-                  {positionsByDepartment[formData.department as keyof typeof positionsByDepartment]?.map((position) => (
+                  {availablePositions.map((position) => (
                     <SelectItem key={position} value={position}>
                       {position}
                     </SelectItem>

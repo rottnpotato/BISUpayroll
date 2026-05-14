@@ -6,7 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { X } from "lucide-react"
 import { FormData, FormErrors } from "../types"
-import { departments, roles, employeeTypes, employeeTypeLabels, employmentStatuses, employmentStatusLabels, positionsByDepartment, positionToSalaryGrade } from "../constants"
+import {
+  departments,
+  roles,
+  employeeTypes,
+  employeeTypeLabels,
+  employmentStatuses,
+  employmentStatusLabels,
+  positionToSalaryGrade,
+  getPositionsForDepartment,
+  isNonTeachingDepartment,
+  CUSTOM_DEPARTMENT_VALUE,
+} from "../constants"
 import { useEffect, useState } from "react"
 
 interface AddEmployeeDialogProps {
@@ -29,6 +40,35 @@ export function AddEmployeeDialog({
   onSubmit
 }: AddEmployeeDialogProps) {
   const [salarySteps, setSalarySteps] = useState<Array<{ value: number; label: string; rate: number }>>([])
+  const [isCustomDepartment, setIsCustomDepartment] = useState(false)
+
+  const handleDepartmentChange = (value: string) => {
+    if (value === CUSTOM_DEPARTMENT_VALUE) {
+      setIsCustomDepartment(true)
+      setFormData(prev => ({
+        ...prev,
+        department: "",
+        position: "",
+        salaryGrade: "",
+        salaryStep: "",
+        dailyRate: "",
+        employeeType: "NON_TEACHING_PERSONNEL",
+      }))
+      return
+    }
+
+    setIsCustomDepartment(false)
+    setFormData(prev => ({
+      ...prev,
+      department: value,
+      position: "",
+      employeeType: isNonTeachingDepartment(value)
+        ? "NON_TEACHING_PERSONNEL"
+        : prev.employeeType,
+    }))
+  }
+
+  const availablePositions = getPositionsForDepartment(formData.department)
 
   // Auto-select salary grade when position changes
   useEffect(() => {
@@ -174,9 +214,9 @@ export function AddEmployeeDialog({
               <Label htmlFor="add-department" className="text-left font-medium">
                 Department <span className="text-red-500">*</span>
               </Label>
-              <Select 
-                value={formData.department} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, department: value, position: "" }))}
+              <Select
+                value={isCustomDepartment ? CUSTOM_DEPARTMENT_VALUE : formData.department}
+                onValueChange={handleDepartmentChange}
               >
                 <SelectTrigger className={errors.department ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select department" />
@@ -187,8 +227,26 @@ export function AddEmployeeDialog({
                       {dept}
                     </SelectItem>
                   ))}
+                  <SelectItem value={CUSTOM_DEPARTMENT_VALUE}>
+                    Other (custom office)…
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              {isCustomDepartment && (
+                <Input
+                  id="add-department-custom"
+                  placeholder="e.g. PROCUREMENT, OSAS, RESEARCH"
+                  value={formData.department}
+                  onChange={(e) =>
+                    setFormData(prev => ({
+                      ...prev,
+                      department: e.target.value.toUpperCase(),
+                      employeeType: "NON_TEACHING_PERSONNEL",
+                    }))
+                  }
+                  className="mt-1"
+                />
+              )}
               {errors.department && (
                 <p className="text-red-500 text-xs">{errors.department}</p>
               )}
@@ -206,7 +264,7 @@ export function AddEmployeeDialog({
                   <SelectValue placeholder={formData.department ? "Select position" : "Select department first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {formData.department && positionsByDepartment[formData.department as keyof typeof positionsByDepartment]?.map((position) => (
+                  {availablePositions.map((position) => (
                     <SelectItem key={position} value={position}>
                       {position}
                     </SelectItem>

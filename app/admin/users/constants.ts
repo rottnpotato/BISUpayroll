@@ -1,10 +1,43 @@
-// Department options
-export const departments = [
+// Sentinel value used by the UI to reveal a free-text input for a custom non-teaching office.
+export const CUSTOM_DEPARTMENT_VALUE = "__CUSTOM__"
+
+// Teaching colleges
+export const teachingDepartments = [
   "CTAS",
   "CCJ",
   "CCIS",
-  "NON-TEACHING"
 ] as const
+
+// Predefined non-teaching offices/divisions. All map to NON_TEACHING_PERSONNEL.
+// "NON-TEACHING" stays at the top of the list as a generic catch-all for older records.
+export const nonTeachingDepartments = [
+  "NON-TEACHING",
+  "HR",
+  "ACCOUNTING",
+  "AUDIT",
+  "MAINTENANCE",
+  "REGISTRAR",
+  "LIBRARY",
+  "GUIDANCE",
+  "MIS",
+  "CASHIER",
+  "SUPPLY",
+  "CLINIC",
+  "SECURITY",
+  "GENERAL SERVICES",
+] as const
+
+export const departments = [
+  ...teachingDepartments,
+  ...nonTeachingDepartments,
+] as const
+
+// Lookup set for runtime checks (e.g., auto-assign employee type on department change).
+export const nonTeachingDepartmentSet = new Set<string>(nonTeachingDepartments)
+export const isNonTeachingDepartment = (value: string | null | undefined): boolean => {
+  if (!value) return false
+  return nonTeachingDepartmentSet.has(value)
+}
 
 // Role options
 export const roles = [
@@ -65,13 +98,33 @@ const generatePositionsWithRanks = () => {
 
 const { teaching: teachingPositions, nonTeaching: nonTeachingPositions } = generatePositionsWithRanks()
 
-// Positions by department
-export const positionsByDepartment = {
-  "CTAS": [...teachingPositions],
-  "CCJ": [...teachingPositions],
-  "CCIS": [...teachingPositions, "System Administrator", "IT Support"],
-  "NON-TEACHING": [...nonTeachingPositions,]
-} as const
+// Positions by department.
+// Each non-teaching office reuses the same non-teaching position list, so the only
+// difference between, say, "HR" and "ACCOUNTING" is the office the employee belongs to.
+const nonTeachingDepartmentPositions = nonTeachingDepartments.reduce(
+  (acc, dept) => {
+    acc[dept] = [...nonTeachingPositions]
+    return acc
+  },
+  {} as Record<string, string[]>
+)
+
+export const positionsByDepartment: Record<string, readonly string[]> = {
+  CTAS: [...teachingPositions],
+  CCJ: [...teachingPositions],
+  CCIS: [...teachingPositions, "System Administrator", "IT Support"],
+  ...nonTeachingDepartmentPositions,
+}
+
+// Default position list to surface when a department is not in `positionsByDepartment`
+// (e.g., a custom non-teaching office typed in by the admin). Non-teaching offices are
+// the only ones that allow custom values, so we default to the non-teaching set.
+export const fallbackNonTeachingPositions: readonly string[] = [...nonTeachingPositions]
+
+export const getPositionsForDepartment = (department: string | null | undefined): readonly string[] => {
+  if (!department) return []
+  return positionsByDepartment[department] ?? fallbackNonTeachingPositions
+}
 
 // Position to Salary Grade mapping (each position rank has exactly one salary grade)
 // Note: Default step is 1, users can select different steps later

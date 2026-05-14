@@ -14,7 +14,8 @@ import {
   AttendanceTable,
   AttendanceFilters,
   AttendancePagination,
-  AttendanceImportDialog
+  AttendanceImportDialog,
+  ManualPunchDialog
 } from "./components"
 import { ImportHistoryDialog } from "./components/ImportHistoryDialog"
 
@@ -92,6 +93,7 @@ export default function AttendancePage() {
           </div>
           <div className="flex gap-2">
             <ImportHistoryDialog onImportReverted={refetch} />
+            <ManualPunchDialog onSuccess={refetch} />
             <AttendanceImportDialog onImportComplete={refetch} />
           </div>
         </div>
